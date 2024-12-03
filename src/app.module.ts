@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AdminModule } from './admin/admin.module';
 import { SubjectModule } from './subject/subject.module';
@@ -15,9 +14,18 @@ import { ResultModule } from './result/result.module';
 import { EventModule } from './event/event.module';
 import { AnnouncementModule } from './announcement/announcement.module';
 import { TeacherModule } from './teacher/teacher.module';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { AppResolver } from './app.resolver';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      autoSchemaFile: true,
+      playground: true,
+    }),
     AdminModule,
     TeacherModule,
     SubjectModule,
@@ -34,6 +42,6 @@ import { TeacherModule } from './teacher/teacher.module';
     AnnouncementModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, AppResolver],
 })
 export class AppModule {}
