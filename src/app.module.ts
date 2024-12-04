@@ -18,9 +18,14 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { AppResolver } from './app.resolver';
 import { AppController } from './app.controller';
+import { PrismaModule } from './prisma/prisma.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
@@ -40,6 +45,7 @@ import { AppController } from './app.controller';
     ResultModule,
     EventModule,
     AnnouncementModule,
+    PrismaModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],
