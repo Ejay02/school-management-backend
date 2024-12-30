@@ -9,7 +9,6 @@ import { LoginInput } from './input/login.input';
 import { AuthResponse } from './response/auth.response';
 import * as bcrypt from 'bcrypt';
 import { SignupInput } from './input/signup.input';
-// import { v4 as uuidv4 } from 'uuid';
 import { Roles } from '../enum/role';
 
 @Injectable()
@@ -62,7 +61,7 @@ export class AuthService {
 
         if (existingUser) {
           throw new ConflictException(
-            `${role} with this username already exists`,
+            `${role} with this username ${username} already exists`,
           );
         }
 
@@ -81,14 +80,11 @@ export class AuthService {
         let newUser;
         switch (role) {
           case Roles.ADMIN:
-            newUser = await tx.admin.create({
-              data: { username, password: hashedPassword, email, role },
-            });
-            break;
           case Roles.SUPER_ADMIN:
             newUser = await tx.admin.create({
               data: { username, password: hashedPassword, email, role },
             });
+
             break;
           case Roles.TEACHER:
             newUser = await tx.teacher.create({
@@ -102,6 +98,7 @@ export class AuthService {
                 address,
                 bloodType,
                 sex,
+                phone,
               },
             });
             break;
@@ -153,20 +150,24 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<AuthResponse> {
-    const admin = await this.prisma.admin.findUnique({
-      where: { username: input.username },
-    });
+    const { username, password } = input;
 
-    if (!admin || !(await bcrypt.compare(input.password, admin.password))) {
+    const userPromises = [
+      this.prisma.admin.findUnique({ where: { username } }),
+      this.prisma.teacher.findUnique({ where: { username } }),
+      this.prisma.student.findUnique({ where: { username } }),
+      this.prisma.parent.findUnique({ where: { username } }),
+    ];
+
+    const users = await Promise.all(userPromises);
+    const user = users.find((u) => u !== null);
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.generateToken(admin.id, admin.role);
-
-    return {
-      token,
-      userId: admin.id,
-    };
+    const token = this.generateToken(user.id, user.role);
+    return { token, userId: user.id };
   }
 
   private generateToken(userId: string, role: string): string {
@@ -183,7 +184,6 @@ export class AuthService {
         },
       );
     } catch (error) {
-      console.error('Error generating token:', error);
       // Throw the error to propagate it to the transaction
       throw new Error('Failed to generate token');
     }
