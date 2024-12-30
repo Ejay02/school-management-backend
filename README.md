@@ -74,7 +74,7 @@ Generate Prisma client:
 npx prisma generate
 ```
 
-### Run Prisma migrations:
+### Run Prisma migrations
 
 ```sh
 npx prisma migrate dev --name init
@@ -86,5 +86,6 @@ npx prisma migrate dev --name init
 npx prisma studio
 ```
 
-License
+#### License
+
 This project is licensed under the MIT License.
