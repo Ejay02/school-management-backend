@@ -20,6 +20,7 @@ import { AppResolver } from './app.resolver';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './shared/auth/auth.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ConfigModule } from '@nestjs/config';
     EventModule,
     AnnouncementModule,
     PrismaModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],

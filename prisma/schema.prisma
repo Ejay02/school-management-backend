@@ -14,7 +14,7 @@ datasource db {
 }
 
 model Admin {
-  id            String        @id
+  id            String        @id @default(uuid())
   username      String        @unique
   role          Role
   email         String?       
@@ -24,7 +24,7 @@ model Admin {
 }
 
 model Student {
-  id            String        @id
+  id            String        @id @default(uuid())
   username      String        @unique
   role          Role
   name          String  
@@ -35,7 +35,7 @@ model Student {
   address       String
   img           String?
   bloodType     String
-  sex           UserSex
+  sex           Sex
   parentId      String
   parent        Parent        @relation(fields: [parentId], references: [id])
   classId       Int
@@ -49,7 +49,7 @@ model Student {
 }
 
 model Teacher{
-  id            String        @id
+  id            String        @id @default(uuid())
   username      String        @unique
   role          Role
   name          String  
@@ -60,7 +60,7 @@ model Teacher{
   address       String
   img           String?
   bloodType     String
-  sex           UserSex
+  sex           Sex
   subjects      Subject[]
   lessons       Lesson[]
   classes       Class[]
@@ -69,7 +69,7 @@ model Teacher{
 }
 
 model Parent {
-  id            String        @id
+  id            String        @id @default(uuid())
   username      String        @unique
   role          Role
   name          String  
@@ -211,7 +211,7 @@ model Announcement{
 }
 
 
-enum UserSex {
+enum Sex {
   MALE
   FEMALE
 }
