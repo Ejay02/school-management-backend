@@ -11,24 +11,13 @@ import { Sex } from 'src/shared/enum/sex';
 import { BloodType } from 'src/shared/enum/bloodType';
 
 @InputType()
-export class SignupInput {
+export class BaseSignupInput {
   @Field()
   @IsString()
   @IsNotEmpty()
-  name: string;
-
-  @Field()
-  @IsString()
-  @IsNotEmpty()
-  surname: string;
-
-  @Field()
-  @IsNotEmpty()
-  @IsString()
   username: string;
 
   @Field()
-  @IsNotEmpty()
   @IsString()
   @MinLength(8)
   password: string;
@@ -36,31 +25,76 @@ export class SignupInput {
   @Field({ nullable: true })
   @IsEmail()
   email?: string;
+}
+
+@InputType()
+export class AdminSignupInput extends BaseSignupInput {
+  @Field(() => Roles)
+  @IsEnum([Roles.ADMIN, Roles.SUPER_ADMIN])
+  role: Roles;
+}
+
+@InputType()
+export class TeacherSignupInput extends BaseSignupInput {
+  @Field(() => Roles)
+  role: Roles = Roles.TEACHER;
 
   @Field()
   @IsString()
-  @IsNotEmpty()
+  name: string;
+
+  @Field()
+  @IsString()
+  surname: string;
+
+  @Field()
+  @IsString()
   address: string;
 
-  @Field()
-  @IsString()
-  @IsNotEmpty()
-  phone: string;
-
-  @Field(() => Roles)
-  @IsEnum(Roles)
-  role: Roles;
-
-  @Field(() => String)
+  @Field(() => BloodType)
   @IsEnum(BloodType)
   bloodType: BloodType;
 
-  @Field(() => String)
+  @Field(() => Sex)
+  @IsEnum(Sex)
+  sex: Sex;
+
+  @Field({ nullable: true })
+  @IsString()
+  phone?: string;
+}
+
+@InputType()
+export class StudentSignupInput extends BaseSignupInput {
+  @Field(() => Roles)
+  role: Roles = Roles.STUDENT;
+
+  @Field()
+  @IsString()
+  name: string;
+
+  @Field()
+  @IsString()
+  surname: string;
+
+  @Field()
+  @IsString()
+  phone: string;
+
+  @Field()
+  @IsString()
+  address: string;
+
+  @Field(() => BloodType)
+  @IsEnum(BloodType)
+  bloodType: BloodType;
+
+  @Field(() => Sex)
   @IsEnum(Sex)
   sex: Sex;
 
   @Field()
-  @IsNotEmpty()
+  @IsString()
   parentId: string;
 
   @Field()
@@ -70,4 +104,26 @@ export class SignupInput {
   @Field()
   @IsNotEmpty()
   gradeId: number;
+}
+
+@InputType()
+export class ParentSignupInput extends BaseSignupInput {
+  @Field(() => Roles)
+  role: Roles = Roles.PARENT;
+
+  @Field()
+  @IsString()
+  name: string;
+
+  @Field()
+  @IsString()
+  surname: string;
+
+  @Field()
+  @IsString()
+  phone: string;
+
+  @Field()
+  @IsString()
+  address: string;
 }

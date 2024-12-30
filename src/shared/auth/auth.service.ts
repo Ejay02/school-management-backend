@@ -8,9 +8,19 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginInput } from './input/login.input';
 import { AuthResponse } from './response/auth.response';
 import * as bcrypt from 'bcrypt';
-import { SignupInput } from './input/signup.input';
+import {
+  AdminSignupInput,
+  ParentSignupInput,
+  StudentSignupInput,
+  TeacherSignupInput,
+} from './input/signup.input';
 import { Roles } from '../enum/role';
 
+type SignupInputType =
+  | AdminSignupInput
+  | TeacherSignupInput
+  | StudentSignupInput
+  | ParentSignupInput;
 @Injectable()
 export class AuthService {
   constructor(
@@ -18,35 +28,17 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async signup(input: SignupInput): Promise<AuthResponse> {
+  async signup(input: SignupInputType): Promise<AuthResponse> {
     try {
       const result = await this.prisma.$transaction(async (tx) => {
-        const {
-          username,
-          password,
-          email,
-          role,
-          name,
-          surname,
-          address,
-          bloodType,
-          sex,
-          phone,
-          parentId,
-          classId,
-          gradeId,
-        } = input;
+        const { username, password, email, role } = input;
 
         // Check if the username already exists in the relevant model
         let existingUser;
         switch (role) {
           case Roles.ADMIN:
-            existingUser = await tx.admin.findUnique({ where: { username } });
-            break;
           case Roles.SUPER_ADMIN:
-            existingUser = await tx.admin.findUnique({
-              where: { username },
-            });
+            existingUser = await tx.admin.findUnique({ where: { username } });
             break;
           case Roles.TEACHER:
             existingUser = await tx.teacher.findUnique({ where: { username } });
@@ -66,10 +58,13 @@ export class AuthService {
         }
 
         // Handle SUPER_ADMIN creation (only allow the first SUPER_ADMIN)
-        if (role === Roles.SUPER_ADMIN) {
-          const superAdminCount = await tx.admin.count();
-          if (superAdminCount > 0) {
-            throw new ConflictException('A SUPER_ADMIN already exists');
+
+        let effectiveRole = role;
+        if (role === Roles.ADMIN) {
+          const adminCount = await tx.admin.count();
+          if (adminCount === 0) {
+            // First admin should be SUPER_ADMIN
+            effectiveRole = Roles.SUPER_ADMIN;
           }
         }
 
@@ -78,69 +73,79 @@ export class AuthService {
 
         // Create the user based on the role
         let newUser;
-        switch (role) {
+        switch (effectiveRole) {
           case Roles.ADMIN:
           case Roles.SUPER_ADMIN:
             newUser = await tx.admin.create({
-              data: { username, password: hashedPassword, email, role },
+              data: {
+                username,
+                password: hashedPassword,
+                email,
+                role: effectiveRole,
+              },
             });
-
             break;
+
           case Roles.TEACHER:
+            const teacherInput = input as TeacherSignupInput;
             newUser = await tx.teacher.create({
               data: {
                 username,
                 password: hashedPassword,
                 email,
                 role,
-                name,
-                surname,
-                address,
-                bloodType,
-                sex,
-                phone,
+                name: teacherInput.name,
+                surname: teacherInput.surname,
+                address: teacherInput.address,
+                bloodType: teacherInput.bloodType,
+                sex: teacherInput.sex,
+                phone: teacherInput.phone,
               },
             });
             break;
+
           case Roles.STUDENT:
+            const studentInput = input as StudentSignupInput;
             newUser = await tx.student.create({
               data: {
                 username,
                 password: hashedPassword,
                 email,
                 role,
-                name,
-                surname,
-                address,
-                bloodType,
-                sex,
-                parentId,
-                classId,
-                gradeId,
+                name: studentInput.name,
+                surname: studentInput.surname,
+                address: studentInput.address,
+                bloodType: studentInput.bloodType,
+                sex: studentInput.sex,
+                parentId: studentInput.parentId,
+                classId: studentInput.classId,
+                gradeId: studentInput.gradeId,
               },
             });
             break;
+
           case Roles.PARENT:
+            const parentInput = input as ParentSignupInput;
             newUser = await tx.parent.create({
               data: {
                 username,
                 password: hashedPassword,
                 email,
                 role,
-                name,
-                surname,
-                phone,
-                address,
+                name: parentInput.name,
+                surname: parentInput.surname,
+                phone: parentInput.phone,
+                address: parentInput.address,
               },
             });
             break;
         }
 
         // Generate the token (if this fails, it should trigger rollback)
-        const token = this.generateToken(newUser.id, role); // pass role as string
+        const token = this.generateToken(newUser.id, role);
 
         // Return the token and user ID
-        return { token, userId: newUser.id };
+        return { token, userId: newUser.id, role: effectiveRole };
       });
 
       return result;
@@ -148,7 +153,6 @@ export class AuthService {
       throw new Error(`Signup Error: ${error}`);
     }
   }
-
   async login(input: LoginInput): Promise<AuthResponse> {
     const { username, password } = input;
 
