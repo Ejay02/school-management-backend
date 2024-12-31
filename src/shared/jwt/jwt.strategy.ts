@@ -10,7 +10,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'wmen34m3554m6mrgFB>b.,g,g',
+      secretOrKey: process.env.JWT_SECRET,
     });
   }
   // secretOrKey: process.env.JWT_SECRET,
@@ -30,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         role: payload.role,
       };
     } catch (error) {
-      console.log('jwt error:', error);
+      throw new Error(`jwt error: ${error.message}`);
     }
   }
 }

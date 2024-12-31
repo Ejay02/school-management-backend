@@ -44,6 +44,7 @@ model Student {
   grade         Grade         @relation(fields: [gradeId], references: [id])
   attendances   Attendance[]
   results       Result[]
+  submissions   Submission[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -64,6 +65,7 @@ model Teacher{
   subjects      Subject[]
   lessons       Lesson[]
   classes       Class[]
+  assignments   Assignment[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -85,9 +87,10 @@ model Parent {
 
 model Grade {
   id            Int           @id      @default(autoincrement())
-  level         Int           @unique
+  level         Int           @unique   // Represents the grade level (e.g., 'A', 'B')
   classes       Class[]
   students      Student[]
+  submissions   Submission[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -104,6 +107,7 @@ model Class {
   gradeId       Int
   grade         Grade         @relation(fields: [gradeId], references: [id])
   events        Event[]
+  assignments   Assignment[]
   announcements Announcement[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -114,6 +118,7 @@ model Subject {
   name          String        @unique
   teachers      Teacher[]
   lessons       Lesson[]
+  assignments   Assignment[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   
@@ -151,16 +156,40 @@ model Exam {
 }
 
 model Assignment {
-  id            Int           @id      @default(autoincrement())
-  title         String
-  startDate     DateTime
-  dueDate       DateTime
-  lessonId      Int
-  lesson        Lesson        @relation(fields: [lessonId], references: [id]) 
-  results       Result[]
+  id            Int           @id @default(autoincrement())
+  title         String    
+  startDate     DateTime    
+  dueDate       DateTime    
+  lessonId      Int   
+  lesson        Lesson        @relation(fields: [lessonId], references: [id])
+  teacherId     String        
+  teacher       Teacher       @relation(fields: [teacherId], references: [id])
+  subjectId     Int   
+  subject       Subject       @relation(fields: [subjectId], references: [id])
+  classId       Int   
+  class         Class         @relation(fields: [classId], references: [id])
+  results       Result[]    
+  submissions   Submission[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
+
+model Submission {
+  id            Int           @id @default(autoincrement())
+  assignmentId  Int
+  assignment    Assignment    @relation(fields: [assignmentId], references: [id])
+  studentId     String
+  student       Student       @relation(fields: [studentId], references: [id])
+  gradeId       Int
+  grade         Grade?        @relation(fields: [gradeId], references: [id])  
+  submissionDate DateTime     @default(now()) 
+  status        String        // Submission status (e.g., 'submitted', 'graded', 'late')
+  content       String?       // Optional field to store submission content (e.g., file URL or text)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+
 
 model Result {
   id            Int           @id      @default(autoincrement())

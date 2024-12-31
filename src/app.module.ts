@@ -21,6 +21,7 @@ import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './shared/auth/auth.module';
+import { SubmissionModule } from './submission/submission.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { AuthModule } from './shared/auth/auth.module';
     AnnouncementModule,
     PrismaModule,
     AuthModule,
+    SubmissionModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],
