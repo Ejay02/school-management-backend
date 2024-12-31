@@ -38,7 +38,9 @@ export class AdminService {
 
     return {
       userId: admin.id,
-      token: '', // or any default value, or generate a token if needed
+      token: '',
+      username: admin.username,
+      email: admin.email,
     };
   }
 }

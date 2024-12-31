@@ -10,4 +10,37 @@ export class AuthResponse {
 
   @Field({ nullable: true })
   role?: string;
+
+  @Field({ nullable: true })
+  username: string;
+
+  @Field({ nullable: true })
+  name?: string;
+
+  @Field({ nullable: true })
+  surname?: string;
+
+  @Field({ nullable: false })
+  email?: string;
+
+  @Field({ nullable: true })
+  address?: string;
+
+  @Field({ nullable: true })
+  phone?: string;
+
+  @Field({ nullable: true })
+  bloodType?: string;
+
+  @Field({ nullable: true })
+  sex?: string;
+
+  @Field({ nullable: true })
+  parentId?: string;
+
+  @Field({ nullable: true })
+  classId?: number;
+
+  @Field({ nullable: true })
+  gradeId?: number;
 }

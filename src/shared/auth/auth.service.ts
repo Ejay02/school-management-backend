@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { LoginInput } from './input/login.input';
+import { BaseLoginInput } from './input/login.input';
 import { AuthResponse } from './response/auth.response';
 import * as bcrypt from 'bcrypt';
 import {
@@ -144,8 +144,24 @@ export class AuthService {
         // Generate the token (if this fails, it should trigger rollback)
         const token = this.generateToken(newUser.id, role);
 
-        // Return the token and user ID
-        return { token, userId: newUser.id, role: effectiveRole };
+        // Build the response object with all fields
+        const authResponse: AuthResponse = {
+          token,
+          userId: newUser.id,
+          role: effectiveRole,
+          username: newUser.username,
+          name: newUser.name || null,
+          surname: newUser.surname || null,
+          email: newUser.email || null,
+          address: newUser.address || null,
+          phone: newUser.phone || null,
+          bloodType: newUser.bloodType || null,
+          sex: newUser.sex || null,
+          parentId: newUser.parentId || null,
+          classId: newUser.classId || null,
+          gradeId: newUser.gradeId || null,
+        };
+        return authResponse;
       });
 
       return result;
@@ -153,25 +169,63 @@ export class AuthService {
       throw new Error(`Signup Error: ${error}`);
     }
   }
-  async login(input: LoginInput): Promise<AuthResponse> {
+  async login(input: BaseLoginInput): Promise<AuthResponse> {
     const { username, password } = input;
 
-    const userPromises = [
-      this.prisma.admin.findUnique({ where: { username } }),
-      this.prisma.teacher.findUnique({ where: { username } }),
-      this.prisma.student.findUnique({ where: { username } }),
-      this.prisma.parent.findUnique({ where: { username } }),
-    ];
-
-    const users = await Promise.all(userPromises);
-    const user = users.find((u) => u !== null);
+    // Find user based on role if provided
+    let user = null;
+    if ('role' in input) {
+      switch (input.role) {
+        case Roles.ADMIN:
+        case Roles.SUPER_ADMIN:
+          user = await this.prisma.admin.findUnique({ where: { username } });
+          break;
+        case Roles.TEACHER:
+          user = await this.prisma.teacher.findUnique({ where: { username } });
+          break;
+        case Roles.STUDENT:
+          user = await this.prisma.student.findUnique({ where: { username } });
+          break;
+        case Roles.PARENT:
+          user = await this.prisma.parent.findUnique({ where: { username } });
+          break;
+      }
+    } else {
+      // Fallback to checking all tables if role not specified
+      const userPromises = [
+        this.prisma.admin.findUnique({ where: { username } }),
+        this.prisma.teacher.findUnique({ where: { username } }),
+        this.prisma.student.findUnique({ where: { username } }),
+        this.prisma.parent.findUnique({ where: { username } }),
+      ];
+      const users = await Promise.all(userPromises);
+      user = users.find((u) => u !== null);
+    }
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const token = this.generateToken(user.id, user.role);
-    return { token, userId: user.id };
+
+    const authResponse: AuthResponse = {
+      token,
+      userId: user.id,
+      role: user.role,
+      username: user.username,
+      name: user.name || null,
+      surname: user.surname || null,
+      email: user.email || null,
+      address: user.address || null,
+      phone: user.phone || null,
+      bloodType: user.bloodType || null,
+      sex: user.sex || null,
+      parentId: user.parentId || null,
+      classId: user.classId || null,
+      gradeId: user.gradeId || null,
+    };
+
+    return authResponse;
   }
 
   private generateToken(userId: string, role: string): string {
