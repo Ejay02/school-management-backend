@@ -19,6 +19,8 @@ model Admin {
   role          Role
   email         String?       
   password      String
+  events        Event[]
+  announcements Announcement[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -62,10 +64,12 @@ model Teacher{
   img           String?
   bloodType     String
   sex           Sex
+  exams         Exam[]
   subjects      Subject[]
   lessons       Lesson[]
   classes       Class[]
   assignments   Assignment[]
+  announcements Announcement[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -106,6 +110,7 @@ model Class {
   supervisor    Teacher?      @relation(fields: [supervisorId], references: [id])
   gradeId       Int
   grade         Grade         @relation(fields: [gradeId], references: [id])
+  exams         Exam[]
   events        Event[]
   assignments   Assignment[]
   announcements Announcement[]
@@ -116,6 +121,7 @@ model Class {
 model Subject {
   id            Int           @id      @default(autoincrement())
   name          String        @unique
+  exams         Exam[]
   teachers      Teacher[]
   lessons       Lesson[]
   assignments   Assignment[]
@@ -144,12 +150,18 @@ model Lesson {
 }
 
 model Exam {
-  id            Int           @id      @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   title         String
   startTime     DateTime
   endTime       DateTime
   lessonId      Int
-  lesson        Lesson        @relation(fields: [lessonId], references: [id]) 
+  lesson        Lesson        @relation(fields: [lessonId], references: [id])
+  classId       Int          
+  class         Class         @relation(fields: [classId], references: [id])
+  subjectId     Int          
+  subject       Subject       @relation(fields: [subjectId], references: [id])
+  teacherId     String       
+  teacher       Teacher       @relation(fields: [teacherId], references: [id])
   results       Result[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -190,7 +202,6 @@ model Submission {
 }
 
 
-
 model Result {
   id            Int           @id      @default(autoincrement())
   score         Int
@@ -216,27 +227,33 @@ model Attendance{
   updatedAt     DateTime      @updatedAt
 }
 
-model Event{
-  id            Int           @id      @default(autoincrement())
-  title         String    
-  description   String
-  classId       Int?
-  class         Class?        @relation(fields: [classId], references: [id])
-  startTime     DateTime
-  endTime       DateTime
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+model Event {
+  id          Int             @id @default(autoincrement())
+  title       String          
+  description String      
+  classId     Int?      
+  class       Class?          @relation(fields: [classId], references: [id])
+  adminId     String         
+  admin       Admin           @relation(fields: [adminId], references: [id]) // Add admin relation
+  startTime   DateTime      
+  endTime     DateTime      
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 }
 
-model Announcement{
-  id            Int           @id      @default(autoincrement())
-  title         String    
-  description   String
-  classId       Int?
-  class         Class?        @relation(fields: [classId], references: [id])
-  date          DateTime
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+model Announcement {
+  id          Int             @id @default(autoincrement())
+  title       String
+  description String
+  classId     Int?
+  class       Class?          @relation(fields: [classId], references: [id])
+  teacherId   String?   
+  teacher     Teacher?        @relation(fields: [teacherId], references: [id]) 
+  adminId     String?   
+  admin       Admin?          @relation(fields: [adminId], references: [id]) 
+  date        DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 }
 
 

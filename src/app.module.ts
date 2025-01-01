@@ -32,6 +32,7 @@ import { SubmissionModule } from './submission/submission.module';
       driver: ApolloDriver,
       autoSchemaFile: true,
       playground: true,
+      context: ({ req }) => ({ req }),
     }),
     AdminModule,
     TeacherModule,

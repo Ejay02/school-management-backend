@@ -1,4 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Admin } from 'src/admin/types/admin.types';
 import { Class } from 'src/class/types/class.types';
 
 @ObjectType()
@@ -17,6 +18,12 @@ export class Event {
 
   @Field(() => Class, { nullable: true })
   class?: Class;
+
+  @Field(() => String)
+  adminId: string;
+
+  @Field(() => Admin)
+  admin: Admin;
 
   @Field()
   startTime: Date;

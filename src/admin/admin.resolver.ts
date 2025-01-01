@@ -15,6 +15,7 @@ import { Assignment } from 'src/assignment/types/assignment.types';
 import { Announcement } from 'src/announcement/types/announcement.types';
 import { Exam } from 'src/exam/types/exam.types';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
+import { Event } from 'src/event/types/event.types';
 
 @Resolver()
 export class AdminResolver {
@@ -24,7 +25,7 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllStudents(@Context() context) {
-    const userId = context.req.user.id;
+    const userId = context.req.user.userId;
     return this.adminService.getAllStudents(userId);
   }
 
@@ -32,7 +33,8 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllTeachers(@Context() context) {
-    const userId = context.req.user.id;
+    const userId = context.req.user.userId;
+
     return this.adminService.getAllTeachers(userId);
   }
 
@@ -40,7 +42,7 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAdmins(@Context() context) {
-    const userId = context.req.user.id;
+    const userId = context.req.user.userId;
     return this.adminService.getAllAdmins(userId);
   }
 
@@ -48,56 +50,56 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllParents(@Context() context) {
-    return this.adminService.getAllParents(context.req.user.id);
+    return this.adminService.getAllParents(context.req.user.userId);
   }
 
   @Query(() => [Attendance])
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAttendance(@Context() context) {
-    return this.adminService.getAllAttendance(context.req.user.id);
+    return this.adminService.getAllAttendance(context.req.user.userId);
   }
 
   @Query(() => [Assignment])
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAssignments(@Context() context) {
-    return this.adminService.getAllAssignments(context.req.user.id);
+    return this.adminService.getAllAssignments(context.req.user.userId);
   }
 
   @Query(() => [Announcement])
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAnnouncements(@Context() context) {
-    return this.adminService.getAllAnnouncements(context.req.user.id);
+    return this.adminService.getAllAnnouncements(context.req.user.userId);
   }
 
   @Query(() => [Class])
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllClasses(@Context() context) {
-    return this.adminService.getAllClasses(context.req.user.id);
+    return this.adminService.getAllClasses(context.req.user.userId);
   }
 
   @Query(() => [Event])
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllEvents(@Context() context) {
-    return this.adminService.getAllEvents(context.req.user.id);
+    return this.adminService.getAllEvents(context.req.user.userId);
   }
 
   @Query(() => [Exam])
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllExams(@Context() context) {
-    return this.adminService.getAllExams(context.req.user.id);
+    return this.adminService.getAllExams(context.req.user.userId);
   }
 
   @Query(() => [Grade])
   @HasRoles(Roles.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllGrades(@Context() context) {
-    return this.adminService.getAllGrades(context.req.user.id);
+    return this.adminService.getAllGrades(context.req.user.userId);
   }
 
   // @Query()
