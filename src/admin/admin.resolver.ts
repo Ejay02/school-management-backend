@@ -1,4 +1,4 @@
-import { Context, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AdminService } from './admin.service';
 import { UseGuards } from '@nestjs/common';
 import { Roles } from 'src/shared/enum/role';
@@ -102,10 +102,18 @@ export class AdminResolver {
     return this.adminService.getAllGrades(context.req.user.userId);
   }
 
-  // @Query()
-  // @HasRoles(Roles.ADMIN)
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // async getAdmins() {
-  //   // Only SUPER_ADMIN and ADMIN can access
-  // }
+  @Mutation(() => Admin)
+  @HasRoles(Roles.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async assignAdminRole(
+    @Context() context,
+    @Args('targetId') targetId: string,
+    @Args('role') role: Roles,
+  ) {
+    return this.adminService.assignAdminRole(
+      context.req.user.userId,
+      targetId,
+      role,
+    );
+  }
 }

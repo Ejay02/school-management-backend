@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -235,15 +237,83 @@ export class AdminService {
     }
   }
 
-  async assignAdminRole(userId: string): Promise<boolean> {
-    try {
-      await this.prisma.admin.update({
-        where: { id: userId },
-        data: { role: 'ADMIN' },
+  async assignAdminRole(adminId: string, targetId: string, newRole: Roles) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: adminId },
+    });
+
+    if (!admin || admin.role !== Roles.SUPER_ADMIN) {
+      throw new UnauthorizedException('Only super admins can assign roles');
+    }
+
+    // Find which model the target exists in
+    const [teacher, student, parent] = await Promise.all([
+      this.prisma.teacher.findUnique({ where: { id: targetId } }),
+      this.prisma.student.findUnique({ where: { id: targetId } }),
+      this.prisma.parent.findUnique({ where: { id: targetId } }),
+    ]);
+
+    if (newRole === Roles.ADMIN) {
+      const target = teacher || student || parent;
+      if (!target) {
+        throw new NotFoundException('Target user not found');
+      }
+
+      // Create new admin record
+      return this.prisma.admin.create({
+        data: {
+          id: targetId,
+          username: target.username,
+          email: target.email,
+          password: target.password,
+          role: Roles.ADMIN,
+        },
       });
-      return true;
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to assign admin role');
+    }
+
+    // For non-admin role changes, use existing logic
+    const target = await this.findUserByIdAndRole(targetId, newRole);
+    if (!target) {
+      throw new NotFoundException('Target user not found');
+    }
+
+    return this.updateUserRole(targetId, newRole);
+  }
+
+  private async findUserByIdAndRole(id: string, role: Roles) {
+    switch (role) {
+      case Roles.TEACHER:
+        return this.prisma.teacher.findUnique({ where: { id } });
+      case Roles.STUDENT:
+        return this.prisma.student.findUnique({ where: { id } });
+      case Roles.PARENT:
+        return this.prisma.parent.findUnique({ where: { id } });
+
+      default:
+        throw new BadRequestException('Invalid role');
+    }
+  }
+
+  private async updateUserRole(id: string, role: Roles) {
+    switch (role) {
+      case Roles.TEACHER:
+        return this.prisma.teacher.update({
+          where: { id },
+          data: { role },
+        });
+      case Roles.STUDENT:
+        return this.prisma.student.update({
+          where: { id },
+          data: { role },
+        });
+      case Roles.PARENT:
+        return this.prisma.parent.update({
+          where: { id },
+          data: { role },
+        });
+
+      default:
+        throw new BadRequestException('Invalid role');
     }
   }
 }
