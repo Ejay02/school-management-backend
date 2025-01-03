@@ -15,6 +15,7 @@ import {
   TeacherSignupInput,
 } from './input/signup.input';
 import { Roles } from '../enum/role';
+import { v4 as uuidv4 } from 'uuid';
 
 type SignupInputType =
   | AdminSignupInput
@@ -142,11 +143,12 @@ export class AuthService {
         }
 
         // Generate the token (if this fails, it should trigger rollback)
-        const token = this.generateToken(newUser.id, role);
+        const token = this.generateAccessToken(newUser.id, role);
 
         // Build the response object with all fields
         const authResponse: AuthResponse = {
           token,
+
           userId: newUser.id,
           role: effectiveRole,
           username: newUser.username,
@@ -206,10 +208,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.generateToken(user.id, user.role);
+    const token = this.generateAccessToken(user.id, user.role);
+    const refreshToken = await this.generateRefreshToken(user.id);
 
     const authResponse: AuthResponse = {
       token,
+      refreshToken,
       userId: user.id,
       role: user.role,
       username: user.username,
@@ -228,7 +232,7 @@ export class AuthService {
     return authResponse;
   }
 
-  private generateToken(userId: string, role: string): string {
+  private generateAccessToken(userId: string, role: string): string {
     try {
       return this.jwtService.sign(
         {
@@ -238,12 +242,70 @@ export class AuthService {
 
         {
           secret: process.env.JWT_SECRET,
-          expiresIn: '1h',
+          expiresIn: '15m',
         },
       );
     } catch (error) {
       // Throw the error to propagate it to the transaction
       throw new Error('Failed to generate token');
     }
+  }
+
+  private async generateRefreshToken(userId: string): Promise<string> {
+    const token = uuidv4();
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 7); // 7 days refresh token
+
+    await this.prisma.refreshToken.create({
+      data: {
+        token,
+        userId,
+        expires,
+      },
+    });
+
+    return token;
+  }
+
+  async refreshTokens(refreshToken: string) {
+    const storedToken = await this.prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+    });
+
+    if (!storedToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (new Date() > storedToken.expires) {
+      await this.prisma.refreshToken.delete({
+        where: { token: refreshToken },
+      });
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    // Get user
+    const user = await this.prisma.admin.findUnique({
+      where: { id: storedToken.userId },
+    });
+
+    // Generate new tokens
+    const newAccessToken = this.generateAccessToken(user.id, user.role);
+    const newRefreshToken = await this.generateRefreshToken(user.id);
+
+    // Delete old refresh token
+    await this.prisma.refreshToken.delete({
+      where: { token: refreshToken },
+    });
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
+  }
+
+  async logout(refreshToken: string) {
+    await this.prisma.refreshToken.delete({
+      where: { token: refreshToken },
+    });
   }
 }

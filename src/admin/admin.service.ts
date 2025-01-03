@@ -238,13 +238,7 @@ export class AdminService {
   }
 
   async assignAdminRole(adminId: string, targetId: string, newRole: Roles) {
-    const admin = await this.prisma.admin.findUnique({
-      where: { id: adminId },
-    });
-
-    if (!admin || admin.role !== Roles.SUPER_ADMIN) {
-      throw new UnauthorizedException('Only super admins can assign roles');
-    }
+    await this.verifyAdmin(adminId);
 
     // Find which model the target exists in
     const [teacher, student, parent] = await Promise.all([
@@ -315,5 +309,83 @@ export class AdminService {
       default:
         throw new BadRequestException('Invalid role');
     }
+  }
+
+  async deleteUser(requesterId: string, targetId: string): Promise<boolean> {
+    await this.verifyAdmin(requesterId);
+
+    return await this.prisma.$transaction(async (tx) => {
+      // Find user in all possible tables
+      const [teacher, student, parent, admin] = await Promise.all([
+        tx.teacher.findUnique({ where: { id: targetId } }),
+        tx.student.findUnique({ where: { id: targetId } }),
+        tx.parent.findUnique({ where: { id: targetId } }),
+        tx.admin.findUnique({ where: { id: targetId } }),
+      ]);
+
+      if (!teacher && !student && !parent && !admin) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (admin?.role === Roles.SUPER_ADMIN) {
+        throw new ForbiddenException('Cannot delete super admin');
+      }
+
+      if (teacher) {
+        const teacherId = teacher.id;
+
+        await tx.announcement.deleteMany({ where: { teacherId } });
+        await tx.assignment.deleteMany({ where: { teacherId } });
+        await tx.exam.deleteMany({ where: { teacherId } });
+        await tx.lesson.deleteMany({ where: { teacherId } });
+        await tx.teacher.delete({ where: { id: targetId } });
+        return true;
+      }
+
+      if (student) {
+        const studentId = student.id;
+
+        // Delete all associated student data
+        await tx.attendance.deleteMany({ where: { studentId } });
+        await tx.result.deleteMany({ where: { studentId } });
+        await tx.submission.deleteMany({ where: { studentId } });
+        await tx.student.delete({ where: { id: targetId } });
+        return true;
+      }
+
+      if (parent) {
+        const parentId = parent.id;
+
+        // Find all students associated with this parent
+        const associatedStudents = await tx.student.findMany({
+          where: { parentId: parentId },
+        });
+
+        // Delete all data for each associated student
+        for (const student of associatedStudents) {
+          await tx.attendance.deleteMany({ where: { studentId: student.id } });
+          await tx.result.deleteMany({ where: { studentId: student.id } });
+          await tx.submission.deleteMany({ where: { studentId: student.id } });
+        }
+
+        // Delete all associated students
+        await tx.student.deleteMany({ where: { parentId: parentId } });
+
+        // Finally delete the parent
+        await tx.parent.delete({ where: { id: targetId } });
+        return true;
+      }
+
+      if (admin) {
+        const adminId = admin.id;
+
+        await tx.announcement.deleteMany({ where: { adminId } });
+        await tx.event.deleteMany({ where: { adminId } });
+        await tx.admin.delete({ where: { id: targetId } });
+        return true;
+      }
+
+      return false;
+    });
   }
 }

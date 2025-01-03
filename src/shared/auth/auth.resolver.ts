@@ -8,6 +8,9 @@ import {
   StudentSignupInput,
   ParentSignupInput,
 } from './input/signup.input';
+import { JwtAuthGuard } from './guards/jwtAuth.guard';
+import { UseGuards } from '@nestjs/common';
+import { TokenResponse } from './response/token.response';
 
 @Resolver()
 export class AuthResolver {
@@ -44,5 +47,19 @@ export class AuthResolver {
   @Mutation(() => AuthResponse)
   async login(@Args('input') input: BaseLoginInput): Promise<AuthResponse> {
     return this.authService.login(input);
+  }
+
+  @Mutation(() => TokenResponse)
+  async refreshTokens(
+    @Args('refreshToken') refreshToken: string,
+  ): Promise<TokenResponse> {
+    return this.authService.refreshTokens(refreshToken);
+  }
+
+  @Mutation(() => Boolean)
+  @UseGuards(JwtAuthGuard)
+  async logout(@Args('refreshToken') refreshToken: string): Promise<boolean> {
+    await this.authService.logout(refreshToken);
+    return true;
   }
 }

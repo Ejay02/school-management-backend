@@ -13,7 +13,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
       useFactory: () => ({
         secret: process.env.JWT_SECRET,
         signOptions: {
-          expiresIn: '1d',
+          expiresIn: '15m',
         },
       }),
     }),

@@ -116,4 +116,14 @@ export class AdminResolver {
       role,
     );
   }
+
+  @Mutation(() => Boolean)
+  @HasRoles(Roles.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async deleteUser(
+    @Context() context,
+    @Args('targetId') targetId: string,
+  ): Promise<boolean> {
+    return this.adminService.deleteUser(context.req.user.userId, targetId);
+  }
 }

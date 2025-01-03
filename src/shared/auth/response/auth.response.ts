@@ -6,6 +6,9 @@ export class AuthResponse {
   token: string;
 
   @Field()
+  refreshToken?: string;
+
+  @Field()
   userId: string;
 
   @Field({ nullable: true })
