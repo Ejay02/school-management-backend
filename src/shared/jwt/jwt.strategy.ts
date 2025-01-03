@@ -20,25 +20,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // async validate(payload: any) {
-  //   try {
-  //     const admin = await this.prisma.admin.findUnique({
-  //       where: { id: payload.sub },
-  //     });
-
-  //     if (!admin) {
-  //       throw new UnauthorizedException('Unauthorized access');
-  //     }
-
-  //     return {
-  //       userId: payload.sub,
-  //       role: payload.role,
-  //     };
-  //   } catch (error) {
-  //     throw new Error(`jwt error: ${error.message}`);
-  //   }
-  // }
-
   async validate(req: Request, payload: any) {
     try {
       const admin = await this.prisma.admin.findUnique({
