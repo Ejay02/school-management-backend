@@ -207,7 +207,6 @@ model Submission {
   updatedAt     DateTime      @updatedAt
 }
 
-
 model Result {
   id            Int           @id      @default(autoincrement())
   score         Int
