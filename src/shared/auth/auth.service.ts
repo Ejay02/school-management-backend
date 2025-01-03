@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -16,6 +17,7 @@ import {
 } from './input/signup.input';
 import { Roles } from '../enum/role';
 import { v4 as uuidv4 } from 'uuid';
+import { ClassService } from 'src/class/class.service';
 
 type SignupInputType =
   | AdminSignupInput
@@ -27,6 +29,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private classService: ClassService,
   ) {}
 
   async signup(input: SignupInputType): Promise<AuthResponse> {
@@ -67,6 +70,9 @@ export class AuthService {
             // First admin should be SUPER_ADMIN
             effectiveRole = Roles.SUPER_ADMIN;
           }
+
+          // Generate default classes if this is the first SUPER_ADMIN
+          await this.classService.setDefaultClasses();
         }
 
         // Hash the password before saving
@@ -120,7 +126,7 @@ export class AuthService {
                 sex: studentInput.sex,
                 parentId: studentInput.parentId,
                 classId: studentInput.classId,
-                gradeId: studentInput.gradeId,
+                gradeId: 0,
               },
             });
             break;
@@ -307,5 +313,100 @@ export class AuthService {
     await this.prisma.refreshToken.delete({
       where: { token: refreshToken },
     });
+  }
+
+  async resetPassword(
+    username: string,
+    newPassword: string,
+    role?: Roles,
+  ): Promise<AuthResponse> {
+    // Find user based on username and role
+    let user = null;
+    if (role) {
+      switch (role) {
+        case Roles.ADMIN:
+        case Roles.SUPER_ADMIN:
+          user = await this.prisma.admin.findUnique({ where: { username } });
+          break;
+        case Roles.TEACHER:
+          user = await this.prisma.teacher.findUnique({ where: { username } });
+          break;
+        case Roles.STUDENT:
+          user = await this.prisma.student.findUnique({ where: { username } });
+          break;
+        case Roles.PARENT:
+          user = await this.prisma.parent.findUnique({ where: { username } });
+          break;
+      }
+    } else {
+      // Check all tables if role not specified
+      const userPromises = [
+        this.prisma.admin.findUnique({ where: { username } }),
+        this.prisma.teacher.findUnique({ where: { username } }),
+        this.prisma.student.findUnique({ where: { username } }),
+        this.prisma.parent.findUnique({ where: { username } }),
+      ];
+      const users = await Promise.all(userPromises);
+      user = users.find((u) => u !== null);
+    }
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in the appropriate table
+    let updatedUser = null;
+    switch (user.role) {
+      case Roles.ADMIN:
+      case Roles.SUPER_ADMIN:
+        updatedUser = await this.prisma.admin.update({
+          where: { username },
+          data: { password: hashedPassword },
+        });
+        break;
+      case Roles.TEACHER:
+        updatedUser = await this.prisma.teacher.update({
+          where: { username },
+          data: { password: hashedPassword },
+        });
+        break;
+      case Roles.STUDENT:
+        updatedUser = await this.prisma.student.update({
+          where: { username },
+          data: { password: hashedPassword },
+        });
+        break;
+      case Roles.PARENT:
+        updatedUser = await this.prisma.parent.update({
+          where: { username },
+          data: { password: hashedPassword },
+        });
+        break;
+    }
+
+    // Generate new tokens
+    const token = this.generateAccessToken(updatedUser.id, updatedUser.role);
+    const refreshToken = await this.generateRefreshToken(updatedUser.id);
+
+    return {
+      token,
+      refreshToken,
+      userId: updatedUser.id,
+      role: updatedUser.role,
+      username: updatedUser.username,
+      name: updatedUser.name || null,
+      surname: updatedUser.surname || null,
+      email: updatedUser.email || null,
+      address: updatedUser.address || null,
+      phone: updatedUser.phone || null,
+      bloodType: updatedUser.bloodType || null,
+      sex: updatedUser.sex || null,
+      parentId: updatedUser.parentId || null,
+      classId: updatedUser.classId || null,
+      gradeId: updatedUser.gradeId || null,
+    };
   }
 }

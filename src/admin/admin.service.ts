@@ -43,11 +43,8 @@ export class AdminService {
       return await this.prisma.student.findMany({
         include: {
           parent: true,
-          class: {
-            include: {
-              grade: true,
-            },
-          },
+          class: true,
+          grade: true,
         },
       });
     } catch (error) {
@@ -160,7 +157,6 @@ export class AdminService {
       await this.verifyAdmin(userId);
       return await this.prisma.class.findMany({
         include: {
-          grade: true,
           students: true,
           lessons: {
             include: {
@@ -218,17 +214,10 @@ export class AdminService {
       await this.verifyAdmin(userId);
       return await this.prisma.grade.findMany({
         include: {
-          classes: {
-            include: {
-              students: true,
-              lessons: {
-                include: {
-                  teacher: true,
-                  subject: true,
-                },
-              },
-            },
-          },
+          students: true, // Include students related to the grade
+          submissions: true, // Include submissions related to the grade
+          subjects: true, // If there is a relation to subjects (or modify according to your schema)
+          exams: true,
         },
       });
     } catch (error) {

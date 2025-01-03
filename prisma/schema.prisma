@@ -42,7 +42,7 @@ model Student {
   parent        Parent        @relation(fields: [parentId], references: [id] )
   classId       Int
   class         Class         @relation(fields: [classId], references: [id] )
-  gradeId       Int
+  gradeId       Int           @default(0)
   grade         Grade         @relation(fields: [gradeId], references: [id] )
   attendances   Attendance[]
   results       Result[]
@@ -92,8 +92,10 @@ model Parent {
 model Grade {
   id            Int           @id      @default(autoincrement())
   level         Int           @unique   // Represents the grade level (e.g., 'A', 'B')
-  classes       Class[]       
-  students      Student[]     
+  // classes       Class[]       
+  exams         Exam[]     
+  students      Student[] 
+  subjects      Subject[]     // Assuming relation to Subject
   submissions   Submission[]  
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -108,8 +110,8 @@ model Class {
   students      Student[]
   supervisorId  String?
   supervisor    Teacher?      @relation(fields: [supervisorId], references: [id] )
-  gradeId       Int
-  grade         Grade         @relation(fields: [gradeId], references: [id] )
+  // gradeId       Int
+  // grade         Grade         @relation(fields: [gradeId], references: [id] )
   exams         Exam[]
   events        Event[]
   assignments   Assignment[]
@@ -125,6 +127,8 @@ model Subject {
   teachers      Teacher[]
   lessons       Lesson[]
   assignments   Assignment[]
+  gradeId       Int
+  grade         Grade         @relation(fields: [gradeId], references: [id] )
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   
@@ -163,6 +167,8 @@ model Exam {
   teacherId     String       
   teacher       Teacher       @relation(fields: [teacherId], references: [id])
   results       Result[]
+  gradeId       Int
+  grade         Grade         @relation(fields: [gradeId], references: [id] )
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }

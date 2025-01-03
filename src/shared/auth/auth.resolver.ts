@@ -11,6 +11,7 @@ import {
 import { JwtAuthGuard } from './guards/jwtAuth.guard';
 import { UseGuards } from '@nestjs/common';
 import { TokenResponse } from './response/token.response';
+import { ResetPasswordInput } from './input/reset.password.input';
 
 @Resolver()
 export class AuthResolver {
@@ -61,5 +62,16 @@ export class AuthResolver {
   async logout(@Args('refreshToken') refreshToken: string): Promise<boolean> {
     await this.authService.logout(refreshToken);
     return true;
+  }
+
+  @Mutation(() => AuthResponse)
+  async resetPassword(
+    @Args('input') input: ResetPasswordInput,
+  ): Promise<AuthResponse> {
+    return this.authService.resetPassword(
+      input.username,
+      input.newPassword,
+      input.role,
+    );
   }
 }
