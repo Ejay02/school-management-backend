@@ -5,8 +5,8 @@ import { Student } from 'src/student/types/student.types';
 
 @ObjectType()
 export class Result {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field(() => Int)
   score: number;

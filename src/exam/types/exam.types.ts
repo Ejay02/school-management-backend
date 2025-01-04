@@ -7,8 +7,8 @@ import { Result } from 'src/result/types/result.types';
 
 @ObjectType()
 export class Exam {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field()
   title: string;

@@ -4,8 +4,8 @@ import { Lesson } from 'src/lesson/types/lesson.types';
 
 @ObjectType()
 export class Attendance {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field()
   date: Date;

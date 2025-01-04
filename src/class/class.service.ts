@@ -15,12 +15,12 @@ export class ClassService {
   }
 
   // Public method to get the default classes
-  public async setDefaultClasses(): Promise<void> {
+  public async setDefaultClasses(tx: any): Promise<void> {
     const defaultClasses = await this.getDefaultClasses();
 
     for (const className of defaultClasses) {
       // Create the class
-      await this.prisma.class.create({
+      await tx.class.create({
         data: {
           name: className, // Class name from DefaultClass enum
           capacity: 30, // Set default capacity, adjust as needed

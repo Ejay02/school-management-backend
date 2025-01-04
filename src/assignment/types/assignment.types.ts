@@ -8,8 +8,8 @@ import { Submission } from 'src/submission/types/submission.types';
 
 @ObjectType()
 export class Assignment {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field()
   title: string;

@@ -1,11 +1,11 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 import { Teacher } from 'src/teacher/types/teacher.types';
 import { Lesson } from 'src/lesson/types/lesson.types';
 
 @ObjectType()
 export class Subject {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field()
   name: string;

@@ -18,6 +18,7 @@ import {
 import { Roles } from '../enum/role';
 import { v4 as uuidv4 } from 'uuid';
 import { ClassService } from 'src/class/class.service';
+import { SubjectService } from 'src/subject/subject.service';
 
 type SignupInputType =
   | AdminSignupInput
@@ -30,6 +31,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private classService: ClassService,
+    private subjectService: SubjectService,
   ) {}
 
   async signup(input: SignupInputType): Promise<AuthResponse> {
@@ -69,10 +71,11 @@ export class AuthService {
           if (adminCount === 0) {
             // First admin should be SUPER_ADMIN
             effectiveRole = Roles.SUPER_ADMIN;
-          }
 
-          // Generate default classes if this is the first SUPER_ADMIN
-          await this.classService.setDefaultClasses();
+            // Generate classes/subject
+            await this.classService.setDefaultClasses(tx);
+            await this.subjectService.generateAllSubjects(tx);
+          }
         }
 
         // Hash the password before saving
@@ -126,7 +129,7 @@ export class AuthService {
                 sex: studentInput.sex,
                 parentId: studentInput.parentId,
                 classId: studentInput.classId,
-                gradeId: 0,
+                gradeId: '0',
               },
             });
             break;

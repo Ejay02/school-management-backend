@@ -5,8 +5,8 @@ import { Teacher } from 'src/teacher/types/teacher.types';
 
 @ObjectType()
 export class Announcement {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field()
   title: string;

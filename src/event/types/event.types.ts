@@ -4,8 +4,8 @@ import { Class } from 'src/class/types/class.types';
 
 @ObjectType()
 export class Event {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field()
   title: string;

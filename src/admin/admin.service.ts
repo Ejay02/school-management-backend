@@ -6,16 +6,13 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
 
 @Injectable()
 export class AdminService {
-  constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async verifyAdmin(userId: string) {
     try {
@@ -164,6 +161,7 @@ export class AdminService {
               subject: true,
             },
           },
+          subjects: true,
         },
       });
     } catch (error) {
@@ -216,7 +214,7 @@ export class AdminService {
         include: {
           students: true, // Include students related to the grade
           submissions: true, // Include submissions related to the grade
-          subjects: true, // If there is a relation to subjects (or modify according to your schema)
+          subjects: true, // If there is a relation to subjects
           exams: true,
         },
       });

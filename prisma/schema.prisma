@@ -40,9 +40,9 @@ model Student {
   sex           Sex
   parentId      String
   parent        Parent        @relation(fields: [parentId], references: [id] )
-  classId       Int
+  classId       String
   class         Class         @relation(fields: [classId], references: [id] )
-  gradeId       Int           @default(0)
+  gradeId       String        @default(uuid())
   grade         Grade         @relation(fields: [gradeId], references: [id] )
   attendances   Attendance[]
   results       Result[]
@@ -90,8 +90,8 @@ model Parent {
 }
 
 model Grade {
-  id            Int           @id      @default(autoincrement())
-  level         Int           @unique   // Represents the grade level (e.g., 'A', 'B')
+  id            String        @id @default(uuid())
+  level         Int              // Represents the grade level (e.g., 'A', 'B')
   // classes       Class[]       
   exams         Exam[]     
   students      Student[] 
@@ -103,7 +103,7 @@ model Grade {
 }
 
 model Class {
-  id            Int           @id      @default(autoincrement())
+  id            String        @id @default(uuid())
   name          String        @unique
   capacity      Int 
   lessons       Lesson[]
@@ -114,6 +114,7 @@ model Class {
   // grade         Grade         @relation(fields: [gradeId], references: [id] )
   exams         Exam[]
   events        Event[]
+  subjects      Subject[]   
   assignments   Assignment[]
   announcements Announcement[]
   createdAt     DateTime      @default(now())
@@ -121,28 +122,29 @@ model Class {
 }
 
 model Subject {
-  id            Int           @id      @default(autoincrement())
-  name          String        @unique
+  id            String        @id @default(uuid())
+  name          String        
   exams         Exam[]
   teachers      Teacher[]
   lessons       Lesson[]
   assignments   Assignment[]
-  gradeId       Int
-  grade         Grade         @relation(fields: [gradeId], references: [id] )
+  gradeId       String?
+  grade         Grade?        @relation(fields: [gradeId], references: [id] )
+  classId       String
+  class         Class         @relation(fields: [classId], references: [id])
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  
 }
 
 model Lesson {
-  id            Int           @id      @default(autoincrement())
+  id            String        @id @default(uuid())
   name          String
   day           Day
   startTime     DateTime
   endTime       DateTime
-  subjectId     Int
+  subjectId     String
   subject       Subject       @relation(fields: [subjectId], references: [id] )
-  classId       Int
+  classId       String
   class         Class         @relation(fields: [classId], references: [id])
   teacherId     String
   teacher       Teacher       @relation(fields: [teacherId], references: [id])
@@ -154,37 +156,37 @@ model Lesson {
 }
 
 model Exam {
-  id            Int           @id @default(autoincrement())
+  id            String        @id @default(uuid())
   title         String
   startTime     DateTime
   endTime       DateTime
-  lessonId      Int
+  lessonId      String
   lesson        Lesson        @relation(fields: [lessonId], references: [id])
-  classId       Int          
+  classId       String          
   class         Class         @relation(fields: [classId], references: [id])
-  subjectId     Int          
+  subjectId     String          
   subject       Subject       @relation(fields: [subjectId], references: [id])
   teacherId     String       
   teacher       Teacher       @relation(fields: [teacherId], references: [id])
   results       Result[]
-  gradeId       Int
+  gradeId       String
   grade         Grade         @relation(fields: [gradeId], references: [id] )
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
 
 model Assignment {
-  id            Int           @id @default(autoincrement())
+  id            String        @id @default(uuid())
   title         String    
   startDate     DateTime    
   dueDate       DateTime    
-  lessonId      Int   
+  lessonId      String   
   lesson        Lesson        @relation(fields: [lessonId], references: [id])
   teacherId     String        
   teacher       Teacher       @relation(fields: [teacherId], references: [id])
-  subjectId     Int   
+  subjectId     String   
   subject       Subject       @relation(fields: [subjectId], references: [id])
-  classId       Int   
+  classId       String   
   class         Class         @relation(fields: [classId], references: [id])
   results       Result[]    
   submissions   Submission[]
@@ -193,12 +195,12 @@ model Assignment {
 }
 
 model Submission {
-  id            Int           @id @default(autoincrement())
-  assignmentId  Int
+  id            String        @id @default(uuid())
+  assignmentId  String
   assignment    Assignment    @relation(fields: [assignmentId], references: [id])
   studentId     String
   student       Student       @relation(fields: [studentId], references: [id] )
-  gradeId       Int
+  gradeId       String
   grade         Grade?        @relation(fields: [gradeId], references: [id])  
   submissionDate DateTime     @default(now()) 
   status        String        // Submission status (e.g., 'submitted', 'graded', 'late')
@@ -208,11 +210,11 @@ model Submission {
 }
 
 model Result {
-  id            Int           @id      @default(autoincrement())
+  id            String        @id @default(uuid())
   score         Int
-  examId        Int?
+  examId        String?
   exam          Exam?         @relation(fields: [examId], references: [id]) 
-  assignmentId  Int?
+  assignmentId  String?
   assignment    Assignment?   @relation(fields: [assignmentId], references: [id])  
   studentId     String
   student       Student       @relation(fields: [studentId], references: [id] )    
@@ -221,22 +223,22 @@ model Result {
 }
 
 model Attendance{
-  id            Int           @id      @default(autoincrement())
+  id            String        @id @default(uuid())
   date          DateTime
   present       Boolean
   studentId     String
   student       Student       @relation(fields: [studentId], references: [id] )
-  lessonId      Int
+  lessonId      String
   lesson        Lesson        @relation(fields: [lessonId], references: [id]) 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
 
 model Event {
-  id          Int             @id @default(autoincrement())
+  id          String           @id @default(uuid())
   title       String          
   description String      
-  classId     Int?      
+  classId     String?      
   class       Class?          @relation(fields: [classId], references: [id])
   adminId     String         
   admin       Admin           @relation(fields: [adminId], references: [id]) // Add admin relation
@@ -247,10 +249,10 @@ model Event {
 }
 
 model Announcement {
-  id          Int             @id @default(autoincrement())
+  id          String           @id @default(uuid())
   title       String
   description String
-  classId     Int?
+  classId     String?
   class       Class?          @relation(fields: [classId], references: [id])
   teacherId   String?   
   teacher     Teacher?        @relation(fields: [teacherId], references: [id]) 

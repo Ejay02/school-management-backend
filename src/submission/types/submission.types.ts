@@ -1,12 +1,12 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { Assignment } from 'src/assignment/types/assignment.types';
 import { Grade } from 'src/grade/types/grade.types';
-import { Student } from 'src/student/types/student.types'; // Assuming you have a Student type
+import { Student } from 'src/student/types/student.types';
 
 @ObjectType()
 export class Submission {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field(() => Int)
   assignmentId: number;

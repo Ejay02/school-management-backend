@@ -2,14 +2,17 @@ import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { Lesson } from 'src/lesson/types/lesson.types';
 import { Student } from 'src/student/types/student.types';
 import { Teacher } from 'src/teacher/types/teacher.types';
-import { Grade } from 'src/grade/types/grade.types';
+
 import { Event } from 'src/event/types/event.types';
 import { Announcement } from 'src/announcement/types/announcement.types';
+import { Subject } from 'src/subject/types/subject.types';
+import { Exam } from 'src/exam/types/exam.types';
+import { Assignment } from 'src/assignment/types/assignment.types';
 
 @ObjectType()
 export class Class {
-  @Field(() => Int)
-  id: number;
+  @Field(() => String)
+  id: string;
 
   @Field()
   name: string;
@@ -29,14 +32,24 @@ export class Class {
   @Field(() => Teacher, { nullable: true })
   supervisor?: Teacher;
 
-  @Field(() => Int)
-  gradeId: number;
+  // @Field(() => Int)
+  // gradeId: number;
 
-  @Field(() => Grade)
-  grade: Grade;
+  // @Field(() => Grade)
+  // grade: Grade;
+
+  @Field(() => [Exam])
+  exams: Exam[];
 
   @Field(() => [Event])
   events: Event[];
+
+  // @Field(() => [Subject])
+  @Field(() => [Subject], { nullable: 'items' })
+  subjects: Subject[];
+
+  @Field(() => [Assignment])
+  assignments: Assignment[];
 
   @Field(() => [Announcement])
   announcements: Announcement[];
