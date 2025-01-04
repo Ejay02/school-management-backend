@@ -62,57 +62,6 @@ export class LessonService {
     }
   }
 
-  // async generateAllLessons(tx: any): Promise<void> {
-  //   // Fetch all classes from the database
-  //   const classes = await tx.class.findMany();
-
-  //   // Loop through each class to get its subjects and lessons
-  //   for (const classItem of classes) {
-  //     // Get the DefaultClass name for this class
-  //     const defaultClassName = classItem.name as DefaultClass;
-
-  //     // Get the subjects for this class from SubjectsForClasses
-  //     const subjectsForClass = SubjectsForClasses[defaultClassName] || [];
-
-  //     // Get the lessons for this class from ClassLessons
-  //     const lessonsForClass = ClassLessons[defaultClassName] || {};
-
-  //     // Loop through each subject for this class
-  //     for (const subjectName of subjectsForClass) {
-  //       const subjectLessons = lessonsForClass[subjectName.toUpperCase()] || [];
-
-  //       // Loop through each lesson and create it in the database
-  //       for (const lessonName of subjectLessons) {
-  //         const [firstDay, secondDay] = this.getRandomDays(); // Get two random days
-
-  //         const daysString = `${firstDay}, ${secondDay}`;
-
-  //         // Get random start and end times for both days
-  //         const { startTime1, endTime1, startTime2, endTime2 } =
-  //           this.generateLessonTimes();
-
-  //         const start = `${startTime1}, ${startTime2}`;
-  //         const end = `${endTime1}, ${endTime2}`;
-
-  //         await tx.lesson.create({
-  //           data: {
-  //             name: lessonName,
-  //             subject: subjectName,
-  //             classId: classItem.id,
-  //             class: {
-  //               connect: { id: classItem.id }, // Connecting the class using its ID
-  //             },
-  //             gradeId: classItem.supervisorId,
-  //             day: daysString,
-  //             startTime: start,
-  //             endTime: end,
-  //           },
-  //         });
-  //       }
-  //     }
-  //   }
-  // }
-
   private getRandomDays(): Day[] {
     const days = Object.values(Day);
     const randomDays = [];
