@@ -161,7 +161,12 @@ export class AdminService {
               subject: true,
             },
           },
-          subjects: true,
+
+          subjects: {
+            include: {
+              lessons: true,
+            },
+          },
         },
       });
     } catch (error) {
