@@ -139,15 +139,15 @@ model Subject {
 model Lesson {
   id            String        @id @default(uuid())
   name          String
-  day           Day
-  startTime     DateTime
-  endTime       DateTime
+  day           String
+  startTime     String
+  endTime       String
   subjectId     String
   subject       Subject       @relation(fields: [subjectId], references: [id] )
   classId       String
   class         Class         @relation(fields: [classId], references: [id])
-  teacherId     String
-  teacher       Teacher       @relation(fields: [teacherId], references: [id])
+  teacherId     String?
+  teacher       Teacher?       @relation(fields: [teacherId], references: [id])
   exams         Exam[]
   assignments   Assignment[]
   attendances   Attendance[]

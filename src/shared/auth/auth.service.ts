@@ -19,6 +19,7 @@ import { Roles } from '../enum/role';
 import { v4 as uuidv4 } from 'uuid';
 import { ClassService } from 'src/class/class.service';
 import { SubjectService } from 'src/subject/subject.service';
+import { LessonService } from 'src/lesson/lesson.service';
 
 type SignupInputType =
   | AdminSignupInput
@@ -31,6 +32,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private classService: ClassService,
+    private lessonService: LessonService,
     private subjectService: SubjectService,
   ) {}
 
@@ -75,6 +77,7 @@ export class AuthService {
             // Generate classes/subject
             await this.classService.setDefaultClasses(tx);
             await this.subjectService.generateAllSubjects(tx);
+            await this.lessonService.generateAllLessons(tx);
           }
         }
 

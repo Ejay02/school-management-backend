@@ -7,6 +7,7 @@ import { JwtStrategy } from '../jwt/jwt.strategy';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClassService } from 'src/class/class.service';
 import { SubjectService } from 'src/subject/subject.service';
+import { LessonService } from 'src/lesson/lesson.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SubjectService } from 'src/subject/subject.service';
     JwtStrategy,
     PrismaService,
     ClassService,
+    LessonService,
     SubjectService,
   ],
   exports: [AuthService, JwtModule],

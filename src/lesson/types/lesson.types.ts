@@ -18,10 +18,10 @@ export class Lesson {
   day: string;
 
   @Field()
-  startTime: Date;
+  startTime: string;
 
   @Field()
-  endTime: Date;
+  endTime: string;
 
   @Field(() => Int)
   subjectId: number;
@@ -39,7 +39,7 @@ export class Lesson {
   teacherId: string;
 
   @Field(() => Teacher)
-  teacher: Teacher;
+  teacher?: Teacher;
 
   @Field(() => [Exam])
   exams: Exam[];
