@@ -261,6 +261,11 @@ export class AuthService {
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
+    // Delete any existing refresh tokens for this user
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId },
+    });
+
     const token = uuidv4();
     const expires = new Date();
     expires.setDate(expires.getDate() + 7); // 7 days refresh token
@@ -279,6 +284,7 @@ export class AuthService {
   async refreshTokens(refreshToken: string) {
     const storedToken = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
+      // include: { user: true },
     });
 
     if (!storedToken) {

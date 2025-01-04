@@ -22,20 +22,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(req: Request, payload: any) {
     try {
-      const admin = await this.prisma.admin.findUnique({
-        where: { id: payload.sub },
-      });
+      // Check user exists across all user types
+      const userPromises = [
+        this.prisma.admin.findUnique({ where: { id: payload.sub } }),
+        this.prisma.teacher.findUnique({ where: { id: payload.sub } }),
+        this.prisma.student.findUnique({ where: { id: payload.sub } }),
+        this.prisma.parent.findUnique({ where: { id: payload.sub } }),
+      ];
 
-      if (!admin) {
+      const users = await Promise.all(userPromises);
+      const user = users.find((u) => u !== null);
+
+      if (!user) {
         throw new UnauthorizedException('Unauthorized access');
       }
 
-      // Check if token is about to expire (e.g., less than 2 minutes remaining)
+      // Check if token is about to expire
       const tokenExp = payload.exp * 1000; // Convert to milliseconds
       const now = Date.now();
-      const twoMinutes = 2 * 60 * 1000;
+      const fiveMinutes = 5 * 60 * 1000;
 
-      if (tokenExp - now < twoMinutes) {
+      if (tokenExp - now < fiveMinutes) {
         // Get refresh token from request headers
         const refreshToken = req.headers['x-refresh-token'] as string;
 
@@ -44,8 +51,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           const newTokens = await this.authService.refreshTokens(refreshToken);
 
           // Add new tokens to response headers
-          req.res.setHeader('x-new-access-token', newTokens.accessToken);
-          req.res.setHeader('x-new-refresh-token', newTokens.refreshToken);
+          if (req.res) {
+            req.res.setHeader('x-new-access-token', newTokens.accessToken);
+            req.res.setHeader('x-new-refresh-token', newTokens.refreshToken);
+          }
         }
       }
 
@@ -54,7 +63,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         role: payload.role,
       };
     } catch (error) {
-      throw new Error(`jwt error: ${error.message}`);
+      throw new Error(`Authentication failed:: ${error.message}`);
     }
   }
 }
