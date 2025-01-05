@@ -1,4 +1,4 @@
-import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { LessonService } from './lesson.service';
 import { Lesson } from './types/lesson.types';
 import { Roles } from 'src/shared/enum/role';
@@ -13,6 +13,12 @@ import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 @Resolver()
 export class LessonResolver {
   constructor(private lessonService: LessonService) {}
+
+  @Query(() => Lesson)
+  @UseGuards(JwtAuthGuard)
+  async getLessonById(@Args('id', { type: () => String }) id: string) {
+    return this.lessonService.getLessonById(id);
+  }
 
   @Mutation(() => Lesson)
   @UseGuards(JwtAuthGuard, RolesGuard)

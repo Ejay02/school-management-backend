@@ -129,6 +129,41 @@ export class LessonService {
     return endDate.toISOString().slice(11, 16); // Return HH:mm format
   }
 
+  async getLessonById(lessonId: string) {
+    const lesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        subject: true,
+        class: true,
+        teacher: true,
+        exams: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        assignments: {
+          orderBy: {
+            dueDate: 'desc',
+          },
+        },
+        attendances: {
+          orderBy: {
+            date: 'desc',
+          },
+          include: {
+            student: true,
+          },
+        },
+      },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
+    }
+
+    return lesson;
+  }
+
   async createLesson(
     createLessonInput: CreateLessonInput,
     subjectId: string,
