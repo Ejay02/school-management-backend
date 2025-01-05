@@ -24,13 +24,13 @@ export class Lesson {
   endTime: string;
 
   @Field(() => Int)
-  subjectId: number;
+  subjectId: string;
 
   @Field(() => Subject)
   subject: Subject;
 
   @Field(() => Int)
-  classId: number;
+  classId: string;
 
   @Field(() => Class)
   class: Class;

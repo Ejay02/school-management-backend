@@ -32,19 +32,12 @@ export class Class {
   @Field(() => Teacher, { nullable: true })
   supervisor?: Teacher;
 
-  // @Field(() => Int)
-  // gradeId: number;
-
-  // @Field(() => Grade)
-  // grade: Grade;
-
   @Field(() => [Exam])
   exams: Exam[];
 
   @Field(() => [Event])
   events: Event[];
 
-  // @Field(() => [Subject])
   @Field(() => [Subject], { nullable: 'items' })
   subjects: Subject[];
 

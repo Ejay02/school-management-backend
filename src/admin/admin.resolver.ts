@@ -8,7 +8,6 @@ import { Student } from 'src/student/types/student.types';
 import { Teacher } from 'src/teacher/types/teacher.types';
 import { Admin } from './types/admin.types';
 import { Parent } from 'src/parent/types/parent.types';
-import { Class } from 'src/class/types/class.types';
 import { Grade } from 'src/grade/types/grade.types';
 import { Attendance } from 'src/attendance/types/attendance.types';
 import { Assignment } from 'src/assignment/types/assignment.types';
@@ -74,13 +73,6 @@ export class AdminResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAnnouncements(@Context() context) {
     return this.adminService.getAllAnnouncements(context.req.user.userId);
-  }
-
-  @Query(() => [Class])
-  @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  async getAllClasses(@Context() context) {
-    return this.adminService.getAllClasses(context.req.user.userId);
   }
 
   @Query(() => [Event])

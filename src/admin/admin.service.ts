@@ -153,32 +153,6 @@ export class AdminService {
     }
   }
 
-  async getAllClasses(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-      return await this.prisma.class.findMany({
-        include: {
-          students: true,
-          lessons: {
-            include: {
-              teacher: true,
-              subject: true,
-            },
-          },
-
-          subjects: {
-            include: {
-              lessons: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch classes');
-    }
-  }
-
   async getAllEvents(userId: string) {
     try {
       await this.verifyAdmin(userId);
