@@ -14,6 +14,11 @@ import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 export class LessonResolver {
   constructor(private lessonService: LessonService) {}
 
+  @Query(() => [Lesson])
+  async getAllLessons() {
+    return await this.lessonService.getAllLessons();
+  }
+
   @Query(() => Lesson)
   @UseGuards(JwtAuthGuard)
   async getLessonById(@Args('id', { type: () => String }) id: string) {

@@ -129,6 +129,34 @@ export class LessonService {
     return endDate.toISOString().slice(11, 16); // Return HH:mm format
   }
 
+  async getAllLessons() {
+    try {
+      return await this.prisma.lesson.findMany({
+        include: {
+          teacher: true,
+          subject: true,
+          class: true,
+          exams: true,
+          assignments: {
+            include: {
+              submissions: true,
+            },
+          },
+          attendances: {
+            include: {
+              student: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch lessons: ${error.message}`);
+      }
+      throw new Error('Failed to fetch lessons');
+    }
+  }
+
   async getLessonById(lessonId: string) {
     const lesson = await this.prisma.lesson.findUnique({
       where: { id: lessonId },
