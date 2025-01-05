@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -144,6 +145,20 @@ export class LessonService {
 
     if (!subject) {
       throw new NotFoundException('Subject not found in this class');
+    }
+
+    // Check for duplicate lessons
+    const existingLesson = await this.prisma.lesson.findFirst({
+      where: {
+        name: createLessonInput.name,
+        classId: classId,
+      },
+    });
+
+    if (existingLesson) {
+      throw new ConflictException(
+        `A lesson with the same name: ${createLessonInput.name} already exists in this class`,
+      );
     }
 
     // If user is a teacher
