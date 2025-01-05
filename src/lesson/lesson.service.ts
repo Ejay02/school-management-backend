@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DefaultClass } from 'src/class/enum/class';
 import { PrismaService } from 'src/prisma/prisma.service';
 // import { SubjectsForClasses } from 'src/subject/enum/subject';
 import { ClassLessons } from './enum/lesson';
 import { Day } from './enum/day';
+import { CreateLessonInput } from './input/create.lesson.input';
+import { Roles } from 'src/shared/enum/role';
 
 @Injectable()
 export class LessonService {
@@ -119,5 +125,88 @@ export class LessonService {
     const endDate = new Date();
     endDate.setHours(hours, minutes + 60); // Add one hour to the start time
     return endDate.toISOString().slice(11, 16); // Return HH:mm format
+  }
+
+  async createLesson(
+    createLessonInput: CreateLessonInput,
+    subjectId: string,
+    classId: string,
+    userId: string,
+    userRole: Roles,
+  ) {
+    // Verify the subject exists and belongs to the specified class
+    const subject = await this.prisma.subject.findFirst({
+      where: {
+        id: subjectId,
+        classId: classId,
+      },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found in this class');
+    }
+
+    // If user is a teacher
+    if (userRole === Roles.TEACHER) {
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { id: userId },
+        select: { id: true },
+      });
+
+      if (!teacher) {
+        throw new ForbiddenException('Teacher not found');
+      }
+
+      // Create the lesson with teacher assignment
+      return this.prisma.lesson.create({
+        data: {
+          name: createLessonInput.name,
+          day: createLessonInput.day,
+          startTime: createLessonInput.startTime,
+          endTime: createLessonInput.endTime,
+          subject: {
+            connect: { id: subjectId },
+          },
+          class: {
+            connect: { id: classId },
+          },
+          teacher: {
+            connect: { id: teacher.id },
+          },
+        },
+        include: {
+          subject: true,
+          class: true,
+          teacher: true,
+          exams: true,
+          assignments: true,
+          attendances: true,
+        },
+      });
+    }
+
+    // If admin, create lesson without teacher assignment
+    return this.prisma.lesson.create({
+      data: {
+        name: createLessonInput.name,
+        day: createLessonInput.day,
+        startTime: createLessonInput.startTime,
+        endTime: createLessonInput.endTime,
+        subject: {
+          connect: { id: subjectId },
+        },
+        class: {
+          connect: { id: classId },
+        },
+      },
+      include: {
+        subject: true,
+        class: true,
+        teacher: true,
+        exams: true,
+        assignments: true,
+        attendances: true,
+      },
+    });
   }
 }
