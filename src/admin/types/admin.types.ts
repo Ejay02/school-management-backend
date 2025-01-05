@@ -15,6 +15,9 @@ export class Admin {
   @Field(() => Roles)
   role: Roles;
 
+  @Field({ nullable: true })
+  img?: string;
+
   @Field()
   createdAt: Date;
 

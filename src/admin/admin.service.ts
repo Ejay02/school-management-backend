@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -9,6 +10,9 @@ import {
 
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
+import * as bcrypt from 'bcrypt';
+import { EditAdminInput } from './input/edit.admin.input';
+import { EditAdminResponse } from './response/edit.admin.response';
 
 @Injectable()
 export class AdminService {
@@ -252,7 +256,7 @@ export class AdminService {
           username: target.username,
           email: target.email,
           password: target.password,
-          role: Roles.ADMIN,
+          role: Roles.ADMIN as Roles,
         },
       });
     }
@@ -300,6 +304,46 @@ export class AdminService {
 
       default:
         throw new BadRequestException('Invalid role');
+    }
+  }
+
+  async editAdmin(
+    currentUserId: string,
+    input: EditAdminInput,
+  ): Promise<EditAdminResponse> {
+    try {
+      const { username, email, img, password } = input;
+
+      if (username) {
+        const usernameExists = await this.prisma.admin.findUnique({
+          where: { username },
+        });
+
+        if (usernameExists) {
+          throw new ConflictException(`Username already taken`);
+        }
+      }
+
+      const updatedAdmin = await this.prisma.admin.update({
+        where: { id: currentUserId },
+        data: {
+          ...(username && { username }),
+          ...(email && { email }),
+          ...(img && { img }),
+          ...(password && { password: await bcrypt.hash(password, 10) }),
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Profile updated successfully',
+        admin: {
+          ...updatedAdmin,
+          role: updatedAdmin.role as Roles,
+        },
+      };
+    } catch (error) {
+      throw error;
     }
   }
 

@@ -16,6 +16,8 @@ import { Announcement } from 'src/announcement/types/announcement.types';
 import { Exam } from 'src/exam/types/exam.types';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { Event } from 'src/event/types/event.types';
+import { EditAdminInput } from './input/edit.admin.input';
+import { EditAdminResponse } from './response/edit.admin.response';
 
 @Resolver()
 export class AdminResolver {
@@ -115,6 +117,13 @@ export class AdminResolver {
       targetId,
       role,
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  @Mutation(() => EditAdminResponse)
+  async editAdmin(@Context() context, @Args('input') input: EditAdminInput) {
+    return this.adminService.editAdmin(context.req.user.userId, input);
   }
 
   @Mutation(() => Boolean)
