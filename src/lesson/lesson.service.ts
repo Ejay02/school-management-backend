@@ -2,15 +2,16 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { DefaultClass } from 'src/class/enum/class';
 import { PrismaService } from 'src/prisma/prisma.service';
-// import { SubjectsForClasses } from 'src/subject/enum/subject';
 import { ClassLessons } from './enum/lesson';
 import { Day } from './enum/day';
 import { CreateLessonInput } from './input/create.lesson.input';
 import { Roles } from 'src/shared/enum/role';
+import { EditLessonInput } from './input/edit.lesson.input';
 
 @Injectable()
 export class LessonService {
@@ -223,5 +224,119 @@ export class LessonService {
         attendances: true,
       },
     });
+  }
+
+  async editLesson(
+    lessonId: string,
+    userId: string,
+    userRole: Roles,
+    editLessonInput: EditLessonInput,
+  ) {
+    // First verify the lesson exists
+    const existingLesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        teacher: true,
+        subject: true,
+        class: true,
+      },
+    });
+
+    if (!existingLesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    // If user is a teacher, verify they are assigned to this lesson
+    if (userRole === Roles.TEACHER) {
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { id: userId },
+        select: { id: true },
+      });
+
+      if (!teacher) {
+        throw new ForbiddenException('Teacher not found');
+      }
+
+      if (existingLesson.teacher?.id !== teacher.id) {
+        throw new ForbiddenException('You can only edit your own lessons');
+      }
+    }
+
+    // Prepare edit data
+    const editData: any = {
+      name: editLessonInput.name,
+      day: editLessonInput.day,
+      startTime: editLessonInput.startTime,
+      endTime: editLessonInput.endTime,
+    };
+
+    // If admin is updating and provides a new teacher
+    if (userRole === Roles.ADMIN && editLessonInput.teacherId) {
+      editData.teacher = {
+        connect: { id: editLessonInput.teacherId },
+      };
+    }
+
+    // edit the lesson
+    return this.prisma.lesson.update({
+      where: { id: lessonId },
+      data: editData,
+      include: {
+        subject: true,
+        class: true,
+        teacher: true,
+        exams: true,
+        assignments: true,
+        attendances: true,
+      },
+    });
+  }
+
+  async deleteLesson(lessonId: string, userRole: Roles) {
+    // Only admins can delete lessons
+    if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
+      throw new ForbiddenException('Only administrators can delete lessons');
+    }
+
+    // First verify the lesson exists
+    const existingLesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        exams: true,
+        assignments: true,
+        attendances: true,
+      },
+    });
+
+    if (!existingLesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    // Check if lesson has associated data
+    const hasAssociatedData =
+      existingLesson.exams.length > 0 ||
+      existingLesson.assignments.length > 0 ||
+      existingLesson.attendances.length > 0;
+
+    if (hasAssociatedData) {
+      throw new ForbiddenException(
+        'Cannot delete lesson with existing exams, assignments, or attendance records. ' +
+          'Please archive the lesson instead or contact system administrator for data cleanup.',
+      );
+    }
+
+    // Proceed with deletion
+    try {
+      await this.prisma.lesson.delete({
+        where: { id: lessonId },
+      });
+
+      return {
+        success: true,
+        message: 'Lesson successfully deleted',
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to delete lesson');
+    }
   }
 }

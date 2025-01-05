@@ -42,7 +42,7 @@ export class RolesGuard implements CanActivate {
   }
 
   private async handleAdminAccess(user: any, roles: Roles[]): Promise<boolean> {
-    return roles.includes(Roles.ADMIN);
+    return roles.includes(Roles.ADMIN) || roles.includes(Roles.SUPER_ADMIN);
   }
 
   private async handleTeacherAccess(

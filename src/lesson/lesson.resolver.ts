@@ -7,6 +7,8 @@ import { CreateLessonInput } from './input/create.lesson.input';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
+import { EditLessonInput } from './input/edit.lesson.input';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Resolver()
 export class LessonResolver {
@@ -30,5 +32,30 @@ export class LessonResolver {
       userId,
       context.req.user.role,
     );
+  }
+
+  @Mutation(() => Lesson)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.ADMIN, Roles.TEACHER)
+  async editLesson(
+    @Context() context,
+    @Args('lessonId') lessonId: string,
+    @Args('editLessonInput') editLessonInput: EditLessonInput,
+  ) {
+    const userId = context.req.user.userId;
+
+    return this.lessonService.editLesson(
+      lessonId,
+      userId,
+      context.req.user.role,
+      editLessonInput,
+    );
+  }
+
+  @Mutation(() => DeleteResponse)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.ADMIN)
+  async deleteLesson(@Context() context, @Args('lessonId') lessonId: string) {
+    return this.lessonService.deleteLesson(lessonId, context.req.user.role);
   }
 }
