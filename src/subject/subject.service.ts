@@ -97,4 +97,17 @@ export class SubjectService {
       );
     }
   }
+
+  async getAllSubjects() {
+    return await this.prisma.subject.findMany({
+      include: {
+        exams: true,
+        teachers: true,
+        lessons: true,
+        assignments: true,
+        grade: true,
+        class: true,
+      },
+    });
+  }
 }

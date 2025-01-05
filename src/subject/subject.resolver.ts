@@ -1,4 +1,4 @@
-import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { SubjectService } from './subject.service';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
@@ -7,6 +7,7 @@ import { UseGuards } from '@nestjs/common';
 import { Roles } from 'src/shared/enum/role';
 import { AssignSubjectsInput } from './input/assign.subject.input';
 import { AssignSubjectsResponse } from './response/assign.subject.response';
+import { Subject } from './types/subject.types';
 @Resolver()
 export class SubjectResolver {
   constructor(private subjectService: SubjectService) {}
@@ -23,5 +24,12 @@ export class SubjectResolver {
       input.subjectIds,
       context.req.user.role,
     );
+  }
+
+  @Query(() => [Subject])
+  // @HasRoles(Roles.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async getAllSubjects() {
+    return this.subjectService.getAllSubjects();
   }
 }
