@@ -32,4 +32,10 @@ export class SubjectResolver {
   async getAllSubjects() {
     return this.subjectService.getAllSubjects();
   }
+
+  @Query(() => Subject)
+  @UseGuards(JwtAuthGuard)
+  async getSubjectById(@Args('id', { type: () => String }) id: string) {
+    return this.subjectService.getSubjectById(id);
+  }
 }

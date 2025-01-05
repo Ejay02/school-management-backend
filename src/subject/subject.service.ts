@@ -110,4 +110,31 @@ export class SubjectService {
       },
     });
   }
+
+  async getSubjectById(subjectId: string) {
+    const subject = await this.prisma.subject.findUnique({
+      where: { id: subjectId },
+      include: {
+        lessons: true,
+        class: true,
+        teachers: true,
+        exams: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        assignments: {
+          orderBy: {
+            dueDate: 'desc',
+          },
+        },
+      },
+    });
+
+    if (!subject) {
+      throw new NotFoundException(`Subject with ID ${subjectId} not found`);
+    }
+
+    return subject;
+  }
 }
