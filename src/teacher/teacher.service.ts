@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 
-import { PublicTeacherResponse } from './types/public.teacher.types';
+// import { PublicTeacherResponse } from './types/public.teacher.types';
 
 @Injectable()
 export class TeacherService {
@@ -40,9 +40,12 @@ export class TeacherService {
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: teacherId },
         include: {
+          exams: true,
           subjects: true,
           lessons: true,
           classes: true,
+          assignments: true,
+          announcements: true,
         },
       });
 
@@ -62,44 +65,44 @@ export class TeacherService {
     }
   }
 
-  async publicTeacherProfile(id: string): Promise<PublicTeacherResponse> {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        surname: true,
-        img: true,
-        subjects: {
-          select: {
-            id: true,
-            name: true,
-            // teachers: true,
-            // lessons: true,
-            // createdAt: true,
-            // updatedAt: true,
-          },
-        },
-        classes: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+  // async publicTeacherProfile(id: string): Promise<PublicTeacherResponse> {
+  //   const teacher = await this.prisma.teacher.findUnique({
+  //     where: { id },
+  //     select: {
+  //       id: true,
+  //       name: true,
+  //       surname: true,
+  //       img: true,
+  //       subjects: {
+  //         select: {
+  //           id: true,
+  //           name: true,
+  //           // teachers: true,
+  //           // lessons: true,
+  //           // createdAt: true,
+  //           // updatedAt: true,
+  //         },
+  //       },
+  //       classes: {
+  //         select: {
+  //           id: true,
+  //           name: true,
+  //         },
+  //       },
+  //     },
+  //   });
 
-    if (!teacher) {
-      throw new NotFoundException(`Teacher with ID ${id} not found`);
-    }
+  //   if (!teacher) {
+  //     throw new NotFoundException(`Teacher with ID ${id} not found`);
+  //   }
 
-    return {
-      id: teacher.id,
-      name: teacher.name,
-      surname: teacher.surname,
-      img: teacher.img,
-      subjects: teacher.subjects,
-      classes: teacher.classes,
-    };
-  }
+  //   return {
+  //     id: teacher.id,
+  //     name: teacher.name,
+  //     surname: teacher.surname,
+  //     img: teacher.img,
+  //     subjects: teacher.subjects,
+  //     classes: teacher.classes,
+  //   };
+  // }
 }

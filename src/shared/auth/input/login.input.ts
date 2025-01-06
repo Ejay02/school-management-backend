@@ -89,11 +89,11 @@ export class StudentLoginInput extends BaseLoginInput {
 
   @Field()
   @IsNotEmpty()
-  classId: number;
+  classId: string;
 
   @Field()
   @IsNotEmpty()
-  gradeId: number;
+  gradeId: string;
 }
 
 @InputType()

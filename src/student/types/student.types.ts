@@ -50,13 +50,13 @@ export class Student {
   parent: Parent;
 
   @Field(() => Int)
-  classId: number;
+  classId: string;
 
   @Field(() => Class)
   class: Class;
 
   @Field(() => Int)
-  gradeId: number;
+  gradeId: string;
 
   @Field(() => Grade)
   grade: Grade;

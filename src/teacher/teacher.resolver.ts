@@ -6,7 +6,7 @@ import { Roles } from 'src/shared/enum/role';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { Teacher } from './types/teacher.types';
-import { PublicTeacherResponse } from './types/public.teacher.types';
+// import { PublicTeacherResponse } from './types/public.teacher.types';
 
 @Resolver()
 export class TeacherResolver {
@@ -23,10 +23,10 @@ export class TeacherResolver {
     return this.teacherService.getTeacherById(userId, teacherId);
   }
 
-  @Query(() => PublicTeacherResponse)
-  async publicTeacherProfile(@Args('id') id: string) {
-    return this.teacherService.publicTeacherProfile(id);
-  }
+  // @Query(() => PublicTeacherResponse)
+  // async publicTeacherProfile(@Args('id') id: string) {
+  //   return this.teacherService.publicTeacherProfile(id);
+  // }
 
   // @Query()
   // @HasRoles(Roles.TEACHER)

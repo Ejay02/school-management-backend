@@ -4,7 +4,6 @@ import { UseGuards } from '@nestjs/common';
 import { Roles } from 'src/shared/enum/role';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
-import { Student } from 'src/student/types/student.types';
 import { Teacher } from 'src/teacher/types/teacher.types';
 import { Admin } from './types/admin.types';
 import { Parent } from 'src/parent/types/parent.types';
@@ -21,14 +20,6 @@ import { EditAdminResponse } from './response/edit.admin.response';
 @Resolver()
 export class AdminResolver {
   constructor(private adminService: AdminService) {}
-
-  @Query(() => [Student])
-  @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  async getAllStudents(@Context() context) {
-    const userId = context.req.user.userId;
-    return this.adminService.getAllStudents(userId);
-  }
 
   @Query(() => [Teacher])
   @HasRoles(Roles.ADMIN)
