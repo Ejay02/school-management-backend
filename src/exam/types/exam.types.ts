@@ -20,19 +20,19 @@ export class Exam {
   endTime: Date;
 
   @Field(() => Int)
-  lessonId: number;
+  lessonId: string;
 
   @Field(() => Lesson)
   lesson: Lesson;
 
   @Field(() => Int)
-  classId: number;
+  classId: string;
 
   @Field(() => Class)
   class: Class;
 
   @Field(() => Int)
-  subjectId: number;
+  subjectId: string;
 
   @Field(() => Subject)
   subject: Subject;

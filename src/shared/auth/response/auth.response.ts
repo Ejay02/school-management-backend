@@ -42,8 +42,8 @@ export class AuthResponse {
   parentId?: string;
 
   @Field({ nullable: true })
-  classId?: number;
+  classId?: string;
 
   @Field({ nullable: true })
-  gradeId?: number;
+  gradeId?: string;
 }

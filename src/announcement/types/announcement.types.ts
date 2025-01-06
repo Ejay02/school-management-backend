@@ -15,19 +15,19 @@ export class Announcement {
   description: string;
 
   @Field(() => Int, { nullable: true })
-  classId?: number;
+  classId?: string;
 
   @Field(() => Class, { nullable: true })
   class?: Class;
 
   @Field(() => Int, { nullable: true })
-  teacherId?: number;
+  teacherId?: string;
 
   @Field(() => Teacher, { nullable: true })
   teacher?: Teacher;
 
   @Field(() => Int, { nullable: true })
-  adminId?: number;
+  adminId?: string;
 
   @Field(() => Admin, { nullable: true })
   admin?: Admin;

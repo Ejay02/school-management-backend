@@ -14,7 +14,7 @@ export class Event {
   description: string;
 
   @Field(() => Int, { nullable: true })
-  classId?: number;
+  classId?: string;
 
   @Field(() => Class, { nullable: true })
   class?: Class;

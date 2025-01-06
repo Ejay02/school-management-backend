@@ -86,22 +86,6 @@ export class AdminService {
     }
   }
 
-  async getAllAssignments(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-      return await this.prisma.assignment.findMany({
-        include: {
-          teacher: true,
-          subject: true,
-          class: true,
-        },
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch assignments');
-    }
-  }
-
   async getAllAnnouncements(userId: string) {
     try {
       await this.verifyAdmin(userId);

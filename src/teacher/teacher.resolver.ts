@@ -14,7 +14,7 @@ export class TeacherResolver {
 
   @Query(() => Teacher)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @HasRoles(Roles.ADMIN, Roles.TEACHER)
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT, Roles.STUDENT)
   async getTeacherById(
     @Context() context,
     @Args('teacherId', { type: () => String }) teacherId: string,

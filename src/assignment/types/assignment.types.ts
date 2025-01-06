@@ -21,7 +21,7 @@ export class Assignment {
   dueDate: Date;
 
   @Field(() => Int)
-  lessonId: number;
+  lessonId: string;
 
   @Field(() => Lesson)
   lesson: Lesson;
@@ -36,13 +36,13 @@ export class Assignment {
   teacher: Teacher;
 
   @Field(() => Int)
-  subjectId: number;
+  subjectId: string;
 
   @Field(() => Subject)
   subject: Subject;
 
   @Field(() => Int)
-  classId: number;
+  classId: string;
 
   @Field(() => Class)
   class: Class;

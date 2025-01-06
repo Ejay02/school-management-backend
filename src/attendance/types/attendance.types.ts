@@ -20,7 +20,7 @@ export class Attendance {
   student: Student;
 
   @Field(() => Int)
-  lessonId: number;
+  lessonId: string;
 
   @Field(() => Lesson)
   lesson: Lesson;

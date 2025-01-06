@@ -19,7 +19,8 @@ export class ParentResolver {
   }
 
   @Query(() => Parent)
-  @UseGuards(JwtAuthGuard)
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT, Roles.STUDENT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async getParentById(@Args('parentId') parentId: string) {
     return this.parentService.getParentById(parentId);
   }
