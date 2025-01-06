@@ -63,25 +63,6 @@ export class AdminService {
     }
   }
 
-  async getAllParents(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-      return await this.prisma.parent.findMany({
-        include: {
-          students: {
-            include: {
-              class: true,
-              grade: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch parents');
-    }
-  }
-
   async getAllAttendance(userId: string) {
     try {
       await this.verifyAdmin(userId);

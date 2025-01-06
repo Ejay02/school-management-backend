@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
@@ -36,6 +37,8 @@ export class RolesGuard implements CanActivate {
         return this.handleTeacherAccess(user, ctx);
       case Roles.PARENT:
         return this.handleParentAccess(user, ctx);
+      case Roles.STUDENT:
+        return this.handleStudentAccess(user, ctx);
       default:
         return false;
     }
@@ -49,43 +52,117 @@ export class RolesGuard implements CanActivate {
     user: any,
     ctx: GqlExecutionContext,
   ): Promise<boolean> {
-    const args = ctx.getArgs();
-    const studentId = args.studentId || args.input?.studentId;
+    try {
+      const args = ctx.getArgs();
 
-    if (!studentId) return true;
-
-    const student = await this.prisma.student.findFirst({
-      where: {
-        id: studentId,
-        class: {
-          lessons: {
-            some: {
-              teacherId: user.id,
+      // If accessing parent info
+      if (args.parentId) {
+        // Allow if the parent has students in teacher's classes
+        const hasStudentWithParent = await this.prisma.student.findFirst({
+          where: {
+            parentId: args.parentId,
+            class: {
+              lessons: {
+                some: {
+                  teacherId: user.id,
+                },
+              },
             },
           },
-        },
-      },
-    });
+        });
+        return !!hasStudentWithParent;
+      }
+      // If accessing student info
+      if (args.studentId || args.input?.studentId) {
+        const studentId = args.studentId || args.input?.studentId;
+        // Allow if student is in teacher's classes
+        const student = await this.prisma.student.findFirst({
+          where: {
+            id: studentId,
+            class: {
+              lessons: {
+                some: {
+                  teacherId: user.id,
+                },
+              },
+            },
+          },
+        });
+        return !!student;
+      }
 
-    return !!student;
+      // If accessing own info (teacher's profile)
+      if (args.teacherId) {
+        return args.teacherId === user.id;
+      }
+
+      return false;
+    } catch (error) {
+      throw new UnauthorizedException('Unauthorized access to teacher info');
+    }
   }
 
   private async handleParentAccess(
     user: any,
     ctx: GqlExecutionContext,
   ): Promise<boolean> {
-    const args = ctx.getArgs();
-    const studentId = args.studentId || args.input?.studentId;
+    try {
+      const args = ctx.getArgs();
 
-    if (!studentId) return true;
+      // If accessing parent info
+      if (args.parentId) {
+        // Allow if it's their own info
+        return args.parentId === user.id;
+      }
 
-    const student = await this.prisma.student.findFirst({
-      where: {
-        id: studentId,
-        parentId: user.id,
-      },
-    });
+      // If accessing student info
+      if (args.studentId || args.input?.studentId) {
+        const studentId = args.studentId || args.input?.studentId;
+        // Allow if it's their child
+        const student = await this.prisma.student.findFirst({
+          where: {
+            id: studentId,
+            parentId: user.id,
+          },
+        });
+        return !!student;
+      }
 
-    return !!student;
+      return false;
+    } catch (error) {
+      throw new UnauthorizedException('Unauthorized access to parent info');
+    }
+  }
+
+  private async handleStudentAccess(
+    user: any,
+    ctx: GqlExecutionContext,
+  ): Promise<boolean> {
+    try {
+      const args = ctx.getArgs();
+
+      // If accessing student info
+      if (args.studentId || args.input?.studentId) {
+        const studentId = args.studentId || args.input?.studentId;
+        // Allow if it's their own info
+        return studentId === user.id;
+      }
+
+      // If accessing parent info
+      if (args.parentId) {
+        // Allow if it's their parent
+        const student = await this.prisma.student.findFirst({
+          where: {
+            id: user.id,
+            parentId: args.parentId,
+          },
+        });
+        return !!student;
+      }
+
+      return false;
+    } catch (error) {
+      throw new UnauthorizedException('Unauthorized access to student info');
+    }
   }
 }
