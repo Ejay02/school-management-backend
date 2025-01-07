@@ -16,8 +16,11 @@ export class AssignmentResolver {
   @Query(() => [Assignment])
   @HasRoles(Roles.ADMIN, Roles.TEACHER)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  async getAllAssignments() {
-    return this.assignmentService.getAllAssignments();
+  async getAllAssignments(@Context() context) {
+    return this.assignmentService.getAllAssignments(
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 
   @Query(() => [Assignment])

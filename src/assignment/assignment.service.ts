@@ -14,16 +14,126 @@ import { Roles } from 'src/shared/enum/role';
 export class AssignmentService {
   constructor(private prisma: PrismaService) {}
 
-  async getAllAssignments() {
+  async getAllAssignments(userId: string, role: Roles) {
     try {
-      return await this.prisma.assignment.findMany({
-        include: {
-          teacher: true,
-          subject: true,
-          class: true,
-        },
-      });
+      // Admin and super admin can see all assignments with full details
+      if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
+        return await this.prisma.assignment.findMany({
+          include: {
+            teacher: true,
+            subject: true,
+            class: true,
+            submissions: true,
+          },
+        });
+      }
+
+      // Teachers can only see assignments they created
+      if (role === Roles.TEACHER) {
+        return await this.prisma.assignment.findMany({
+          where: {
+            teacherId: userId,
+          },
+          include: {
+            teacher: true,
+            subject: true,
+            class: true,
+            submissions: true,
+          },
+        });
+      }
+
+      // Students can only see assignments for their class
+      if (role === Roles.STUDENT) {
+        // First get the student's class ID
+        const student = await this.prisma.student.findUnique({
+          where: { id: userId },
+          select: { classId: true },
+        });
+
+        if (!student) {
+          throw new NotFoundException('Student not found');
+        }
+
+        return await this.prisma.assignment.findMany({
+          where: {
+            classId: student.classId,
+          },
+          include: {
+            teacher: true,
+            subject: true,
+            class: true,
+            submissions: {
+              where: {
+                studentId: userId,
+              },
+            },
+          },
+        });
+      }
+
+      // Parents can see limited assignment information for their children
+      if (role === Roles.PARENT) {
+        // First get all children of the parent
+        const children = await this.prisma.student.findMany({
+          where: { parentId: userId },
+          select: {
+            id: true,
+            classId: true,
+          },
+        });
+
+        if (!children.length) {
+          throw new NotFoundException('No children found for this parent');
+        }
+
+        const childrenClassIds = children.map((child) => child.classId);
+        const childrenIds = children.map((child) => child.id);
+
+        return await this.prisma.assignment.findMany({
+          where: {
+            classId: {
+              in: childrenClassIds,
+            },
+          },
+          select: {
+            id: true,
+            title: true,
+            startDate: true,
+            dueDate: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            subject: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            submissions: {
+              where: {
+                studentId: {
+                  in: childrenIds,
+                },
+              },
+              select: {
+                status: true,
+                submissionDate: true,
+                studentId: true,
+              },
+            },
+          },
+        });
+      }
+
+      throw new ForbiddenException(
+        'You do not have permission to view assignments',
+      );
     } catch (error) {
+      if (error instanceof NotFoundException) throw error;
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch assignments');
     }
