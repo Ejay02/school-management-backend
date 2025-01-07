@@ -71,7 +71,7 @@ export class AnnouncementResolver {
     );
   }
 
-  @Query(() => Announcement)
+  @Mutation(() => Announcement)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async editAnnouncement(

@@ -290,92 +290,97 @@ export class AnnouncementService {
     },
   ) {
     try {
-      // First, fetch the existing announcement to check permissions
-      const existingAnnouncement = await this.prisma.announcement.findUnique({
-        where: { id: announcementId },
-        include: {
-          class: true,
-        },
-      });
-
-      if (!existingAnnouncement) {
-        throw new NotFoundException('Announcement not found');
-      }
-
-      // Check edit permissions based on role
-      if (![Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
-        // Only creator can edit their own announcements
-        if (existingAnnouncement.creatorId !== userId) {
-          throw new ForbiddenException(
-            'You do not have permission to edit this announcement',
-          );
-        }
-
-        // Teachers can only edit their class announcements
-        if (role === Roles.TEACHER) {
-          const teacherClassIds = await this.prisma.lesson.findMany({
-            where: { teacherId: userId },
-            select: { classId: true },
+      return await this.prisma
+        .$transaction(async (tx) => {
+          // Fetch the existing announcement to check permissions
+          const existingAnnouncement = await tx.announcement.findUnique({
+            where: { id: announcementId },
+            include: {
+              class: true,
+            },
           });
 
-          const canEditClass =
-            existingAnnouncement.classId &&
-            teacherClassIds.some(
-              (lesson) => lesson.classId === existingAnnouncement.classId,
-            );
+          if (!existingAnnouncement) {
+            throw new NotFoundException('Announcement not found');
+          }
 
-          if (!canEditClass) {
-            throw new ForbiddenException(
-              'You can only edit announcements for your classes',
+          // Check edit permissions based on role
+          if (![Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
+            // Only creator can edit their own announcements
+            if (existingAnnouncement.creatorId !== userId) {
+              throw new ForbiddenException(
+                'You do not have permission to edit this announcement',
+              );
+            }
+
+            // Teachers can only edit their class announcements
+            if (role === Roles.TEACHER) {
+              const teacherClassIds = await tx.lesson.findMany({
+                where: { teacherId: userId },
+                select: { classId: true },
+              });
+
+              const canEditClass =
+                existingAnnouncement.classId &&
+                teacherClassIds.some(
+                  (lesson) => lesson.classId === existingAnnouncement.classId,
+                );
+
+              if (!canEditClass) {
+                throw new ForbiddenException(
+                  'You can only edit announcements for your classes',
+                );
+              }
+            }
+
+            // Other roles cannot edit announcements
+            if (
+              ![Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN].includes(role)
+            ) {
+              throw new ForbiddenException(
+                'You do not have permission to edit announcements',
+              );
+            }
+          }
+
+          // Update the announcement
+          const updatedAnnouncement = await tx.announcement.update({
+            where: { id: announcementId },
+            data: {
+              title: data.title ?? undefined,
+              content: data.content ?? undefined,
+              targetRoles: data.targetRoles
+                ? {
+                    set: data.targetRoles,
+                  }
+                : undefined,
+              updatedAt: new Date(), // Explicitly update the timestamp
+            },
+            include: {
+              class: true,
+            },
+          });
+
+          // Note: Moving the emit outside the transaction since it's not a database operation
+          // and we want to emit only after the transaction succeeds
+          return updatedAnnouncement;
+        })
+        .then((announcement) => {
+          // Emit the updated announcement after transaction succeeds
+          if (announcement.classId) {
+            this.announcementGateway.emitToClass(
+              announcement.classId,
+              announcement,
+            );
+          } else if (announcement.targetRoles.length > 0) {
+            this.announcementGateway.emitToRoles(
+              announcement,
+              announcement.targetRoles as Roles[],
             );
           }
-        }
 
-        // Other roles cannot edit announcements
-        if (![Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN].includes(role)) {
-          throw new ForbiddenException(
-            'You do not have permission to edit announcements',
-          );
-        }
-      }
-
-      // Use a transaction to ensure atomicity
-      const updatedAnnouncement = await this.prisma.$transaction(async (tx) => {
-        // Update the announcement
-        const announcement = await tx.announcement.update({
-          where: { id: announcementId },
-          data: {
-            title: data.title ?? undefined,
-            content: data.content ?? undefined,
-            targetRoles: data.targetRoles
-              ? {
-                  set: data.targetRoles,
-                }
-              : undefined,
-            updatedAt: new Date(), // Explicitly update the timestamp
-          },
-          include: {
-            class: true,
-          },
+          return announcement;
         });
-
-        // Emit the updated announcement
-        if (announcement.classId) {
-          this.announcementGateway.emitToClass(
-            announcement.classId,
-            announcement,
-          );
-        } else if (announcement.targetRoles.length > 0) {
-          this.announcementGateway.emitToRoles(
-            announcement,
-            announcement.targetRoles as Roles[],
-          );
-        }
-
-        return announcement;
-      });
-
-      return updatedAnnouncement;
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       if (error instanceof NotFoundException) throw error;

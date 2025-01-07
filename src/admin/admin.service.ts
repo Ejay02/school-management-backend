@@ -157,14 +157,16 @@ export class AdminService {
       }
 
       // Create new admin record
-      return this.prisma.admin.create({
-        data: {
-          id: targetId,
-          username: target.username,
-          email: target.email,
-          password: target.password,
-          role: Roles.ADMIN as Roles,
-        },
+      return this.prisma.$transaction(async (tx) => {
+        await tx.admin.create({
+          data: {
+            id: targetId,
+            username: target.username,
+            email: target.email,
+            password: target.password,
+            role: Roles.ADMIN as Roles,
+          },
+        });
       });
     }
 
@@ -221,32 +223,35 @@ export class AdminService {
     try {
       const { username, email, img, password } = input;
 
-      if (username) {
-        const usernameExists = await this.prisma.admin.findUnique({
-          where: { username },
+      const transaction = await this.prisma.$transaction(async (tx) => {
+        if (username) {
+          const usernameExists = await tx.admin.findUnique({
+            where: { username },
+          });
+
+          if (usernameExists) {
+            throw new ConflictException(`Username already taken`);
+          }
+        }
+
+        const updatedAdmin = await tx.admin.update({
+          where: { id: currentUserId },
+          data: {
+            ...(username && { username }),
+            ...(email && { email }),
+            ...(img && { img }),
+            ...(password && { password: await bcrypt.hash(password, 10) }),
+          },
         });
 
-        if (usernameExists) {
-          throw new ConflictException(`Username already taken`);
-        }
-      }
-
-      const updatedAdmin = await this.prisma.admin.update({
-        where: { id: currentUserId },
-        data: {
-          ...(username && { username }),
-          ...(email && { email }),
-          ...(img && { img }),
-          ...(password && { password: await bcrypt.hash(password, 10) }),
-        },
+        return updatedAdmin;
       });
-
       return {
         success: true,
         message: 'Profile updated successfully',
         admin: {
-          ...updatedAdmin,
-          role: updatedAdmin.role as Roles,
+          ...transaction,
+          role: transaction.role as Roles,
         },
       };
     } catch (error) {
