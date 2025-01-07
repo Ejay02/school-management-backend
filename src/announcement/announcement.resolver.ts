@@ -50,4 +50,24 @@ export class AnnouncementResolver {
       context.req.user.role,
     );
   }
+
+  @Query(() => Announcement)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.PARENT,
+    Roles.TEACHER,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  async getAnnouncementById(
+    @Args('announcementId') announcementId: string,
+    @Context() context: any,
+  ) {
+    return await this.announcementService.getAnnouncementById(
+      context.req.user.userId,
+      context.req.user.role,
+      announcementId,
+    );
+  }
 }
