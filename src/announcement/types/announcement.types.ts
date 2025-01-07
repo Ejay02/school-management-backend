@@ -1,7 +1,6 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
-import { Admin } from 'src/admin/types/admin.types';
+import { Field, ObjectType } from '@nestjs/graphql';
+
 import { Class } from 'src/class/types/class.types';
-import { Teacher } from 'src/teacher/types/teacher.types';
 
 @ObjectType()
 export class Announcement {
@@ -12,28 +11,31 @@ export class Announcement {
   title: string;
 
   @Field()
-  description: string;
+  content: string;
 
-  @Field(() => Int, { nullable: true })
+  @Field(() => String, { nullable: true })
   classId?: string;
 
   @Field(() => Class, { nullable: true })
   class?: Class;
 
-  @Field(() => Int, { nullable: true })
-  teacherId?: string;
+  // @Field(() => Int, { nullable: true })
+  // teacherId?: string;
 
-  @Field(() => Teacher, { nullable: true })
-  teacher?: Teacher;
+  // @Field(() => Teacher, { nullable: true })
+  // teacher?: Teacher;
 
-  @Field(() => Int, { nullable: true })
-  adminId?: string;
+  // @Field(() => Int, { nullable: true })
+  // adminId?: string;
 
-  @Field(() => Admin, { nullable: true })
-  admin?: Admin;
+  // @Field(() => Admin, { nullable: true })
+  // admin?: Admin;
 
-  @Field()
-  date: Date;
+  @Field(() => String, { nullable: false })
+  creatorId?: string;
+
+  @Field(() => String, { nullable: false })
+  creatorRole: string;
 
   @Field()
   createdAt: Date;

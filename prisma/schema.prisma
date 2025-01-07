@@ -16,7 +16,7 @@ model Admin {
   password      String
   img           String?
   events        Event[]
-  announcements Announcement[]
+  // announcements Announcement[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -65,7 +65,6 @@ model Teacher{
   lessons       Lesson[]
   classes       Class[]
   assignments   Assignment[]
-  announcements Announcement[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -248,14 +247,15 @@ model Event {
 model Announcement {
   id          String           @id @default(uuid())
   title       String
-  description String
+  content     String
   classId     String?
   class       Class?          @relation(fields: [classId], references: [id])
-  teacherId   String?   
-  teacher     Teacher?        @relation(fields: [teacherId], references: [id]) 
-  adminId     String?   
-  admin       Admin?          @relation(fields: [adminId], references: [id]) 
-  date        DateTime
+  // teacherId   String?   
+  // teacher     Teacher?        @relation(fields: [teacherId], references: [id]) 
+  // adminId     String?   
+  // admin       Admin?          @relation(fields: [adminId], references: [id]) 
+  creatorId   String
+  creatorRole Role 
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }

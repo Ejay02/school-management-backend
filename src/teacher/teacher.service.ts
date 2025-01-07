@@ -45,7 +45,7 @@ export class TeacherService {
           lessons: true,
           classes: true,
           assignments: true,
-          announcements: true,
+          // announcements: true,
         },
       });
 
