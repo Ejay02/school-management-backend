@@ -70,4 +70,23 @@ export class AnnouncementResolver {
       announcementId,
     );
   }
+
+  @Query(() => Announcement)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
+  async editAnnouncement(
+    @Context() context,
+    @Args('announcementId') announcementId: string,
+    @Args('title') title: string,
+    @Args('content') content: string,
+    @Args('targetRoles', { type: () => [String], nullable: true })
+    targetRoles?: Roles[],
+  ) {
+    return this.announcementService.editAnnouncement(
+      context.req.user.userId,
+      context.req.user.role,
+      announcementId,
+      { title, content, targetRoles },
+    );
+  }
 }
