@@ -26,6 +26,12 @@ export class Event {
   admin: Admin;
 
   @Field()
+  type: string; // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
+
+  @Field({ nullable: true })
+  location?: string;
+
+  @Field()
   startTime: Date;
 
   @Field()

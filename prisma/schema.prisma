@@ -236,6 +236,8 @@ model Event {
   class       Class?          @relation(fields: [classId], references: [id])
   adminId     String         
   admin       Admin           @relation(fields: [adminId], references: [id]) // Add admin relation
+  type        String       // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
+  location    String?
   startTime   DateTime      
   endTime     DateTime      
   createdAt   DateTime        @default(now())
