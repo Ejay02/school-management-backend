@@ -1,4 +1,4 @@
-import { Args, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Query, Resolver } from '@nestjs/graphql';
 import { ParentService } from './parent.service';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
@@ -12,14 +12,29 @@ export class ParentResolver {
   constructor(private parentService: ParentService) {}
 
   @Query(() => [Parent])
-  @HasRoles(Roles.ADMIN)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.STUDENT,
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
-  async getAllParents() {
-    return this.parentService.getAllParents();
+  async getAllParents(@Context() context) {
+    return this.parentService.getAllParents(
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 
   @Query(() => Parent)
-  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT, Roles.STUDENT)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.STUDENT,
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getParentById(@Args('parentId') parentId: string) {
     return this.parentService.getParentById(parentId);

@@ -561,3 +561,5 @@ export class LessonService {
     }
   }
 }
+
+// TODO move delete and edit to transaction
