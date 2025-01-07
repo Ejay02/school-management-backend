@@ -361,74 +361,35 @@ export class LessonService {
     userId: string,
     userRole: Roles,
   ) {
-    // Verify the subject exists and belongs to the specified class
-    const subject = await this.prisma.subject.findFirst({
-      where: {
-        id: subjectId,
-        classId: classId,
-      },
-    });
-
-    if (!subject) {
-      throw new NotFoundException('Subject not found in this class');
-    }
-
-    // Check for duplicate lessons
-    const existingLesson = await this.prisma.lesson.findFirst({
-      where: {
-        name: createLessonInput.name,
-        classId: classId,
-      },
-    });
-
-    if (existingLesson) {
-      throw new ConflictException(
-        `A lesson with the same name: ${createLessonInput.name} already exists in this class`,
-      );
-    }
-
-    // If user is a teacher
-    if (userRole === Roles.TEACHER) {
-      const teacher = await this.prisma.teacher.findFirst({
-        where: { id: userId },
-        select: { id: true },
+    return await this.prisma.$transaction(async (tx) => {
+      // Verify the subject exists and belongs to the specified class
+      const subject = await tx.subject.findFirst({
+        where: {
+          id: subjectId,
+          classId: classId,
+        },
       });
 
-      if (!teacher) {
-        throw new ForbiddenException('Teacher not found');
+      if (!subject) {
+        throw new NotFoundException('Subject not found in this class');
       }
 
-      // Create the lesson with teacher assignment
-      return this.prisma.lesson.create({
-        data: {
+      // Check for duplicate lessons
+      const existingLesson = await tx.lesson.findFirst({
+        where: {
           name: createLessonInput.name,
-          day: createLessonInput.day,
-          startTime: createLessonInput.startTime,
-          endTime: createLessonInput.endTime,
-          subject: {
-            connect: { id: subjectId },
-          },
-          class: {
-            connect: { id: classId },
-          },
-          teacher: {
-            connect: { id: teacher.id },
-          },
-        },
-        include: {
-          subject: true,
-          class: true,
-          teacher: true,
-          exams: true,
-          assignments: true,
-          attendances: true,
+          classId: classId,
         },
       });
-    }
 
-    // If admin, create lesson without teacher assignment
-    return this.prisma.lesson.create({
-      data: {
+      if (existingLesson) {
+        throw new ConflictException(
+          `A lesson with the same name: ${createLessonInput.name} already exists in this class`,
+        );
+      }
+
+      // Base lesson data
+      const lessonData = {
         name: createLessonInput.name,
         day: createLessonInput.day,
         startTime: createLessonInput.startTime,
@@ -439,15 +400,50 @@ export class LessonService {
         class: {
           connect: { id: classId },
         },
-      },
-      include: {
-        subject: true,
-        class: true,
-        teacher: true,
-        exams: true,
-        assignments: true,
-        attendances: true,
-      },
+      };
+
+      // If user is a teacher
+      if (userRole === Roles.TEACHER) {
+        const teacher = await tx.teacher.findFirst({
+          where: { id: userId },
+          select: { id: true },
+        });
+
+        if (!teacher) {
+          throw new ForbiddenException('Teacher not found');
+        }
+
+        // Create the lesson with teacher assignment
+        return await tx.lesson.create({
+          data: {
+            ...lessonData,
+            teacher: {
+              connect: { id: teacher.id },
+            },
+          },
+          include: {
+            subject: true,
+            class: true,
+            teacher: true,
+            exams: true,
+            assignments: true,
+            attendances: true,
+          },
+        });
+      }
+
+      // If admin, create lesson without teacher assignment
+      return tx.lesson.create({
+        data: lessonData,
+        include: {
+          subject: true,
+          class: true,
+          teacher: true,
+          exams: true,
+          assignments: true,
+          attendances: true,
+        },
+      });
     });
   }
 
