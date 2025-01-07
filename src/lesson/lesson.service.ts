@@ -129,31 +129,193 @@ export class LessonService {
     return endDate.toISOString().slice(11, 16); // Return HH:mm format
   }
 
-  async getAllLessons() {
+  async getAllLessons(userId: string, role: Roles) {
     try {
-      return await this.prisma.lesson.findMany({
-        include: {
-          teacher: true,
-          subject: true,
-          class: true,
-          exams: true,
-          assignments: {
-            include: {
-              submissions: true,
+      // Admin and super admin get full access to all lessons
+      if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
+        return await this.prisma.lesson.findMany({
+          include: {
+            teacher: true,
+            subject: true,
+            class: true,
+            exams: true,
+            assignments: {
+              include: {
+                submissions: true,
+              },
+            },
+            attendances: {
+              include: {
+                student: true,
+              },
             },
           },
-          attendances: {
-            include: {
-              student: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to fetch lessons: ${error.message}`);
+        });
       }
-      throw new Error('Failed to fetch lessons');
+
+      // Teachers get full access but only to their assigned lessons
+      if (role === Roles.TEACHER) {
+        return await this.prisma.lesson.findMany({
+          where: {
+            teacherId: userId,
+          },
+          include: {
+            teacher: true,
+            subject: true,
+            class: true,
+            exams: true,
+            assignments: {
+              include: {
+                submissions: true,
+              },
+            },
+            attendances: {
+              include: {
+                student: true,
+              },
+            },
+          },
+        });
+      }
+
+      // Students get access to their class lessons with limited details
+      if (role === Roles.STUDENT) {
+        const student = await this.prisma.student.findUnique({
+          where: { id: userId },
+          select: { classId: true },
+        });
+
+        if (!student) {
+          throw new NotFoundException('Student not found');
+        }
+
+        return await this.prisma.lesson.findMany({
+          where: {
+            classId: student.classId,
+          },
+          include: {
+            teacher: {
+              select: {
+                id: true,
+                name: true,
+                surname: true,
+              },
+            },
+            subject: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            assignments: {
+              include: {
+                submissions: {
+                  where: {
+                    studentId: userId,
+                  },
+                },
+              },
+            },
+            attendances: {
+              where: {
+                studentId: userId,
+              },
+            },
+          },
+        });
+      }
+
+      // Parents get summary view of their children's lessons
+      if (role === Roles.PARENT) {
+        const children = await this.prisma.student.findMany({
+          where: { parentId: userId },
+          select: {
+            id: true,
+            classId: true,
+          },
+        });
+
+        if (!children.length) {
+          throw new NotFoundException('No children found for this parent');
+        }
+
+        const childrenClassIds = children.map((child) => child.classId);
+        const childrenIds = children.map((child) => child.id);
+
+        return await this.prisma.lesson.findMany({
+          where: {
+            classId: {
+              in: childrenClassIds,
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+            day: true,
+            startTime: true,
+            endTime: true,
+            subject: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            teacher: {
+              select: {
+                id: true,
+                name: true,
+                surname: true,
+              },
+            },
+            assignments: {
+              select: {
+                id: true,
+                title: true,
+                dueDate: true,
+                submissions: {
+                  where: {
+                    studentId: {
+                      in: childrenIds,
+                    },
+                  },
+                  select: {
+                    status: true,
+                    submissionDate: true,
+                    studentId: true,
+                  },
+                },
+              },
+            },
+            attendances: {
+              where: {
+                studentId: {
+                  in: childrenIds,
+                },
+              },
+              select: {
+                date: true,
+                // status: true,
+                studentId: true,
+              },
+            },
+          },
+        });
+      }
+
+      throw new ForbiddenException(
+        'You do not have permission to view lessons',
+      );
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof ForbiddenException) throw error;
+      throw new InternalServerErrorException('Failed to fetch lessons');
     }
   }
 

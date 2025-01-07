@@ -14,7 +14,14 @@ export class AssignmentResolver {
   constructor(private assignmentService: AssignmentService) {}
 
   @Query(() => [Assignment])
-  @HasRoles(Roles.ADMIN, Roles.TEACHER)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.ADMIN,
+    Roles.SUPER_ADMIN,
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAssignments(@Context() context) {
     return this.assignmentService.getAllAssignments(
@@ -24,7 +31,13 @@ export class AssignmentResolver {
   }
 
   @Query(() => [Assignment])
-  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT, Roles.STUDENT)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAssignmentById(@Args('assignmentId') assignmentId: string) {
     return this.assignmentService.getAssignmentById(assignmentId);

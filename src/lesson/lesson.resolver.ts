@@ -15,8 +15,19 @@ export class LessonResolver {
   constructor(private lessonService: LessonService) {}
 
   @Query(() => [Lesson])
-  async getAllLessons() {
-    return await this.lessonService.getAllLessons();
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  async getAllLessons(@Context() context) {
+    return await this.lessonService.getAllLessons(
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 
   @Query(() => Lesson)
@@ -27,7 +38,7 @@ export class LessonResolver {
 
   @Mutation(() => Lesson)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @HasRoles(Roles.ADMIN, Roles.TEACHER)
+  @HasRoles(Roles.ADMIN, Roles.ADMIN, Roles.TEACHER)
   async createLesson(
     @Context() context,
     @Args('createLessonInput') createLessonInput: CreateLessonInput,
@@ -47,7 +58,7 @@ export class LessonResolver {
 
   @Mutation(() => Lesson)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @HasRoles(Roles.ADMIN, Roles.TEACHER)
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async editLesson(
     @Context() context,
     @Args('lessonId') lessonId: string,
@@ -65,7 +76,7 @@ export class LessonResolver {
 
   @Mutation(() => DeleteResponse)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @HasRoles(Roles.ADMIN)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async deleteLesson(@Context() context, @Args('lessonId') lessonId: string) {
     return this.lessonService.deleteLesson(lessonId, context.req.user.role);
   }
