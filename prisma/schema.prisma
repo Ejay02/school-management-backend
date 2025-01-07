@@ -106,8 +106,6 @@ model Class {
   students      Student[]
   supervisorId  String?
   supervisor    Teacher?      @relation(fields: [supervisorId], references: [id] )
-  // gradeId       Int
-  // grade         Grade         @relation(fields: [gradeId], references: [id] )
   exams         Exam[]
   events        Event[]
   subjects      Subject[]   
@@ -250,10 +248,7 @@ model Announcement {
   content     String
   classId     String?
   class       Class?          @relation(fields: [classId], references: [id])
-  // teacherId   String?   
-  // teacher     Teacher?        @relation(fields: [teacherId], references: [id]) 
-  // adminId     String?   
-  // admin       Admin?          @relation(fields: [adminId], references: [id]) 
+  targetRoles Role[]    
   creatorId   String
   creatorRole Role 
   createdAt   DateTime        @default(now())

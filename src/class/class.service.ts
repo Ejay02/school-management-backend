@@ -52,6 +52,7 @@ export class ClassService {
               lessons: true,
             },
           },
+          announcements: true,
         },
       });
     } catch (error) {

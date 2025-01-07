@@ -11,19 +11,6 @@ import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 export class AnnouncementResolver {
   constructor(private announcementService: AnnouncementService) {}
 
-  @Query(() => [Announcement])
-  @HasRoles(
-    Roles.ADMIN,
-    Roles.PARENT,
-    Roles.TEACHER,
-    Roles.STUDENT,
-    Roles.SUPER_ADMIN,
-  )
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  async getAllAnnouncements() {
-    return this.announcementService.getAllAnnouncements();
-  }
-
   @Mutation(() => Announcement)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,5 +33,21 @@ export class AnnouncementResolver {
       classId,
       targetRoles,
     });
+  }
+
+  @Query(() => [Announcement])
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.PARENT,
+    Roles.TEACHER,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async getAllAnnouncements(@Context() context) {
+    return this.announcementService.getAllAnnouncements(
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 }

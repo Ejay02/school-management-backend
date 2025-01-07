@@ -1,6 +1,7 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 
 import { Class } from 'src/class/types/class.types';
+import { Roles } from 'src/shared/enum/role';
 
 @ObjectType()
 export class Announcement {
@@ -19,17 +20,8 @@ export class Announcement {
   @Field(() => Class, { nullable: true })
   class?: Class;
 
-  // @Field(() => Int, { nullable: true })
-  // teacherId?: string;
-
-  // @Field(() => Teacher, { nullable: true })
-  // teacher?: Teacher;
-
-  // @Field(() => Int, { nullable: true })
-  // adminId?: string;
-
-  // @Field(() => Admin, { nullable: true })
-  // admin?: Admin;
+  @Field(() => [Roles])
+  targetRoles: Roles[];
 
   @Field(() => String, { nullable: false })
   creatorId?: string;

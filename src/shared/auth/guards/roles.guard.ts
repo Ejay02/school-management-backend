@@ -32,23 +32,26 @@ export class RolesGuard implements CanActivate {
     if (user.role === Roles.SUPER_ADMIN) return true;
 
     // Check if this is an announcement-related operation
-    const operation = ctx.getInfo().operation.name.value;
-    if (operation.includes('announcement')) {
+    const operation = ctx.getInfo().operation?.name?.value;
+    if (operation && operation.includes('announcement')) {
       return this.handleAnnouncementAccess(user, ctx);
     }
 
-    switch (user.role) {
-      case Roles.ADMIN:
-        return this.handleAdminAccess(user, requiredRoles);
-      case Roles.TEACHER:
-        return this.handleTeacherAccess(user, ctx);
-      case Roles.PARENT:
-        return this.handleParentAccess(user, ctx);
-      case Roles.STUDENT:
-        return this.handleStudentAccess(user, ctx);
-      default:
-        return false;
+    if (requiredRoles.includes(user.role)) {
+      switch (user.role) {
+        case Roles.ADMIN:
+          return this.handleAdminAccess(user, requiredRoles);
+        case Roles.TEACHER:
+          return this.handleTeacherAccess(user, ctx);
+        case Roles.PARENT:
+          return this.handleParentAccess(user, ctx);
+        case Roles.STUDENT:
+          return this.handleStudentAccess(user, ctx);
+        default:
+          return false;
+      }
     }
+    return false;
   }
 
   private async handleAdminAccess(user: any, roles: Roles[]): Promise<boolean> {
