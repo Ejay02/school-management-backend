@@ -453,63 +453,65 @@ export class LessonService {
     userRole: Roles,
     editLessonInput: EditLessonInput,
   ) {
-    // First verify the lesson exists
-    const existingLesson = await this.prisma.lesson.findUnique({
-      where: { id: lessonId },
-      include: {
-        teacher: true,
-        subject: true,
-        class: true,
-      },
-    });
-
-    if (!existingLesson) {
-      throw new NotFoundException('Lesson not found');
-    }
-
-    // If user is a teacher, verify they are assigned to this lesson
-    if (userRole === Roles.TEACHER) {
-      const teacher = await this.prisma.teacher.findFirst({
-        where: { id: userId },
-        select: { id: true },
+    return await this.prisma.$transaction(async (tx) => {
+      // First verify the lesson exists
+      const existingLesson = await tx.lesson.findUnique({
+        where: { id: lessonId },
+        include: {
+          teacher: true,
+          subject: true,
+          class: true,
+        },
       });
 
-      if (!teacher) {
-        throw new ForbiddenException('Teacher not found');
+      if (!existingLesson) {
+        throw new NotFoundException('Lesson not found');
       }
 
-      if (existingLesson.teacher?.id !== teacher.id) {
-        throw new ForbiddenException('You can only edit your own lessons');
+      // If user is a teacher, verify they are assigned to this lesson
+      if (userRole === Roles.TEACHER) {
+        const teacher = await tx.teacher.findFirst({
+          where: { id: userId },
+          select: { id: true },
+        });
+
+        if (!teacher) {
+          throw new ForbiddenException('Teacher not found');
+        }
+
+        if (existingLesson.teacher?.id !== teacher.id) {
+          throw new ForbiddenException('You can only edit your own lessons');
+        }
       }
-    }
 
-    // Prepare edit data
-    const editData: any = {
-      name: editLessonInput.name,
-      day: editLessonInput.day,
-      startTime: editLessonInput.startTime,
-      endTime: editLessonInput.endTime,
-    };
-
-    // If admin is updating and provides a new teacher
-    if (userRole === Roles.ADMIN && editLessonInput.teacherId) {
-      editData.teacher = {
-        connect: { id: editLessonInput.teacherId },
+      // Prepare edit data
+      const editData: any = {
+        name: editLessonInput.name,
+        day: editLessonInput.day,
+        startTime: editLessonInput.startTime,
+        endTime: editLessonInput.endTime,
       };
-    }
 
-    // edit the lesson
-    return this.prisma.lesson.update({
-      where: { id: lessonId },
-      data: editData,
-      include: {
-        subject: true,
-        class: true,
-        teacher: true,
-        exams: true,
-        assignments: true,
-        attendances: true,
-      },
+      // If admin is updating and provides a new teacher
+      if (userRole === Roles.ADMIN && editLessonInput.teacherId) {
+        editData.teacher = {
+          connect: { id: editLessonInput.teacherId },
+        };
+      }
+
+      // edit the lesson
+      return tx.lesson.update({
+        where: { id: lessonId },
+        data: editData,
+        include: {
+          subject: true,
+          class: true,
+          teacher: true,
+          exams: true,
+          assignments: true,
+          attendances: true,
+        },
+      });
     });
   }
 
@@ -580,5 +582,3 @@ export class LessonService {
     }
   }
 }
-
-// TODO move delete and edit to transaction
