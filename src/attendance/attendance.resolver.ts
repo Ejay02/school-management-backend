@@ -3,6 +3,8 @@ import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { UseGuards } from '@nestjs/common';
+import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
+import { Roles } from 'src/shared/enum/role';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -10,12 +12,20 @@ export class AttendanceResolver {
   constructor(private attendanceService: AttendanceService) {}
 
   @Query()
-  async attendances(@Context() context) {
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.SUPER_ADMIN,
+    Roles.STUDENT,
+    Roles.PARENT,
+  )
+  async getAttendances(@Context() context) {
     const { userId, role } = context.req.user;
     return this.attendanceService.getAttendances(userId, role);
   }
 
   @Query()
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async attendanceByLesson(
     @Args('lessonId') lessonId: string,
     @Context() context,
@@ -25,6 +35,7 @@ export class AttendanceResolver {
   }
 
   @Mutation()
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async markAttendance(
     @Args('lessonId') lessonId: string,
     @Args('attendanceData')
@@ -41,6 +52,13 @@ export class AttendanceResolver {
   }
 
   @Query()
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.SUPER_ADMIN,
+    Roles.STUDENT,
+    Roles.PARENT,
+  )
   async attendanceStats(
     @Args('studentId') studentId: string,
     @Args('startDate') startDate: Date,
