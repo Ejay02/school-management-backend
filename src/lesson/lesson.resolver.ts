@@ -74,6 +74,24 @@ export class LessonResolver {
     );
   }
 
+  @Mutation(() => Lesson)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
+  async assignLessonsToClass(
+    @Args('classId') classId: string,
+    @Args('lessons', { type: () => [String] }) lessons: string[],
+  ) {
+    await this.lessonService.assignLessonsToClass(classId, lessons);
+  }
+
+  @Mutation(() => Lesson)
+  async assignLessonsToTeacher(
+    @Args('teacherId') teacherId: string,
+    @Args('lessons', { type: () => [String] }) lessons: string[],
+  ) {
+    await this.lessonService.assignLessonsToTeacher(teacherId, lessons);
+  }
+
   @Mutation(() => DeleteResponse)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)

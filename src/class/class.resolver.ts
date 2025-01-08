@@ -31,4 +31,12 @@ export class ClassResolver {
   async getClassById(@Args('id', { type: () => String }) id: string) {
     return this.classService.getClassById(id);
   }
+
+  @Mutation(() => Class)
+  async assignClassToTeacher(
+    @Args('classId') classId: string,
+    @Args('teacherId') teacherId: string,
+  ) {
+    await this.classService.assignClassToTeacher(classId, teacherId);
+  }
 }

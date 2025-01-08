@@ -515,6 +515,70 @@ export class LessonService {
     });
   }
 
+  public async assignLessonsToClass(classId: string, lessons: string[]) {
+    return this.prisma.$transaction(async (tx) => {
+      // Validate class existence
+      const classExists = await tx.class.findUnique({
+        where: { id: classId },
+      });
+
+      if (!classExists) {
+        throw new Error(`Class with ID ${classId} not found.`);
+      }
+
+      // Validate lesson existence
+      const existingLessons = await tx.lesson.findMany({
+        where: {
+          id: { in: lessons },
+        },
+      });
+
+      if (existingLessons.length !== lessons.length) {
+        throw new Error(`Some lessons do not exist.`);
+      }
+
+      // Update the class with the lessons
+      return tx.class.update({
+        where: { id: classId },
+        data: {
+          lessons: {
+            connect: lessons.map((lessonId) => ({ id: lessonId })),
+          },
+        },
+      });
+    });
+  }
+
+  public async assignLessonsToTeacher(teacherId: string, lessons: string[]) {
+    return this.prisma.$transaction(async (tx) => {
+      // Validate teacher existence
+      const teacherExists = await tx.teacher.findUnique({
+        where: { id: teacherId },
+      });
+
+      if (!teacherExists) {
+        throw new Error(`Teacher with ID ${teacherId} not found.`);
+      }
+
+      // Validate lesson existence
+      const existingLessons = await tx.lesson.findMany({
+        where: {
+          id: { in: lessons },
+        },
+      });
+
+      if (existingLessons.length !== lessons.length) {
+        throw new Error(`Some lessons do not exist.`);
+      }
+
+      // Assign teacherId to the specified lessons
+      await tx.lesson.updateMany({
+        where: { id: { in: lessons } },
+        data: { teacherId },
+      });
+    });
+  }
+
   async deleteLesson(lessonId: string, userRole: Roles) {
     try {
       // Use transaction for the entire operation

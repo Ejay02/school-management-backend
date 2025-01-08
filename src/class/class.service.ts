@@ -81,40 +81,6 @@ export class ClassService {
     });
   }
 
-  public async addLessonsToClass(classId: string, lessons: string[]) {
-    return this.prisma.$transaction(async (tx) => {
-      // Validate class existence
-      const classExists = await tx.class.findUnique({
-        where: { id: classId },
-      });
-
-      if (!classExists) {
-        throw new Error(`Class with ID ${classId} not found.`);
-      }
-
-      // Validate lesson existence
-      const existingLessons = await tx.lesson.findMany({
-        where: {
-          id: { in: lessons },
-        },
-      });
-
-      if (existingLessons.length !== lessons.length) {
-        throw new Error(`Some lessons do not exist.`);
-      }
-
-      // Update the class with the lessons
-      return tx.class.update({
-        where: { id: classId },
-        data: {
-          lessons: {
-            connect: lessons.map((lessonId) => ({ id: lessonId })),
-          },
-        },
-      });
-    });
-  }
-
   async getClassById(classId: string) {
     const classData = await this.prisma.class.findUnique({
       where: { id: classId },
@@ -140,6 +106,34 @@ export class ClassService {
 
     return classData;
   }
-}
 
-// TODO Assign teacher to class endpoint
+  public async assignClassToTeacher(classId: string, teacherId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // Validate class existence
+      const classExists = await tx.class.findUnique({
+        where: { id: classId },
+      });
+
+      if (!classExists) {
+        throw new Error(`Class with ID ${classId} not found.`);
+      }
+
+      // Validate teacher existence
+      const teacherExists = await tx.teacher.findUnique({
+        where: { id: teacherId },
+      });
+
+      if (!teacherExists) {
+        throw new Error(`Teacher with ID ${teacherId} not found.`);
+      }
+
+      // Assign teacher as the supervisor of the class
+      await tx.class.update({
+        where: { id: classId },
+        data: {
+          supervisorId: teacherId,
+        },
+      });
+    });
+  }
+}
