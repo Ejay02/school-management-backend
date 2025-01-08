@@ -514,49 +514,68 @@ export class LessonService {
   }
 
   async deleteLesson(lessonId: string, userRole: Roles) {
-    // Only admins can delete lessons
-    if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
-      throw new ForbiddenException('Only administrators can delete lessons');
-    }
-
-    // First verify the lesson exists
-    const existingLesson = await this.prisma.lesson.findUnique({
-      where: { id: lessonId },
-      include: {
-        exams: true,
-        assignments: true,
-        attendances: true,
-      },
-    });
-
-    if (!existingLesson) {
-      throw new NotFoundException('Lesson not found');
-    }
-
-    // Check if lesson has associated data
-    const hasAssociatedData =
-      existingLesson.exams.length > 0 ||
-      existingLesson.assignments.length > 0 ||
-      existingLesson.attendances.length > 0;
-
-    if (hasAssociatedData) {
-      throw new ForbiddenException(
-        'Cannot delete lesson with existing exams, assignments, or attendance records. ' +
-          'Please archive the lesson instead or contact system administrator for data cleanup.',
-      );
-    }
-
-    // Proceed with deletion
     try {
-      await this.prisma.lesson.delete({
-        where: { id: lessonId },
-      });
+      // Use transaction for the entire operation
+      return await this.prisma.$transaction(
+        async (tx) => {
+          // Only admins can delete lessons
+          if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
+            throw new ForbiddenException(
+              'Only administrators can delete lessons',
+            );
+          }
 
-      return {
-        success: true,
-        message: 'Lesson successfully deleted',
-      };
+          // First verify the lesson exists
+          const existingLesson = await tx.lesson.findUnique({
+            where: { id: lessonId },
+            include: {
+              exams: true,
+              assignments: true,
+              attendances: true,
+            },
+          });
+
+          if (!existingLesson) {
+            throw new NotFoundException('Lesson not found');
+          }
+
+          // Check if lesson has associated data
+          const hasAssociatedData =
+            existingLesson.exams.length > 0 ||
+            existingLesson.assignments.length > 0 ||
+            existingLesson.attendances.length > 0;
+
+          if (hasAssociatedData) {
+            throw new ForbiddenException(
+              'Cannot delete lesson with existing exams, assignments, or attendance records. ' +
+                'Please archive the lesson instead or contact system administrator for data cleanup.',
+            );
+          }
+
+          // Proceed with deletion
+
+          await tx.lesson.delete({
+            where: { id: lessonId },
+          });
+
+          return {
+            success: true,
+            message: 'Lesson successfully deleted',
+          };
+        },
+        {
+          // Transaction options
+          maxWait: 5000, // 5 seconds maximum wait time
+          timeout: 10000, // 10 seconds timeout
+        },
+      );
     } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       throw new InternalServerErrorException('Failed to delete lesson');
     }
   }
