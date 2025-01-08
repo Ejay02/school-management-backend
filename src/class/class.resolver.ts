@@ -9,30 +9,29 @@ import { Roles } from 'src/shared/enum/role';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ClassResolver {
   constructor(private classService: ClassService) {}
 
   @Query(() => [Class])
-  @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async getAllClasses() {
     return this.classService.getAllClasses();
   }
 
   @Mutation(() => Class)
-  @UseGuards(JwtAuthGuard)
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async createClass(@Args('input') input: CreateClassInput) {
     return this.classService.createClass(input);
   }
 
   @Query(() => Class)
-  @UseGuards(JwtAuthGuard)
   async getClassById(@Args('id', { type: () => String }) id: string) {
     return this.classService.getClassById(id);
   }
 
   @Mutation(() => Class)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.TEACHER)
   async assignClassToTeacher(
     @Args('classId') classId: string,
     @Args('teacherId') teacherId: string,

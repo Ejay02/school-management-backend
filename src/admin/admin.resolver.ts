@@ -15,12 +15,12 @@ import { EditAdminInput } from './input/edit.admin.input';
 import { EditAdminResponse } from './response/edit.admin.response';
 
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminResolver {
   constructor(private adminService: AdminService) {}
 
   @Query(() => [Teacher])
   @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllTeachers(@Context() context) {
     const userId = context.req.user.userId;
 
@@ -29,7 +29,6 @@ export class AdminResolver {
 
   @Query(() => [Admin])
   @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAdmins(@Context() context) {
     const userId = context.req.user.userId;
     return this.adminService.getAllAdmins(userId);
@@ -37,35 +36,30 @@ export class AdminResolver {
 
   @Query(() => [Attendance])
   @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAttendance(@Context() context) {
     return this.adminService.getAllAttendance(context.req.user.userId);
   }
 
   @Query(() => [Event])
   @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllEvents(@Context() context) {
     return this.adminService.getAllEvents(context.req.user.userId);
   }
 
   @Query(() => [Exam])
   @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllExams(@Context() context) {
     return this.adminService.getAllExams(context.req.user.userId);
   }
 
   @Query(() => [Grade])
   @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllGrades(@Context() context) {
     return this.adminService.getAllGrades(context.req.user.userId);
   }
 
   @Mutation(() => Admin)
   @HasRoles(Roles.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async assignAdminRole(
     @Context() context,
     @Args('targetId') targetId: string,
@@ -87,7 +81,6 @@ export class AdminResolver {
 
   @Mutation(() => Boolean)
   @HasRoles(Roles.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async deleteUser(
     @Context() context,
     @Args('targetId') targetId: string,

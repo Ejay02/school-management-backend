@@ -9,11 +9,11 @@ import { Teacher } from './types/teacher.types';
 // import { PublicTeacherResponse } from './types/public.teacher.types';
 
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TeacherResolver {
   constructor(private teacherService: TeacherService) {}
 
   @Query(() => Teacher)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT, Roles.STUDENT)
   async getTeacherById(
     @Context() context,
@@ -30,7 +30,7 @@ export class TeacherResolver {
 
   // @Query()
   // @HasRoles(Roles.TEACHER)
-  // @UseGuards(JwtAuthGuard, RolesGuard)
+
   // async getStudentGrades(@Args('studentId') studentId: string) {
   //   // Only assigned teachers can access
   // }

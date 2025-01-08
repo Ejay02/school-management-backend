@@ -11,11 +11,11 @@ import { EditLessonInput } from './input/edit.lesson.input';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class LessonResolver {
   constructor(private lessonService: LessonService) {}
 
   @Query(() => [Lesson])
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(
     Roles.ADMIN,
     Roles.TEACHER,
@@ -37,7 +37,6 @@ export class LessonResolver {
   }
 
   @Mutation(() => Lesson)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.ADMIN, Roles.TEACHER)
   async createLesson(
     @Context() context,
@@ -57,7 +56,6 @@ export class LessonResolver {
   }
 
   @Mutation(() => Lesson)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async editLesson(
     @Context() context,
@@ -75,7 +73,6 @@ export class LessonResolver {
   }
 
   @Mutation(() => Lesson)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async assignLessonsToClass(
     @Args('classId') classId: string,
@@ -85,6 +82,7 @@ export class LessonResolver {
   }
 
   @Mutation(() => Lesson)
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async assignLessonsToTeacher(
     @Args('teacherId') teacherId: string,
     @Args('lessons', { type: () => [String] }) lessons: string[],
@@ -93,7 +91,6 @@ export class LessonResolver {
   }
 
   @Mutation(() => DeleteResponse)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async deleteLesson(@Context() context, @Args('lessonId') lessonId: string) {
     return this.lessonService.deleteLesson(lessonId, context.req.user.role);

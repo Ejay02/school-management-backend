@@ -8,12 +8,12 @@ import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AnnouncementResolver {
   constructor(private announcementService: AnnouncementService) {}
 
   @Mutation(() => Announcement)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async createAnnouncement(
     @Args('title') title: string,
     @Args('content') content: string,
@@ -43,7 +43,6 @@ export class AnnouncementResolver {
     Roles.STUDENT,
     Roles.SUPER_ADMIN,
   )
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAnnouncements(@Context() context) {
     return this.announcementService.getAllAnnouncements(
       context.req.user.userId,
@@ -52,7 +51,6 @@ export class AnnouncementResolver {
   }
 
   @Query(() => Announcement)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(
     Roles.ADMIN,
     Roles.PARENT,
@@ -72,7 +70,6 @@ export class AnnouncementResolver {
   }
 
   @Mutation(() => Announcement)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async editAnnouncement(
     @Context() context,

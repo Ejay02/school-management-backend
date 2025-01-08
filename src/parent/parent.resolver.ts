@@ -8,6 +8,7 @@ import { Parent } from './types/parent.types';
 import { Roles } from 'src/shared/enum/role';
 
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ParentResolver {
   constructor(private parentService: ParentService) {}
 
@@ -19,7 +20,6 @@ export class ParentResolver {
     Roles.STUDENT,
     Roles.STUDENT,
   )
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllParents(@Context() context) {
     return this.parentService.getAllParents(
       context.req.user.userId,
@@ -35,7 +35,6 @@ export class ParentResolver {
     Roles.STUDENT,
     Roles.STUDENT,
   )
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getParentById(@Args('parentId') parentId: string) {
     return this.parentService.getParentById(parentId);
   }

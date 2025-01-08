@@ -8,12 +8,13 @@ import { Roles } from 'src/shared/enum/role';
 import { AssignSubjectsInput } from './input/assign.subject.input';
 import { AssignSubjectsResponse } from './response/assign.subject.response';
 import { Subject } from './types/subject.types';
+
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class SubjectResolver {
   constructor(private subjectService: SubjectService) {}
 
   @Mutation(() => AssignSubjectsResponse)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN)
   async assignSubjectsToClass(
     @Args('input') input: AssignSubjectsInput,
@@ -28,7 +29,6 @@ export class SubjectResolver {
 
   @Query(() => [Subject])
   // @HasRoles(Roles.ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllSubjects() {
     return this.subjectService.getAllSubjects();
   }

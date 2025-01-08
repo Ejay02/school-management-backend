@@ -10,6 +10,7 @@ import { CreateAssignmentInput } from './input/create.assignment.input';
 import { EditAssignmentInput } from './input/edit.assignment.input';
 
 @Resolver()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AssignmentResolver {
   constructor(private assignmentService: AssignmentService) {}
 
@@ -22,7 +23,6 @@ export class AssignmentResolver {
     Roles.ADMIN,
     Roles.SUPER_ADMIN,
   )
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllAssignments(@Context() context) {
     return this.assignmentService.getAllAssignments(
       context.req.user.userId,
@@ -38,13 +38,11 @@ export class AssignmentResolver {
     Roles.STUDENT,
     Roles.SUPER_ADMIN,
   )
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async getAssignmentById(@Args('assignmentId') assignmentId: string) {
     return this.assignmentService.getAssignmentById(assignmentId);
   }
 
   @Mutation(() => Assignment)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.TEACHER)
   async createAssignment(
     @Context() context,
@@ -57,7 +55,6 @@ export class AssignmentResolver {
   }
 
   @Mutation(() => Assignment)
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.TEACHER)
   async editAssignment(
     @Context() context,
