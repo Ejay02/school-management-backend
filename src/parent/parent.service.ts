@@ -17,71 +17,79 @@ export class ParentService {
 
   async getAllParents(userId: string, userRole: Roles) {
     try {
-      // Check the role of the user
-      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-        // Admin/Super Admin can view all parents
-        return await this.prisma.parent.findMany({
+      const baseInclude = {
+        students: {
           include: {
-            students: {
-              include: {
-                class: true,
-                grade: true,
-              },
-            },
+            class: true,
+            grade: true,
           },
-        });
-      }
+        },
+      };
 
-      if (userRole === 'TEACHER') {
-        // Teacher can view parents of students they are associated with
-        return await this.prisma.parent.findMany({
-          where: {
-            students: {
-              some: {
-                classId: userId, // Assuming the teacher is assigned to a class
-              },
-            },
-          },
-          include: {
-            students: {
-              include: {
-                class: true,
-                grade: true,
-              },
-            },
-          },
-        });
-      }
+      switch (userRole) {
+        case Roles.ADMIN:
+        case Roles.SUPER_ADMIN:
+          // Admins can see all parents
+          return await this.prisma.parent.findMany({
+            include: baseInclude,
+          });
 
-      if (userRole === 'STUDENT') {
-        // Student can only view their own parent's details
-        return await this.prisma.parent.findMany({
-          where: {
-            students: {
-              some: {
-                id: userId, // Assuming the student has a `studentId`
-              },
+        case Roles.TEACHER:
+          // Teachers can only see parents of students in their classes
+          const teacherClasses = await this.prisma.class.findMany({
+            where: {
+              id: userId,
             },
-          },
-          include: {
-            students: {
-              include: {
-                class: true,
-                grade: true,
-              },
+            select: {
+              id: true,
             },
-          },
-        });
-      }
+          });
 
-      // If the role doesn't match any of the above, deny access
-      throw new ForbiddenException('Access denied');
+          const classIds = teacherClasses.map((c) => c.id);
+
+          return await this.prisma.parent.findMany({
+            where: {
+              students: {
+                some: {
+                  classId: {
+                    in: classIds,
+                  },
+                },
+              },
+            },
+            include: baseInclude,
+          });
+
+        case Roles.STUDENT:
+          // Students can only see their own parents
+          const student = await this.prisma.student.findUnique({
+            where: { id: userId },
+            include: {
+              parent: {
+                include: baseInclude,
+              },
+            },
+          });
+
+          return student?.parent || [];
+
+        case Roles.PARENT:
+          // Parents can only see their own profile
+          return await this.prisma.parent.findMany({
+            where: {
+              id: userId,
+            },
+            include: baseInclude,
+          });
+
+        default:
+          throw new ForbiddenException('Unauthorized access');
+      }
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch parents');
     }
   }
-
   async getParentById(parentId: string) {
     try {
       const parent = await this.prisma.parent.findUnique({
