@@ -22,6 +22,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './shared/auth/auth.module';
 import { SubmissionModule } from './submission/submission.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { SubmissionModule } from './submission/submission.module';
     PrismaModule,
     AuthModule,
     SubmissionModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],

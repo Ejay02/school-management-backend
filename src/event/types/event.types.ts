@@ -1,6 +1,8 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
-import { Admin } from 'src/admin/types/admin.types';
+import { Field, ObjectType } from '@nestjs/graphql';
 import { Class } from 'src/class/types/class.types';
+import { EventStatus } from '../enum/eventStatus';
+import { EventVisibility } from '@prisma/client';
+import { Roles } from 'src/shared/enum/role';
 
 @ObjectType()
 export class Event {
@@ -13,23 +15,29 @@ export class Event {
   @Field()
   description: string;
 
-  @Field(() => Int, { nullable: true })
+  @Field(() => String, { nullable: true })
   classId?: string;
 
   @Field(() => Class, { nullable: true })
   class?: Class;
 
   @Field(() => String)
-  adminId: string;
-
-  @Field(() => Admin)
-  admin: Admin;
+  creatorId: string;
 
   @Field()
   type: string; // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
 
   @Field({ nullable: true })
   location?: string;
+
+  @Field(() => EventStatus)
+  status: EventStatus;
+
+  @Field(() => EventVisibility)
+  visibility: EventVisibility;
+
+  @Field(() => [Roles])
+  targetRoles: Roles[];
 
   @Field()
   startTime: Date;

@@ -15,7 +15,7 @@ model Admin {
   email         String?       
   password      String
   img           String?
-  events        Event[]
+  // events        Event[]
   // announcements Announcement[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -236,10 +236,12 @@ model Event {
   description String      
   classId     String?      
   class       Class?          @relation(fields: [classId], references: [id])
-  adminId     String         
-  admin       Admin           @relation(fields: [adminId], references: [id]) // Add admin relation
+  creatorId   String         
   type        String       // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
   location    String?
+  targetRoles Role[]
+  visibility  EventVisibility
+  status      EventStatus     @default(SCHEDULED)
   startTime   DateTime      
   endTime     DateTime      
   createdAt   DateTime        @default(now())
@@ -288,4 +290,15 @@ enum Role {
   TEACHER
   PARENT 
   STUDENT
+}
+
+enum EventStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+enum EventVisibility {
+  PUBLIC 
+  PRIVATE 
 }

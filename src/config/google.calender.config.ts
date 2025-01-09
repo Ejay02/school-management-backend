@@ -1,0 +1,140 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class GoogleCalendarService {
+  private oauth2Client: OAuth2Client;
+  private calendar;
+  private readonly logger = new Logger(GoogleCalendarService.name);
+
+  constructor(private configService: ConfigService) {
+    // Initialize OAuth2 client with credentials from environment variables
+    this.oauth2Client = new google.auth.OAuth2(
+      this.configService.get('GOOGLE_CLIENT_ID'),
+      this.configService.get('GOOGLE_CLIENT_SECRET'),
+      this.configService.get('GOOGLE_REDIRECT_URL'),
+    );
+
+    // Set credentials using refresh token
+    this.oauth2Client.setCredentials({
+      refresh_token: this.configService.get('GOOGLE_REFRESH_TOKEN'),
+    });
+
+    // Initialize calendar with authenticated client
+    this.calendar = google.calendar({
+      version: 'v3',
+      auth: this.oauth2Client,
+    });
+  }
+
+  async createCalendarEvent(event: {
+    title: string;
+    description: string;
+    startTime: Date | string;
+    endTime: Date | string;
+    location?: string;
+    attendees?: string[];
+  }) {
+    try {
+      const calendarEvent = {
+        summary: event.title,
+        description: event.description,
+        start: {
+          dateTime: new Date(event.startTime).toISOString(),
+          timeZone: 'UTC',
+        },
+        end: {
+          dateTime: new Date(event.endTime).toISOString(),
+          timeZone: 'UTC',
+        },
+        location: event.location,
+        attendees: event.attendees?.map((email) => ({ email })),
+      };
+
+      const response = await this.calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: calendarEvent,
+        sendUpdates: 'all', // Sends email updates to attendees
+      });
+
+      this.logger.log(`Calendar event created: ${response.data.id}`);
+      return response.data;
+    } catch (error) {
+      this.logger.error('Failed to create calendar event:', error);
+      throw new Error(`Failed to create calendar event: ${error.message}`);
+    }
+  }
+
+  async updateCalendarEvent(
+    eventId: string,
+    event: {
+      title: string;
+      description: string;
+      startTime: Date | string;
+      endTime: Date | string;
+      location?: string;
+      attendees?: string[];
+    },
+  ) {
+    try {
+      const calendarEvent = {
+        summary: event.title,
+        description: event.description,
+        start: {
+          dateTime: new Date(event.startTime).toISOString(),
+          timeZone: 'UTC',
+        },
+        end: {
+          dateTime: new Date(event.endTime).toISOString(),
+          timeZone: 'UTC',
+        },
+        location: event.location,
+        attendees: event.attendees?.map((email) => ({ email })),
+      };
+
+      const response = await this.calendar.events.update({
+        calendarId: 'primary',
+        eventId: eventId,
+        requestBody: calendarEvent,
+        sendUpdates: 'all',
+      });
+
+      this.logger.log(`Calendar event updated: ${eventId}`);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to update calendar event ${eventId}:`, error);
+      throw new Error(`Failed to update calendar event: ${error.message}`);
+    }
+  }
+
+  async deleteCalendarEvent(eventId: string): Promise<void> {
+    try {
+      await this.calendar.events.delete({
+        calendarId: 'primary',
+        eventId: eventId,
+        sendUpdates: 'all',
+      });
+
+      this.logger.log(`Calendar event deleted: ${eventId}`);
+    } catch (error) {
+      this.logger.error(`Failed to delete calendar event ${eventId}:`, error);
+      throw new Error(`Failed to delete calendar event: ${error.message}`);
+    }
+  }
+
+  async getCalendarEvent(eventId: string) {
+    try {
+      const response = await this.calendar.events.get({
+        calendarId: 'primary',
+        eventId: eventId,
+      });
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to get calendar event ${eventId}:`, error);
+      throw new Error(`Failed to get calendar event: ${error.message}`);
+    }
+  }
+}
