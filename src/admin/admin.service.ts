@@ -86,21 +86,6 @@ export class AdminService {
     }
   }
 
-  async getAllEvents(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-      return await this.prisma.event.findMany({
-        include: {
-          admin: true,
-          class: true,
-        },
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch events');
-    }
-  }
-
   async getAllExams(userId: string) {
     try {
       await this.verifyAdmin(userId);
@@ -282,7 +267,7 @@ export class AdminService {
       if (teacher) {
         const teacherId = teacher.id;
 
-        // await tx.announcement.deleteMany({ where: { teacherId } });
+        // await tx.announcement.deleteMany({ where: { creatorId } });
         await tx.assignment.deleteMany({ where: { teacherId } });
         await tx.exam.deleteMany({ where: { teacherId } });
         await tx.lesson.deleteMany({ where: { teacherId } });
@@ -325,10 +310,10 @@ export class AdminService {
       }
 
       if (admin) {
-        const adminId = admin.id;
+        const creatorId = admin.id;
 
         // await tx.announcement.deleteMany({ where: { adminId } });
-        await tx.event.deleteMany({ where: { adminId } });
+        await tx.event.deleteMany({ where: { creatorId } });
         await tx.admin.delete({ where: { id: targetId } });
         return true;
       }

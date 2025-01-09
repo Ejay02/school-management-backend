@@ -7,7 +7,7 @@ import { Roles } from 'src/shared/enum/role';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { CreateEventInput } from './input/create.event.input';
 
-@Resolver()
+@Resolver(() => Event)
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EventResolver {
   constructor(private eventService: EventService) {}
@@ -17,11 +17,6 @@ export class EventResolver {
     const { userId, role } = context.req.user;
     return this.eventService.getEvents(filter, userId, role);
   }
-
-  // @Query()
-  // async event(@Args('id') id: string) {
-  //   return this.eventService.getEvent(id);
-  // }
 
   @Mutation()
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)

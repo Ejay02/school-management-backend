@@ -5,13 +5,15 @@ import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { UseGuards } from '@nestjs/common';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Roles } from 'src/shared/enum/role';
+import { Attendance } from './types/attendance.types';
+import { MarkAttendanceInput } from './input/attendance.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AttendanceResolver {
   constructor(private attendanceService: AttendanceService) {}
 
-  @Query()
+  @Query(() => Attendance)
   @HasRoles(
     Roles.ADMIN,
     Roles.TEACHER,
@@ -24,7 +26,7 @@ export class AttendanceResolver {
     return this.attendanceService.getAttendances(userId, role);
   }
 
-  @Query()
+  @Query(() => Attendance)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async attendanceByLesson(
     @Args('lessonId') lessonId: string,
@@ -34,12 +36,12 @@ export class AttendanceResolver {
     return this.attendanceService.getAttendanceByLesson(lessonId, userId, role);
   }
 
-  @Mutation()
+  @Mutation(() => [Attendance])
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async markAttendance(
     @Args('lessonId') lessonId: string,
-    @Args('attendanceData')
-    attendanceData: { studentId: string; present: boolean; date: Date }[],
+    @Args('attendanceData', { type: () => [MarkAttendanceInput] })
+    attendanceData: MarkAttendanceInput[],
     @Context() context,
   ) {
     const { userId, role } = context.req.user;
@@ -51,7 +53,7 @@ export class AttendanceResolver {
     );
   }
 
-  @Query()
+  @Query(() => Attendance)
   @HasRoles(
     Roles.ADMIN,
     Roles.TEACHER,

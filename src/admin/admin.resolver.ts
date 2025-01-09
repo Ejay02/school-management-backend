@@ -10,7 +10,6 @@ import { Grade } from 'src/grade/types/grade.types';
 import { Attendance } from 'src/attendance/types/attendance.types';
 import { Exam } from 'src/exam/types/exam.types';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { Event } from 'src/event/types/event.types';
 import { EditAdminInput } from './input/edit.admin.input';
 import { EditAdminResponse } from './response/edit.admin.response';
 
@@ -38,12 +37,6 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN)
   async getAllAttendance(@Context() context) {
     return this.adminService.getAllAttendance(context.req.user.userId);
-  }
-
-  @Query(() => [Event])
-  @HasRoles(Roles.ADMIN)
-  async getAllEvents(@Context() context) {
-    return this.adminService.getAllEvents(context.req.user.userId);
   }
 
   @Query(() => [Exam])

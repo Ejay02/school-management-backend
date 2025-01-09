@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
+import { MarkAttendanceInput } from './input/attendance.input';
 
 @Injectable()
 export class AttendanceService {
@@ -137,7 +138,7 @@ export class AttendanceService {
   // Mark attendance for students
   async markAttendance(
     lessonId: string,
-    attendanceData: { studentId: string; present: boolean; date: Date }[],
+    attendanceData: MarkAttendanceInput[],
     userId: string,
     userRole: Roles,
   ) {
