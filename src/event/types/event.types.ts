@@ -1,8 +1,9 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 import { Class } from 'src/class/types/class.types';
 import { EventStatus } from '../enum/eventStatus';
-import { EventVisibility } from '@prisma/client';
+
 import { Roles } from 'src/shared/enum/role';
+import { EventVisibility } from '../enum/eventVisibility';
 
 @ObjectType()
 export class Event {

@@ -8,6 +8,7 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { CreateEventInput } from './input/create.event.input';
 import { EventFilter } from './interface/event.filter';
 import { EditEventInput } from './input/edit.event.input';
+import { Event } from './types/event.types';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
