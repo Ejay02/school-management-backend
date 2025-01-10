@@ -1,19 +1,14 @@
 import { InputType, Field } from '@nestjs/graphql';
-
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { EventVisibility } from '../enum/eventVisibility';
 import { Roles } from 'src/shared/enum/role';
+import { EventStatus } from '../enum/eventStatus';
 
 @InputType()
 export class CreateEventInput {
-  @Field()
-  @IsString()
-  @IsNotEmpty()
+  @Field(() => String)
   title: string;
 
-  @Field()
-  @IsString()
-  @IsNotEmpty()
+  @Field(() => String)
   description: string;
 
   @Field(() => Date)
@@ -22,22 +17,18 @@ export class CreateEventInput {
   @Field(() => Date)
   endTime: Date;
 
-  @Field()
-  @IsString()
-  @IsNotEmpty()
-  location: string;
+  @Field(() => String, { nullable: true })
+  location?: string;
 
-  @Field()
-  @IsString()
-  @IsNotEmpty()
-  @IsEnum(EventVisibility)
+  @Field(() => EventStatus)
+  status: EventStatus;
+
+  @Field(() => EventVisibility)
   visibility: EventVisibility;
 
   @Field(() => [Roles])
-  @IsEnum(Roles)
   targetRoles: Roles[];
 
-  @Field()
-  @IsOptional()
+  @Field(() => String, { nullable: true })
   classId?: string;
 }

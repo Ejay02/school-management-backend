@@ -9,25 +9,25 @@ export class Event {
   @Field(() => String)
   id: string;
 
-  @Field()
+  @Field(() => String)
   title: string;
 
-  @Field()
+  @Field(() => String)
   description: string;
 
   @Field(() => String, { nullable: true })
   classId?: string;
 
-  @Field(() => Class, { nullable: true })
+  @Field(() => String)
   class?: Class;
 
   @Field(() => String)
   creatorId: string;
 
-  @Field()
+  @Field(() => String)
   type: string; // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   location?: string;
 
   @Field(() => EventStatus)

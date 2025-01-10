@@ -105,7 +105,10 @@ export class EventService {
             }),
             status: 'SCHEDULED',
             visibility,
-            targetRoles,
+            // targetRoles,
+            targetRoles: {
+              set: data.targetRoles || [], // Ensure this sets the targetRoles correctly
+            },
           },
         });
 
