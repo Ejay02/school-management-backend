@@ -6,6 +6,7 @@ import { UseGuards } from '@nestjs/common';
 import { Roles } from 'src/shared/enum/role';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -43,10 +44,14 @@ export class AnnouncementResolver {
     Roles.STUDENT,
     Roles.SUPER_ADMIN,
   )
-  async getAllAnnouncements(@Context() context) {
+  async getAllAnnouncements(
+    @Context() context,
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
     return this.announcementService.getAllAnnouncements(
       context.req.user.userId,
       context.req.user.role,
+      pagination || {},
     );
   }
 

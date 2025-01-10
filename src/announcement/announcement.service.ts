@@ -8,6 +8,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 import { AnnouncementGateway } from './gateway/announcement.gateway';
 import { Roles } from 'src/shared/enum/role';
+import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 
 @Injectable()
 export class AnnouncementService {
@@ -61,115 +63,104 @@ export class AnnouncementService {
     return announcement; // The transaction will be committed, and the announcement is returned
   }
 
-  async getAllAnnouncements(userId: string, role: Roles) {
+  async getAllAnnouncements(
+    userId: string,
+    role: Roles,
+    params: PaginationParams,
+  ) {
     try {
-      // If the user is a super admin or admin, fetch all announcements
-      if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
-        return await this.prisma.announcement.findMany({
-          include: {
-            class: true,
-          },
-        });
-      }
+      const baseQuery: any = {
+        include: {
+          class: true,
+        },
+      };
 
-      // If the user is a teacher
-      if (role === Roles.TEACHER) {
-        // Get all classes where the teacher has lessons
+      // Build the where clause based on role
+      if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
+        // No additional where clause needed for admins
+      } else if (role === Roles.TEACHER) {
         const teacherClassIds = await this.prisma.lesson.findMany({
           where: { teacherId: userId },
           select: { classId: true },
         });
 
-        return await this.prisma.announcement.findMany({
-          where: {
-            OR: [
-              {
-                classId: {
-                  in: teacherClassIds.map((lesson) => lesson.classId),
-                },
+        baseQuery.where = {
+          OR: [
+            {
+              classId: {
+                in: teacherClassIds.map((lesson) => lesson.classId),
               },
-              { creatorId: userId }, // Announcements created by the teacher
-              {
-                AND: [
-                  { targetRoles: { hasSome: [Roles.TEACHER] } },
-                  { creatorRole: { in: [Roles.ADMIN, Roles.SUPER_ADMIN] } },
-                ],
-              }, // Announcements targeted at teachers by admins
-            ],
-          },
-          include: {
-            class: true,
-          },
-        });
-      }
-
-      // If the user is a student
-      if (role === Roles.STUDENT) {
-        return await this.prisma.announcement.findMany({
-          where: {
-            OR: [
-              { classId: userId }, // Announcements for student's class
-              {
-                AND: [
-                  { targetRoles: { hasSome: [Roles.STUDENT] } },
-                  {
-                    creatorRole: {
-                      in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
-                    },
+            },
+            { creatorId: userId },
+            {
+              AND: [
+                { targetRoles: { hasSome: [Roles.TEACHER] } },
+                { creatorRole: { in: [Roles.ADMIN, Roles.SUPER_ADMIN] } },
+              ],
+            },
+          ],
+        };
+      } else if (role === Roles.STUDENT) {
+        baseQuery.where = {
+          OR: [
+            { classId: userId },
+            {
+              AND: [
+                { targetRoles: { hasSome: [Roles.STUDENT] } },
+                {
+                  creatorRole: {
+                    in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
                   },
-                ],
-              }, // Announcements targeted at all students
-            ],
-          },
-          include: {
-            class: true,
-          },
-        });
-      }
-
-      // If the user is a parent
-      if (role === Roles.PARENT) {
-        // Get all classes where the parent has children
+                },
+              ],
+            },
+          ],
+        };
+      } else if (role === Roles.PARENT) {
         const childrenClasses = await this.prisma.student.findMany({
           where: { parentId: userId },
           select: { classId: true },
         });
 
-        return await this.prisma.announcement.findMany({
-          where: {
-            OR: [
-              {
-                classId: {
-                  in: childrenClasses.map((student) => student.classId),
-                },
+        baseQuery.where = {
+          OR: [
+            {
+              classId: {
+                in: childrenClasses.map((student) => student.classId),
               },
-              {
-                AND: [
-                  { targetRoles: { hasSome: [Roles.PARENT] } },
-                  {
-                    creatorRole: {
-                      in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
-                    },
+            },
+            {
+              AND: [
+                { targetRoles: { hasSome: [Roles.PARENT] } },
+                {
+                  creatorRole: {
+                    in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
                   },
-                ],
-              }, // Announcements targeted at all parents
-            ],
-          },
-          include: {
-            class: true,
-          },
-        });
+                },
+              ],
+            },
+          ],
+        };
+      } else {
+        throw new ForbiddenException(
+          'You do not have permission to view announcements',
+        );
       }
 
-      throw new ForbiddenException(
-        'You do not have permission to view announcements',
+      // Define searchable fields for announcements
+      const searchFields = ['title', 'content'];
+
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.announcement,
+        baseQuery,
+        params,
+        searchFields,
       );
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch announcements');
     }
   }
-
   async getAnnouncementById(
     userId: string,
     role: Roles,

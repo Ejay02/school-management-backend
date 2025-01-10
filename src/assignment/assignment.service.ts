@@ -9,10 +9,15 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateAssignmentInput } from './input/create.assignment.input';
 import { EditAssignmentInput } from './input/edit.assignment.input';
 import { Roles } from 'src/shared/enum/role';
+import { Server } from 'socket.io';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 
 @Injectable()
+@WebSocketGateway()
 export class AssignmentService {
   constructor(private prisma: PrismaService) {}
+  @WebSocketServer()
+  private readonly server: Server;
 
   async getAllAssignments(userId: string, role: Roles) {
     try {
@@ -182,6 +187,11 @@ export class AssignmentService {
             `Assignment with this title: ${input.title} already exists`,
           );
         }
+
+        this.server.emit('createAssignment', {
+          message: 'A new assignment has been created!',
+          // assignment: newAssignment,
+        });
 
         return await tx.assignment.create({
           data: {
