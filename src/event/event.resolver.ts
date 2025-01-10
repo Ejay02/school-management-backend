@@ -6,21 +6,25 @@ import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { Roles } from 'src/shared/enum/role';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { CreateEventInput } from './input/create.event.input';
+import { EventFilter } from './interface/event.filter';
+import { EditEventInput } from './input/edit.event.input';
 
-@Resolver(() => Event)
+@Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EventResolver {
   constructor(private eventService: EventService) {}
 
-  @Query()
-  async getEvents(@Args('filter') filter: any, @Context() context) {
-    const { userId, role } = context.req.user;
-    return this.eventService.getEvents(filter, userId, role);
+  @Query(() => Event)
+  async getEvents(@Args('filter') filter: EventFilter, @Context() context) {
+    return this.eventService.getEvents(
+      filter,
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 
-  @Mutation()
+  @Mutation(() => Event)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  @UseGuards(RolesGuard)
   async createEvent(@Args('data') data: CreateEventInput, @Context() context) {
     return this.eventService.createEvent(
       data,
@@ -29,16 +33,18 @@ export class EventResolver {
     );
   }
 
-  @Mutation()
+  @Mutation(() => Event)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  @UseGuards(RolesGuard)
-  async updateEvent(@Args('input') input: any, @Context() context) {
-    return this.eventService.updateEvent(input.id, input, context.req.user.id);
+  async updateEvent(
+    @Args('eventId') eventId: string,
+    @Args('input') input: EditEventInput,
+    @Context() context,
+  ) {
+    return this.eventService.updateEvent(eventId, input, context.req.user.id);
   }
 
-  @Mutation()
+  @Mutation(() => Event)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  @UseGuards(RolesGuard)
   async cancelEvent(
     @Args('id') id: string,
     @Args('reason') reason: string,

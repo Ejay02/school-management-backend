@@ -16,8 +16,10 @@ export class CreateEventInput {
   @IsNotEmpty()
   description: string;
 
+  @Field(() => Date)
   startTime: Date;
 
+  @Field(() => Date)
   endTime: Date;
 
   @Field()
@@ -35,6 +37,7 @@ export class CreateEventInput {
   @IsEnum(Roles)
   targetRoles: Roles[];
 
+  @Field()
   @IsOptional()
   classId?: string;
 }

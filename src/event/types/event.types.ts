@@ -39,15 +39,15 @@ export class Event {
   @Field(() => [Roles])
   targetRoles: Roles[];
 
-  @Field()
+  @Field(() => Date)
   startTime: Date;
 
-  @Field()
+  @Field(() => Date)
   endTime: Date;
 
-  @Field()
+  @Field(() => Date)
   createdAt: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt: Date;
 }
