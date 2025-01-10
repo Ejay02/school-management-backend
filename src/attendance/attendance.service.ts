@@ -6,9 +6,15 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
 import { MarkAttendanceInput } from './input/attendance.input';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
 
 @Injectable()
+@WebSocketGateway()
 export class AttendanceService {
+  @WebSocketServer()
+  private readonly server: Server;
+
   constructor(private prisma: PrismaService) {}
 
   async getAttendances(userId: string, userRole: Roles) {
@@ -182,6 +188,12 @@ export class AttendanceService {
         });
       }),
     );
+
+    // Emit socket event to notify clients
+    this.server.emit('markAttendance', {
+      message: 'Attendance has been marked!',
+      attendance: attendanceRecords,
+    });
 
     return attendanceRecords;
   }

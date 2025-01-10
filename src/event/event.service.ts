@@ -366,6 +366,12 @@ export class EventService {
           ),
         ]);
 
+        // Emit socket event to notify clients
+        this.server.emit('eventUpdated', {
+          message: 'An event has been updated!',
+          event: cancelledEvent,
+        });
+
         return cancelledEvent;
       });
     } catch (error) {
@@ -407,6 +413,10 @@ export class EventService {
 
       await prisma.event.delete({
         where: { id: eventId },
+      });
+
+      this.server.emit('deleteEvent', {
+        message: 'An event has been deleted!',
       });
 
       return true;
