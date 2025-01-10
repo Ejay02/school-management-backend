@@ -41,7 +41,11 @@ export class EventResolver {
     @Args('input') input: EditEventInput,
     @Context() context,
   ) {
-    return this.eventService.updateEvent(eventId, input, context.req.user.id);
+    return this.eventService.updateEvent(
+      eventId,
+      input,
+      context.req.user.userId,
+    );
   }
 
   @Mutation(() => Event)
@@ -51,6 +55,15 @@ export class EventResolver {
     @Args('reason') reason: string,
     @Context() context,
   ) {
-    return this.eventService.cancelEvent(id, reason, context.req.user.id);
+    return this.eventService.cancelEvent(id, reason, context.req.user.userId);
+  }
+
+  @Mutation(() => Boolean)
+  async deleteEvent(@Args('eventId') eventId: string, @Context() context) {
+    return this.eventService.deleteEvent(
+      eventId,
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 }

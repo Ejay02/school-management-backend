@@ -11,9 +11,15 @@ import { GoogleCalendarService } from 'src/config/google.calender.config';
 import { EventFilter } from './interface/event.filter';
 import { CreateEventInput } from './input/create.event.input';
 import { EditEventInput } from './input/edit.event.input';
+import { Server } from 'socket.io';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 
 @Injectable()
+@WebSocketGateway()
 export class EventService {
+  @WebSocketServer()
+  private readonly server: Server;
+
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
@@ -113,17 +119,24 @@ export class EventService {
         });
 
         // Handle additional logic for Admin-created events
-        if (role === Roles.ADMIN && visibility === EventVisibility.PUBLIC) {
-          const targetUsers = await this.getTargetUsers({
-            classId: data.classId,
-            targetRoles,
-          });
+        // if (role === Roles.ADMIN && visibility === EventVisibility.PUBLIC) {
+        const targetUsers = await this.getTargetUsers({
+          classId: data.classId,
+          targetRoles,
+        });
 
-          await this.googleCalendarService.createCalendarEvent({
-            ...event,
-            attendees: targetUsers.map((user) => user.email),
-          });
-        }
+        await this.googleCalendarService.createCalendarEvent({
+          ...event,
+          attendees: targetUsers.map((user) => user.email),
+        });
+        // }
+
+        // Emit socket event to notify clients
+        this.server.emit('eventCreated', {
+          message: 'A new event has been created!',
+          event,
+          targetRoles,
+        });
 
         return event;
       });
@@ -180,6 +193,12 @@ export class EventService {
             'Event Updated',
           ),
         ]);
+
+        // Emit socket event to notify clients
+        this.server.emit('eventUpdated', {
+          message: 'An event has been updated!',
+          event: updatedEvent,
+        });
 
         return updatedEvent;
       });
@@ -355,5 +374,42 @@ export class EventService {
       }
       throw error;
     }
+  }
+
+  async deleteEvent(
+    eventId: string,
+    userId: string,
+    userRole: Roles,
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (prisma) => {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+      });
+
+      if (!event) throw new NotFoundException('Event not found');
+
+      const isAdminOrSuperAdmin =
+        userRole === Roles.ADMIN || userRole === Roles.SUPER_ADMIN;
+
+      // Public events can only be deleted by ADMIN or SUPER_ADMIN
+      if (event.visibility === EventVisibility.PUBLIC && !isAdminOrSuperAdmin) {
+        throw new ForbiddenException(
+          'Only admins or super admins can delete public events',
+        );
+      }
+
+      // Other events can only be deleted by their creator
+      if (event.creatorId !== userId) {
+        throw new ForbiddenException(
+          'You can only delete your own events or need admin privileges',
+        );
+      }
+
+      await prisma.event.delete({
+        where: { id: eventId },
+      });
+
+      return true;
+    });
   }
 }
