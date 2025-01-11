@@ -29,13 +29,16 @@ export class TeacherService {
       // Base fields to include in the response
       const baseInclude = {
         subjects: true,
-        class: true,
+        classes: true,
         grade: true,
       };
 
       const baseQuery: any = {
         include: baseInclude,
       };
+
+      // Handle pagination and search
+      const searchFields = ['name', 'email', 'username'];
 
       // Role-based access control logic
       switch (userRole) {
@@ -44,10 +47,32 @@ export class TeacherService {
           // Admins and Super Admins can see all teachers
           break;
 
+        // case Roles.TEACHER:
+        //   // Teachers can see only themselves
+        //   baseQuery.where = {
+        //     id: userId,
+        //   };
+        //   break;
+
         case Roles.TEACHER:
-          // Teachers can see only themselves
+          // Fetch the classes and grades the teacher is associated with
+          const teacher = await this.prisma.teacher.findUnique({
+            where: { id: userId },
+            include: {
+              classes: { select: { id: true } }, // Get the classes this teacher is part of
+            },
+          });
+
+          if (!teacher) {
+            throw new NotFoundException('Teacher not found');
+          }
+
           baseQuery.where = {
-            id: userId,
+            classes: {
+              some: {
+                id: { in: teacher.classes.map((c) => c.id) },
+              },
+            },
           };
           break;
 
@@ -106,8 +131,6 @@ export class TeacherService {
           );
       }
 
-      // Handle pagination and search
-      const searchFields = ['name', 'email']; // Adjust these fields based on your teacher model
       return await PrismaQueryBuilder.paginateResponse(
         this.prisma.teacher,
         baseQuery,
