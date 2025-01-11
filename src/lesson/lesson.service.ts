@@ -12,6 +12,8 @@ import { Day } from './enum/day';
 import { CreateLessonInput } from './input/create.lesson.input';
 import { Roles } from 'src/shared/enum/role';
 import { EditLessonInput } from './input/edit.lesson.input';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 
 @Injectable()
 export class LessonService {
@@ -129,11 +131,14 @@ export class LessonService {
     return endDate.toISOString().slice(11, 16); // Return HH:mm format
   }
 
-  async getAllLessons(userId: string, role: Roles) {
+  async getAllLessons(userId: string, role: Roles, params: PaginationParams) {
     try {
+      const searchFields = ['name'];
+      let baseQuery: any = {};
+
       // Admin and super admin get full access to all lessons
       if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
-        return await this.prisma.lesson.findMany({
+        baseQuery = {
           include: {
             teacher: true,
             subject: true,
@@ -150,12 +155,11 @@ export class LessonService {
               },
             },
           },
-        });
+        };
       }
-
       // Teachers get full access but only to their assigned lessons
-      if (role === Roles.TEACHER) {
-        return await this.prisma.lesson.findMany({
+      else if (role === Roles.TEACHER) {
+        baseQuery = {
           where: {
             teacherId: userId,
           },
@@ -175,11 +179,10 @@ export class LessonService {
               },
             },
           },
-        });
+        };
       }
-
       // Students get access to their class lessons with limited details
-      if (role === Roles.STUDENT) {
+      else if (role === Roles.STUDENT) {
         const student = await this.prisma.student.findUnique({
           where: { id: userId },
           select: { classId: true },
@@ -189,7 +192,7 @@ export class LessonService {
           throw new NotFoundException('Student not found');
         }
 
-        return await this.prisma.lesson.findMany({
+        baseQuery = {
           where: {
             classId: student.classId,
           },
@@ -223,11 +226,10 @@ export class LessonService {
               },
             },
           },
-        });
+        };
       }
-
       // Parents get summary view of their children's lessons
-      if (role === Roles.PARENT) {
+      else if (role === Roles.PARENT) {
         const children = await this.prisma.student.findMany({
           where: { parentId: userId },
           select: {
@@ -243,7 +245,7 @@ export class LessonService {
         const childrenClassIds = children.map((child) => child.classId);
         const childrenIds = children.map((child) => child.id);
 
-        return await this.prisma.lesson.findMany({
+        baseQuery = {
           where: {
             classId: {
               in: childrenClassIds,
@@ -301,16 +303,22 @@ export class LessonService {
               },
               select: {
                 date: true,
-                // status: true,
                 studentId: true,
               },
             },
           },
-        });
+        };
+      } else {
+        throw new ForbiddenException(
+          'You do not have permission to view lessons',
+        );
       }
 
-      throw new ForbiddenException(
-        'You do not have permission to view lessons',
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.lesson,
+        baseQuery,
+        params,
+        searchFields,
       );
     } catch (error) {
       if (error instanceof NotFoundException) throw error;

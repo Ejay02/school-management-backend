@@ -9,6 +9,7 @@ import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { EditLessonInput } from './input/edit.lesson.input';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,11 +24,16 @@ export class LessonResolver {
     Roles.STUDENT,
     Roles.SUPER_ADMIN,
   )
-  async getAllLessons(@Context() context) {
-    return await this.lessonService.getAllLessons(
+  async getAllLessons(
+    @Context() context,
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
+    const result = await this.lessonService.getAllLessons(
       context.req.user.userId,
       context.req.user.role,
+      pagination || {},
     );
+    return result.data;
   }
 
   @Query(() => Lesson)
