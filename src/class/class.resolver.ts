@@ -19,7 +19,8 @@ export class ClassResolver {
   async getAllClasses(
     @Args('pagination', { nullable: true }) pagination?: PaginationInput,
   ) {
-    return this.classService.getAllClasses(pagination || {});
+    const result = await this.classService.getAllClasses(pagination || {});
+    return result.data;
   }
 
   @Mutation(() => Class)

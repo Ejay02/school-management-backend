@@ -14,6 +14,7 @@ import {
   PaginatedResponse,
   PaginationParams,
 } from 'src/shared/pagination/types/pagination.types';
+import { Class } from './types/class.types';
 
 @Injectable()
 export class ClassService {
@@ -42,28 +43,30 @@ export class ClassService {
 
   async getAllClasses(
     params: PaginationParams,
-  ): Promise<PaginatedResponse<any>> {
+  ): Promise<PaginatedResponse<Class>> {
     try {
       const baseQuery = {
         include: {
-          students: true,
-          lessons: {
-            include: {
-              teacher: true,
-              subject: true,
-            },
-          },
+          announcements: true,
           subjects: {
             include: {
-              lessons: true,
+              teachers: true,
+              lessons: {
+                select: {
+                  id: true,
+                  name: true,
+                  day: true,
+                  startTime: true,
+                  endTime: true,
+                },
+              },
             },
           },
-          announcements: true,
         },
       };
 
       // Define searchable fields
-      const searchFields = ['name', 'description'];
+      const searchFields = ['name'];
 
       return await PrismaQueryBuilder.paginateResponse(
         this.prisma.class,
