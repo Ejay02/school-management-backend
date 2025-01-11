@@ -28,11 +28,12 @@ export class AssignmentResolver {
     @Context() context,
     @Args('pagination', { nullable: true }) pagination?: PaginationInput,
   ) {
-    return this.assignmentService.getAllAssignments(
+    const result = await this.assignmentService.getAllAssignments(
       context.req.user.userId,
       context.req.user.role,
       pagination || {},
     );
+    return result.data;
   }
 
   @Query(() => [Assignment])

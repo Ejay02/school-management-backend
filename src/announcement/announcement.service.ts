@@ -63,6 +63,7 @@ export class AnnouncementService {
     return announcement; // The transaction will be committed, and the announcement is returned
   }
 
+  // announcement.service.ts
   async getAllAnnouncements(
     userId: string,
     role: Roles,

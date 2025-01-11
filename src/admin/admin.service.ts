@@ -63,29 +63,6 @@ export class AdminService {
     }
   }
 
-  async getAllAttendance(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-      return await this.prisma.attendance.findMany({
-        include: {
-          student: true,
-          lesson: {
-            include: {
-              subject: true,
-              teacher: true,
-              class: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException(
-        'Failed to fetch attendance records',
-      );
-    }
-  }
-
   async getAllExams(userId: string) {
     try {
       await this.verifyAdmin(userId);

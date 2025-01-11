@@ -38,21 +38,22 @@ export class AnnouncementResolver {
 
   @Query(() => [Announcement])
   @HasRoles(
+    Roles.SUPER_ADMIN,
     Roles.ADMIN,
-    Roles.PARENT,
     Roles.TEACHER,
     Roles.STUDENT,
-    Roles.SUPER_ADMIN,
+    Roles.PARENT,
   )
   async getAllAnnouncements(
     @Context() context,
     @Args('pagination', { nullable: true }) pagination?: PaginationInput,
   ) {
-    return this.announcementService.getAllAnnouncements(
+    const result = await this.announcementService.getAllAnnouncements(
       context.req.user.userId,
       context.req.user.role,
       pagination || {},
     );
+    return result.data;
   }
 
   @Query(() => Announcement)

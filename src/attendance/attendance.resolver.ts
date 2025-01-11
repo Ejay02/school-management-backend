@@ -26,11 +26,12 @@ export class AttendanceResolver {
     @Context() context,
     @Args('pagination', { nullable: true }) pagination?: PaginationInput,
   ) {
-    return this.attendanceService.getAttendances(
+    const result = await this.attendanceService.getAttendances(
       context.req.user.userId,
       context.req.user.role,
       pagination || {},
     );
+    return result.data;
   }
 
   @Query(() => Attendance)

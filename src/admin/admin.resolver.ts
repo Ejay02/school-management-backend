@@ -7,7 +7,6 @@ import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { Teacher } from 'src/teacher/types/teacher.types';
 import { Admin } from './types/admin.types';
 import { Grade } from 'src/grade/types/grade.types';
-import { Attendance } from 'src/attendance/types/attendance.types';
 import { Exam } from 'src/exam/types/exam.types';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { EditAdminInput } from './input/edit.admin.input';
@@ -31,12 +30,6 @@ export class AdminResolver {
   async getAllAdmins(@Context() context) {
     const userId = context.req.user.userId;
     return this.adminService.getAllAdmins(userId);
-  }
-
-  @Query(() => [Attendance])
-  @HasRoles(Roles.ADMIN)
-  async getAllAttendance(@Context() context) {
-    return this.adminService.getAllAttendance(context.req.user.userId);
   }
 
   @Query(() => [Exam])
