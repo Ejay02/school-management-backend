@@ -9,6 +9,7 @@ import { CreateEventInput } from './input/create.event.input';
 import { EventFilter } from './interface/event.filter';
 import { EditEventInput } from './input/edit.event.input';
 import { Event } from './types/event.types';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,12 +17,18 @@ export class EventResolver {
   constructor(private eventService: EventService) {}
 
   @Query(() => Event)
-  async getEvents(@Args('filter') filter: EventFilter, @Context() context) {
-    return this.eventService.getEvents(
+  async getEvents(
+    @Args('filter') filter: EventFilter,
+    @Context() context,
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
+    const result = await this.eventService.getEvents(
       filter,
       context.req.user.userId,
       context.req.user.role,
+      pagination || {},
     );
+    return result.data;
   }
 
   @Mutation(() => Event)

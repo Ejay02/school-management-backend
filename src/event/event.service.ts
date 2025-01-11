@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
@@ -13,6 +14,8 @@ import { CreateEventInput } from './input/create.event.input';
 import { EditEventInput } from './input/edit.event.input';
 import { Server } from 'socket.io';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 
 @Injectable()
 @WebSocketGateway()
@@ -26,64 +29,77 @@ export class EventService {
     private googleCalendarService: GoogleCalendarService,
   ) {}
 
-  async getEvents(filter: EventFilter, userId: string, userRole: Roles) {
-    const baseQuery: any = {};
+  async getEvents(
+    filter: EventFilter,
+    userId: string,
+    userRole: Roles,
+    params: PaginationParams,
+  ) {
+    try {
+      const baseQuery: any = {
+        where: {},
+        include: {
+          class: true,
+        },
+      };
 
-    // Apply filters from `filter` object
-    if (filter?.type) {
-      baseQuery.type = { contains: filter.type, mode: 'insensitive' };
-    }
-    if (filter?.startDate) baseQuery.startTime = { gte: filter.startDate };
-    if (filter?.endDate) baseQuery.endTime = { lte: filter.endDate };
-    if (filter?.classId) baseQuery.classId = filter.classId;
-
-    // Role-based visibility rules
-    if (userRole === Roles.ADMIN || userRole === Roles.SUPER_ADMIN) {
-      // Admin: See all public events and their private events
-      baseQuery.OR = [
-        { visibility: EventVisibility.PUBLIC }, // Public events
-        { creatorId: userId }, // Admin's private events
-      ];
-    } else {
-      // Non-admin users: Parents, Teachers, Students
-      baseQuery.OR = [
-        { creatorId: userId }, // User's private events
-        { visibility: EventVisibility.PUBLIC }, // Public events
-      ];
-
-      // Role-specific rules
-      switch (userRole) {
-        case Roles.PARENT:
-          baseQuery.OR.push(
-            { targetRoles: { has: Roles.PARENT } }, // Events for parents
-            { class: { students: { some: { parentId: userId } } } }, // Events for their child's class
-          );
-          break;
-
-        case Roles.TEACHER:
-          baseQuery.OR.push(
-            { targetRoles: { has: Roles.TEACHER } }, // Events for teachers
-            { class: { teachers: { some: { id: userId } } } }, // Events for their class/students
-          );
-          break;
-
-        case Roles.STUDENT:
-          baseQuery.OR.push(
-            { targetRoles: { has: Roles.STUDENT } }, // Events for students
-            { class: { students: { some: { id: userId } } } }, // Events for their class
-          );
-          break;
+      // Apply filters from `filter` object
+      if (filter?.type) {
+        baseQuery.where.type = { contains: filter.type, mode: 'insensitive' };
       }
-    }
+      if (filter?.startDate)
+        baseQuery.where.startTime = { gte: filter.startDate };
+      if (filter?.endDate) baseQuery.where.endTime = { lte: filter.endDate };
+      if (filter?.classId) baseQuery.where.classId = filter.classId;
 
-    // Query the database
-    return this.prisma.event.findMany({
-      where: baseQuery,
-      include: {
-        class: true, // Include class details
-      },
-      orderBy: { startTime: 'asc' }, // Sort by start time (ascending)
-    });
+      // Role-based visibility rules
+      if (userRole === Roles.ADMIN || userRole === Roles.SUPER_ADMIN) {
+        baseQuery.where.OR = [
+          { visibility: EventVisibility.PUBLIC },
+          { creatorId: userId },
+        ];
+      } else {
+        baseQuery.where.OR = [
+          { creatorId: userId },
+          { visibility: EventVisibility.PUBLIC },
+        ];
+
+        // Role-specific rules
+        switch (userRole) {
+          case Roles.PARENT:
+            baseQuery.where.OR.push(
+              { targetRoles: { has: Roles.PARENT } },
+              { class: { students: { some: { parentId: userId } } } },
+            );
+            break;
+
+          case Roles.TEACHER:
+            baseQuery.where.OR.push(
+              { targetRoles: { has: Roles.TEACHER } },
+              { class: { teachers: { some: { id: userId } } } },
+            );
+            break;
+
+          case Roles.STUDENT:
+            baseQuery.where.OR.push(
+              { targetRoles: { has: Roles.STUDENT } },
+              { class: { students: { some: { id: userId } } } },
+            );
+            break;
+        }
+      }
+
+      const searchFields = ['title', 'description', 'type'];
+
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.event,
+        baseQuery,
+        params,
+        searchFields,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to fetch events');
+    }
   }
 
   async createEvent(data: CreateEventInput, role: Roles, creatorId: string) {
