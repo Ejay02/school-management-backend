@@ -7,6 +7,7 @@ import { CreateClassInput } from './input/create.class.input';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Roles } from 'src/shared/enum/role';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -15,8 +16,10 @@ export class ClassResolver {
 
   @Query(() => [Class])
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
-  async getAllClasses() {
-    return this.classService.getAllClasses();
+  async getAllClasses(
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
+    return this.classService.getAllClasses(pagination || {});
   }
 
   @Mutation(() => Class)

@@ -11,6 +11,11 @@ import { EditAssignmentInput } from './input/edit.assignment.input';
 import { Roles } from 'src/shared/enum/role';
 import { Server } from 'socket.io';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import {
+  PaginatedResponse,
+  PaginationParams,
+} from 'src/shared/pagination/types/pagination.types';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 
 @Injectable()
 @WebSocketGateway()
@@ -19,23 +24,29 @@ export class AssignmentService {
   @WebSocketServer()
   private readonly server: Server;
 
-  async getAllAssignments(userId: string, role: Roles) {
+  async getAllAssignments(
+    userId: string,
+    role: Roles,
+    params: PaginationParams,
+  ): Promise<PaginatedResponse<any>> {
     try {
+      let baseQuery: any = {};
+
       // Admin and super admin can see all assignments with full details
       if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
-        return await this.prisma.assignment.findMany({
+        baseQuery = {
           include: {
             teacher: true,
             subject: true,
             class: true,
             submissions: true,
           },
-        });
+        };
       }
 
       // Teachers can only see assignments they created
-      if (role === Roles.TEACHER) {
-        return await this.prisma.assignment.findMany({
+      else if (role === Roles.TEACHER) {
+        baseQuery = {
           where: {
             teacherId: userId,
           },
@@ -45,12 +56,11 @@ export class AssignmentService {
             class: true,
             submissions: true,
           },
-        });
+        };
       }
 
       // Students can only see assignments for their class
-      if (role === Roles.STUDENT) {
-        // First get the student's class ID
+      else if (role === Roles.STUDENT) {
         const student = await this.prisma.student.findUnique({
           where: { id: userId },
           select: { classId: true },
@@ -60,7 +70,7 @@ export class AssignmentService {
           throw new NotFoundException('Student not found');
         }
 
-        return await this.prisma.assignment.findMany({
+        baseQuery = {
           where: {
             classId: student.classId,
           },
@@ -74,12 +84,11 @@ export class AssignmentService {
               },
             },
           },
-        });
+        };
       }
 
       // Parents can see limited assignment information for their children
-      if (role === Roles.PARENT) {
-        // First get all children of the parent
+      else if (role === Roles.PARENT) {
         const children = await this.prisma.student.findMany({
           where: { parentId: userId },
           select: {
@@ -95,7 +104,7 @@ export class AssignmentService {
         const childrenClassIds = children.map((child) => child.classId);
         const childrenIds = children.map((child) => child.id);
 
-        return await this.prisma.assignment.findMany({
+        baseQuery = {
           where: {
             classId: {
               in: childrenClassIds,
@@ -131,11 +140,22 @@ export class AssignmentService {
               },
             },
           },
-        });
+        };
+      } else {
+        throw new ForbiddenException(
+          'You do not have permission to view assignments',
+        );
       }
 
-      throw new ForbiddenException(
-        'You do not have permission to view assignments',
+      // Define searchable fields
+      const searchFields = ['title', 'description'];
+
+      // Use the PrismaQueryBuilder to handle pagination and search
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.assignment,
+        baseQuery,
+        params,
+        searchFields,
       );
     } catch (error) {
       if (error instanceof NotFoundException) throw error;

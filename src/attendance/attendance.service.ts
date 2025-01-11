@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -8,6 +9,11 @@ import { Roles } from 'src/shared/enum/role';
 import { MarkAttendanceInput } from './input/attendance.input';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
+import {
+  PaginatedResponse,
+  PaginationParams,
+} from 'src/shared/pagination/types/pagination.types';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 
 @Injectable()
 @WebSocketGateway()
@@ -17,90 +23,92 @@ export class AttendanceService {
 
   constructor(private prisma: PrismaService) {}
 
-  async getAttendances(userId: string, userRole: Roles) {
-    switch (userRole) {
-      case Roles.ADMIN:
-      case Roles.SUPER_ADMIN:
-        return this.prisma.attendance.findMany({
-          include: {
-            student: true,
-            lesson: {
-              include: {
-                subject: true,
-                class: true,
-              },
+  async getAttendances(
+    userId: string,
+    userRole: Roles,
+    params: PaginationParams,
+  ): Promise<PaginatedResponse<any>> {
+    try {
+      let baseQuery: any = {
+        include: {
+          student: true,
+          lesson: {
+            include: {
+              subject: true,
+              class: true,
             },
           },
-        });
+        },
+      };
 
-      case Roles.TEACHER:
-        const teacherClasses = await this.prisma.teacher.findUnique({
-          where: { id: userId },
-          select: { classes: { select: { id: true } } },
-        });
+      switch (userRole) {
+        case Roles.ADMIN:
+        case Roles.SUPER_ADMIN:
+          // Admin and super admin can see all attendances
+          break;
 
-        const classIds = teacherClasses.classes.map((c) => c.id);
+        case Roles.TEACHER:
+          const teacherClasses = await this.prisma.teacher.findUnique({
+            where: { id: userId },
+            select: { classes: { select: { id: true } } },
+          });
 
-        return this.prisma.attendance.findMany({
-          where: {
+          const classIds = teacherClasses.classes.map((c) => c.id);
+
+          baseQuery.where = {
             lesson: {
               classId: { in: classIds },
             },
-          },
-          include: {
-            student: true,
-            lesson: {
-              include: {
-                subject: true,
-                class: true,
+          };
+          break;
+
+        case Roles.STUDENT:
+          baseQuery = {
+            where: {
+              studentId: userId,
+            },
+            include: {
+              lesson: {
+                include: {
+                  subject: true,
+                  class: true,
+                },
               },
             },
-          },
-        });
+          };
+          break;
 
-      case Roles.STUDENT:
-        return this.prisma.attendance.findMany({
-          where: {
-            studentId: userId,
-          },
-          include: {
-            lesson: {
-              include: {
-                subject: true,
-                class: true,
-              },
-            },
-          },
-        });
+        case Roles.PARENT:
+          const parent = await this.prisma.parent.findUnique({
+            where: { id: userId },
+            include: { students: { select: { id: true } } },
+          });
 
-      case Roles.PARENT:
-        const parent = await this.prisma.parent.findUnique({
-          where: { id: userId },
-          include: { students: { select: { id: true } } },
-        });
+          const studentIds = parent.students.map((s) => s.id);
 
-        const studentIds = parent.students.map((s) => s.id);
-
-        return this.prisma.attendance.findMany({
-          where: {
+          baseQuery.where = {
             studentId: { in: studentIds },
-          },
-          include: {
-            student: true,
-            lesson: {
-              include: {
-                subject: true,
-                class: true,
-              },
-            },
-          },
-        });
+          };
+          break;
 
-      default:
-        throw new ForbiddenException('Invalid role');
+        default:
+          throw new ForbiddenException('Invalid role');
+      }
+
+      // Define searchable fields - adjust these based on your needs
+      const searchFields = ['student.name', 'lesson.subject.name'];
+
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.attendance,
+        baseQuery,
+        params,
+        searchFields,
+      );
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      throw new InternalServerErrorException('Failed to fetch attendances');
     }
   }
-
   // Get attendance by lesson
   async getAttendanceByLesson(
     lessonId: string,

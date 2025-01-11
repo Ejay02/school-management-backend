@@ -7,6 +7,7 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Roles } from 'src/shared/enum/role';
 import { Attendance } from './types/attendance.types';
 import { MarkAttendanceInput } from './input/attendance.input';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,9 +22,15 @@ export class AttendanceResolver {
     Roles.STUDENT,
     Roles.PARENT,
   )
-  async getAttendances(@Context() context) {
-    const { userId, role } = context.req.user;
-    return this.attendanceService.getAttendances(userId, role);
+  async getAttendances(
+    @Context() context,
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
+    return this.attendanceService.getAttendances(
+      context.req.user.userId,
+      context.req.user.role,
+      pagination || {},
+    );
   }
 
   @Query(() => Attendance)
@@ -32,8 +39,11 @@ export class AttendanceResolver {
     @Args('lessonId') lessonId: string,
     @Context() context,
   ) {
-    const { userId, role } = context.req.user;
-    return this.attendanceService.getAttendanceByLesson(lessonId, userId, role);
+    return this.attendanceService.getAttendanceByLesson(
+      lessonId,
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 
   @Mutation(() => [Attendance])
@@ -44,12 +54,11 @@ export class AttendanceResolver {
     attendanceData: MarkAttendanceInput[],
     @Context() context,
   ) {
-    const { userId, role } = context.req.user;
     return this.attendanceService.markAttendance(
       lessonId,
       attendanceData,
-      userId,
-      role,
+      context.req.user.userId,
+      context.req.user.role,
     );
   }
 
@@ -67,13 +76,12 @@ export class AttendanceResolver {
     @Args('endDate') endDate: Date,
     @Context() context,
   ) {
-    const { userId, role } = context.req.user;
     return this.attendanceService.getAttendanceStats(
       studentId,
       startDate,
       endDate,
-      userId,
-      role,
+      context.req.user.userId,
+      context.req.user.role,
     );
   }
 }

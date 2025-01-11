@@ -8,6 +8,7 @@ import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { Roles } from 'src/shared/enum/role';
 import { CreateAssignmentInput } from './input/create.assignment.input';
 import { EditAssignmentInput } from './input/edit.assignment.input';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,10 +24,14 @@ export class AssignmentResolver {
     Roles.ADMIN,
     Roles.SUPER_ADMIN,
   )
-  async getAllAssignments(@Context() context) {
+  async getAllAssignments(
+    @Context() context,
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
     return this.assignmentService.getAllAssignments(
       context.req.user.userId,
       context.req.user.role,
+      pagination || {},
     );
   }
 

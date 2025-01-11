@@ -9,6 +9,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { DefaultClass } from './enum/class';
 
 import { CreateClassInput } from './input/create.class.input';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import {
+  PaginatedResponse,
+  PaginationParams,
+} from 'src/shared/pagination/types/pagination.types';
 
 @Injectable()
 export class ClassService {
@@ -35,9 +40,11 @@ export class ClassService {
     }
   }
 
-  async getAllClasses() {
+  async getAllClasses(
+    params: PaginationParams,
+  ): Promise<PaginatedResponse<any>> {
     try {
-      return await this.prisma.class.findMany({
+      const baseQuery = {
         include: {
           students: true,
           lessons: {
@@ -46,7 +53,6 @@ export class ClassService {
               subject: true,
             },
           },
-
           subjects: {
             include: {
               lessons: true,
@@ -54,7 +60,17 @@ export class ClassService {
           },
           announcements: true,
         },
-      });
+      };
+
+      // Define searchable fields
+      const searchFields = ['name', 'description'];
+
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.class,
+        baseQuery,
+        params,
+        searchFields,
+      );
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch classes');
