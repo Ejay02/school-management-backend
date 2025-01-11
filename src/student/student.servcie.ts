@@ -8,6 +8,9 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AssignStudentToClassInput } from './input/assign.student.class.input';
+import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
+import { Roles } from 'src/shared/enum/role';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 
 @Injectable()
 export class StudentService {
@@ -16,15 +19,74 @@ export class StudentService {
     private jwtService: JwtService,
   ) {}
 
-  async getAllStudents() {
+  async getAllStudents(
+    userId: string,
+    userRole: Roles,
+    params: PaginationParams,
+  ) {
     try {
-      return await this.prisma.student.findMany({
-        include: {
-          parent: true,
-          class: true,
-          grade: true,
-        },
-      });
+      const baseInclude = {
+        parent: true,
+        class: true,
+        grade: true,
+      };
+
+      const baseQuery: any = {
+        include: baseInclude,
+      };
+
+      const searchFields = ['name', 'email', 'studentId'];
+
+      switch (userRole) {
+        case Roles.SUPER_ADMIN:
+        case Roles.ADMIN:
+          // Admins can see all students
+          break;
+
+        case Roles.TEACHER:
+          // Teachers can only see students in their assigned classes
+          const teacherClasses = await this.prisma.class.findMany({
+            where: {
+              id: userId,
+            },
+            select: {
+              id: true,
+            },
+          });
+
+          baseQuery.where = {
+            classId: {
+              in: teacherClasses.map((c) => c.id),
+            },
+          };
+          break;
+
+        case Roles.PARENT:
+          // Parents can only see their own children
+          baseQuery.where = {
+            parentId: userId,
+          };
+          break;
+
+        case Roles.STUDENT:
+          // Students should only see their own profile
+          baseQuery.where = {
+            id: userId,
+          };
+          break;
+
+        default:
+          throw new ForbiddenException(
+            'You do not have permission to view students',
+          );
+      }
+
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.student,
+        baseQuery,
+        params,
+        searchFields,
+      );
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch students');
