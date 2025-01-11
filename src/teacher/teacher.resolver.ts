@@ -6,6 +6,7 @@ import { Roles } from 'src/shared/enum/role';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { Teacher } from './types/teacher.types';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 // import { PublicTeacherResponse } from './types/public.teacher.types';
 
 @Resolver()
@@ -21,6 +22,26 @@ export class TeacherResolver {
   ) {
     const userId = context.req.user.userId;
     return this.teacherService.getTeacherById(userId, teacherId);
+  }
+
+  @Query(() => [Teacher])
+  @HasRoles(
+    Roles.SUPER_ADMIN,
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+  )
+  async getAllTeachers(
+    @Context() context,
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
+    const result = await this.teacherService.getAllTeachers(
+      context.req.user.userId,
+      context.req.user.role,
+      pagination || {},
+    );
+    return result.data;
   }
 
   // @Query(() => PublicTeacherResponse)
