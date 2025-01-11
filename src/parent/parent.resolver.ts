@@ -6,6 +6,7 @@ import { UseGuards } from '@nestjs/common';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Parent } from './types/parent.types';
 import { Roles } from 'src/shared/enum/role';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,11 +21,16 @@ export class ParentResolver {
     Roles.STUDENT,
     Roles.STUDENT,
   )
-  async getAllParents(@Context() context) {
-    return this.parentService.getAllParents(
+  async getAllParents(
+    @Context() context,
+    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+  ) {
+    const result = await this.parentService.getAllParents(
       context.req.user.userId,
       context.req.user.role,
+      pagination || {},
     );
+    return result.data;
   }
 
   @Query(() => Parent)
