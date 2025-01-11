@@ -10,6 +10,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { DefaultClass } from 'src/class/enum/class';
 import { SubjectsForClasses } from './enum/subject';
 import { Roles } from 'src/shared/enum/role';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 
 @Injectable()
 export class SubjectService {
@@ -98,19 +100,115 @@ export class SubjectService {
     }
   }
 
-  async getAllSubjects() {
-    return await this.prisma.subject.findMany({
-      include: {
+  async getAllSubjects(
+    userId: string,
+    userRole: Roles,
+    params: PaginationParams,
+  ) {
+    try {
+      const baseInclude = {
         exams: true,
         teachers: true,
         lessons: true,
         assignments: true,
         grade: true,
         class: true,
-      },
-    });
-  }
+      };
 
+      const baseQuery: any = {
+        include: baseInclude,
+      };
+
+      const searchFields = ['name', 'description', 'code'];
+
+      switch (userRole) {
+        case Roles.SUPER_ADMIN:
+        case Roles.ADMIN:
+          // Admins can see all subjects
+          break;
+
+        case Roles.TEACHER:
+          // Teachers only see subjects they teach
+          baseQuery.where = {
+            teachers: {
+              some: {
+                id: userId,
+              },
+            },
+          };
+          break;
+
+        case Roles.PARENT:
+          // Parents see subjects their children are enrolled in
+          const children = await this.prisma.student.findMany({
+            where: { parentId: userId },
+            select: {
+              classId: true,
+              gradeId: true,
+            },
+          });
+
+          if (!children.length) {
+            throw new NotFoundException('No children found for this parent');
+          }
+
+          baseQuery.where = {
+            OR: [
+              {
+                class: {
+                  id: {
+                    in: children.map((child) => child.classId),
+                  },
+                },
+              },
+              {
+                grade: {
+                  id: {
+                    in: children.map((child) => child.gradeId),
+                  },
+                },
+              },
+            ],
+          };
+          break;
+
+        case Roles.STUDENT:
+          // Students see subjects in their class/grade
+          const student = await this.prisma.student.findUnique({
+            where: { id: userId },
+            select: {
+              classId: true,
+              gradeId: true,
+            },
+          });
+
+          if (!student) {
+            throw new NotFoundException('Student not found');
+          }
+
+          baseQuery.where = {
+            OR: [{ classId: student.classId }, { gradeId: student.gradeId }],
+          };
+          break;
+
+        default:
+          throw new ForbiddenException(
+            'You do not have permission to view subjects',
+          );
+      }
+
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.subject,
+        baseQuery,
+        params,
+        searchFields,
+      );
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof ForbiddenException) throw error;
+      throw new InternalServerErrorException('Failed to fetch subjects');
+    }
+  }
   async getSubjectById(subjectId: string) {
     const subject = await this.prisma.subject.findUnique({
       where: { id: subjectId },
