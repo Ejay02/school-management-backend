@@ -38,18 +38,6 @@ export class AdminService {
     }
   }
 
-  async getAllTeachers(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-
-      return this.prisma.teacher.findMany();
-    } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to get teachers: ${error.message}`,
-      );
-    }
-  }
-
   async getAllAdmins(userId: string) {
     try {
       const admin = await this.verifyAdmin(userId);
