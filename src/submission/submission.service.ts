@@ -136,7 +136,7 @@ export class SubmissionService {
     });
   }
 
-  async updateSubmission(
+  async editSubmission(
     submissionId: string,
     studentId: string,
     input: UpdateSubmissionInput,

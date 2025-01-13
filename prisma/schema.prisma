@@ -163,8 +163,8 @@ model Exam {
   teacherId     String       
   teacher       Teacher       @relation(fields: [teacherId], references: [id])
   results       Result[]
-  gradeId       String
-  grade         Grade         @relation(fields: [gradeId], references: [id] )
+  gradeId       String?
+  grade         Grade?         @relation(fields: [gradeId], references: [id] )
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }

@@ -70,12 +70,12 @@ export class SubmissionResolver {
 
   @Mutation(() => Submission)
   @HasRoles(Roles.STUDENT)
-  async updateSubmission(
+  async editSubmission(
     @Context() context,
     @Args('submissionId') submissionId: string,
     @Args('input') input: UpdateSubmissionInput,
   ) {
-    return this.submissionService.updateSubmission(
+    return this.submissionService.editSubmission(
       submissionId,
       context.req.user.userId,
       input,
