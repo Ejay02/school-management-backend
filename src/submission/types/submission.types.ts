@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 import { Assignment } from 'src/assignment/types/assignment.types';
 import { Grade } from 'src/grade/types/grade.types';
 import { Student } from 'src/student/types/student.types';
@@ -8,8 +8,8 @@ export class Submission {
   @Field(() => String)
   id: string;
 
-  @Field(() => Int)
-  assignmentId: number;
+  @Field(() => String)
+  assignmentId: string;
 
   @Field(() => Assignment)
   assignment: Assignment;
