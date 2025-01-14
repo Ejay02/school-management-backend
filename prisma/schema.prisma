@@ -39,7 +39,7 @@ model Student {
   classId       String
   class         Class         @relation(fields: [classId], references: [id] )
   gradeId       String        @default(uuid())
-  grade         Grade         @relation(fields: [gradeId], references: [id] )
+  grade         Grade[]       
   attendances   Attendance[]
   results       Result[]
   submissions   Submission[]
@@ -86,15 +86,33 @@ model Parent {
 }
 
 model Grade {
-  id            String        @id @default(uuid())
-  level         Int              // Represents the grade level (e.g., 'A', 'B') so shouldnt it be string??
-  // classes       Class[]       
-  exams         Exam[]     
-  students      Student[] 
-  subjects      Subject[]     // Assuming relation to Subject
-  submissions   Submission[]  
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  // id            String        @id @default(uuid())
+  // level         Int              // Represents the grade level (e.g., 'A', 'B') so shouldnt it be string??
+  // // classes       Class[]       
+  // exams         Exam[]     
+  // students      Student[] 
+  // subjects      Subject[]     // Assuming relation to Subject
+  // submissions   Submission[]  
+  // createdAt     DateTime      @default(now())
+  // updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id])
+  score           Float
+  examId          String?
+  exam            Exam?         @relation(fields: [examId], references: [id])
+  assignmentId    String?
+  assignment      Assignment?   @relation(fields: [assignmentId], references: [id])
+  type            GradeType
+  subjects        Subject[]   
+  submissions     Submission[] 
+  academicPeriod  String
+  comments        String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([studentId, examId, assignmentId, academicPeriod])
+  
 
 }
 
@@ -164,7 +182,7 @@ model Exam {
   teacher       Teacher       @relation(fields: [teacherId], references: [id])
   results       Result[]
   gradeId       String?
-  grade         Grade?         @relation(fields: [gradeId], references: [id] )
+  grade         Grade[] //?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -182,6 +200,7 @@ model Assignment {
   subject       Subject       @relation(fields: [subjectId], references: [id])
   classId       String   
   class         Class         @relation(fields: [classId], references: [id])
+  grade         Grade[]
   results       Result[]    
   submissions   Submission[]
   createdAt     DateTime      @default(now())
@@ -301,4 +320,10 @@ enum EventStatus {
 enum EventVisibility {
   PUBLIC 
   PRIVATE 
+}
+
+enum GradeType {
+  EXAM
+  ASSIGNMENT
+  OVERALL
 }
