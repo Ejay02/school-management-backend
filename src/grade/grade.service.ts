@@ -8,7 +8,10 @@ import { CreateGradeInput } from './input/create.grade.input';
 import { GradeType } from './enum/gradeType';
 import { UpdateGradeInput } from './input/update.grade.input';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
-import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
+import {
+  PaginatedResponse,
+  PaginationParams,
+} from 'src/shared/pagination/types/pagination.types';
 
 @Injectable()
 export class GradeService {
@@ -83,7 +86,7 @@ export class GradeService {
     studentId: string,
     academicPeriod?: string,
     params?: PaginationParams,
-  ) {
+  ): Promise<PaginatedResponse<any>> {
     const baseQuery = {
       where: {
         studentId,
@@ -95,13 +98,6 @@ export class GradeService {
       },
     };
 
-    if (!params) {
-      return this.prisma.grade.findMany({
-        ...baseQuery,
-        orderBy: { createdAt: 'desc' },
-      });
-    }
-
     const searchFields = [
       'score',
       'exam',
@@ -110,7 +106,23 @@ export class GradeService {
       'comments',
     ];
 
-    return PrismaQueryBuilder.paginateResponse(
+    if (!params) {
+      const data = await this.prisma.grade.findMany({
+        ...baseQuery,
+        orderBy: { createdAt: 'desc' },
+      });
+      return {
+        data,
+        meta: {
+          total: data.length,
+          page: 1,
+          lastPage: 1, // Since all records are returned in one go, lastPage is 1
+          limit: data.length,
+        },
+      };
+    }
+
+    return await PrismaQueryBuilder.paginateResponse(
       this.prisma.grade,
       baseQuery,
       params,
@@ -118,12 +130,11 @@ export class GradeService {
     );
   }
 
-  // Retrieve a list of all grades assigned to students in a specific class
   async getClassGrades(
     classId: string,
     academicPeriod?: string,
     params?: PaginationParams,
-  ) {
+  ): Promise<PaginatedResponse<any>> {
     const baseQuery = {
       where: {
         student: {
@@ -139,10 +150,20 @@ export class GradeService {
     };
 
     if (!params) {
-      return this.prisma.grade.findMany({
+      const data = await this.prisma.grade.findMany({
         ...baseQuery,
         orderBy: [{ student: { surname: 'asc' } }, { createdAt: 'desc' }],
       });
+
+      return {
+        data,
+        meta: {
+          total: data.length,
+          page: 1,
+          lastPage: 1, // Since all records are returned in one go, lastPage is 1
+          limit: data.length,
+        },
+      };
     }
 
     return PrismaQueryBuilder.paginateResponse(
@@ -151,6 +172,110 @@ export class GradeService {
       params,
       ['comments', 'student.firstName', 'student.surname'],
     );
+  }
+
+  async assignAssignmentGrade(
+    studentId: string,
+    assignmentId: string,
+    score: number,
+    academicPeriod: string,
+    comments?: string,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Check if student exists
+        const student = await tx.student.findUnique({
+          where: { id: studentId },
+        });
+
+        if (!student) {
+          throw new Error(`Student with ID ${studentId} not found`);
+        }
+
+        // Check if assignment exists
+        const assignment = await tx.assignment.findUnique({
+          where: { id: assignmentId },
+        });
+
+        if (!assignment) {
+          throw new Error(`Assignment with ID ${assignmentId} not found`);
+        }
+
+        // Create the grade
+        return tx.grade.create({
+          data: {
+            studentId,
+            assignmentId,
+            score,
+            type: GradeType.ASSIGNMENT,
+            academicPeriod,
+            comments,
+          },
+          include: {
+            student: true,
+            assignment: true,
+          },
+        });
+      });
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'An error occurred while creating the assignment grade',
+      );
+    }
+  }
+
+  async assignExamGrade(
+    studentId: string,
+    examId: string,
+    score: number,
+    academicPeriod: string,
+    comments?: string,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Check if student exists
+        const student = await tx.student.findUnique({
+          where: { id: studentId },
+        });
+
+        if (!student) {
+          throw new Error(`Student with ID ${studentId} not found`);
+        }
+
+        // Check if exam exists
+        const exam = await tx.exam.findUnique({
+          where: { id: examId },
+        });
+
+        if (!exam) {
+          throw new Error(`Exam with ID ${examId} not found`);
+        }
+
+        // Create the grade
+        return tx.grade.create({
+          data: {
+            studentId,
+            examId,
+            score,
+            type: GradeType.EXAM,
+            academicPeriod,
+            comments,
+          },
+          include: {
+            student: true,
+            exam: true,
+          },
+        });
+      });
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'An error occurred while creating the exam grade',
+      );
+    }
   }
 
   async calculateOverallGrade(studentId: string, academicPeriod: string) {
@@ -171,6 +296,16 @@ export class GradeService {
     const averageScore =
       grades.reduce((sum, grade) => sum + grade.score, 0) / grades.length;
 
+    // First, fetch the student to include in the grade creation
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
+
+    if (!student) {
+      throw new Error(`Student with ID ${studentId} not found`);
+    }
+
+    // Create the grade with the student relation
     return this.prisma.grade.create({
       data: {
         studentId,
@@ -178,6 +313,9 @@ export class GradeService {
         type: GradeType.OVERALL,
         academicPeriod,
         comments: 'Overall grade calculated from exams and assignments',
+      },
+      include: {
+        student: true,
       },
     });
   }
@@ -204,10 +342,24 @@ export class GradeService {
   }
 
   // Remove a grade from the system.
-  async deleteGrade(adminId: string, gradeId: string) {
-    // Verify admin role is handled by guard
-    return this.prisma.grade.delete({
-      where: { id: gradeId },
-    });
+  async deleteGrade(gradeId: string): Promise<boolean> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const grade = await tx.grade.findUnique({
+          where: { id: gradeId },
+        });
+
+        if (!grade) {
+          throw new Error('Grade not found');
+        }
+
+        await tx.grade.delete({
+          where: { id: gradeId },
+        });
+      });
+      return true;
+    } catch (error) {
+      throw new Error(`Error deleting grade: ${gradeId}`);
+    }
   }
 }

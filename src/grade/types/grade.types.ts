@@ -7,24 +7,6 @@ import { GradeType } from '../enum/gradeType';
 
 @ObjectType()
 export class Grade {
-  // @Field(() => String)
-  // id: string;
-
-  // @Field(() => Int)
-  // level: number;
-
-  // @Field(() => [Class])
-  // classes: Class[];
-
-  // @Field(() => [Student])
-  // students: Student[];
-
-  // @Field()
-  // createdAt: Date;
-
-  // @Field()
-  // updatedAt: Date;
-
   @Field(() => String)
   id: string;
 

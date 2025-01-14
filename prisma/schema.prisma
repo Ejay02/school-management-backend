@@ -86,15 +86,6 @@ model Parent {
 }
 
 model Grade {
-  // id            String        @id @default(uuid())
-  // level         Int              // Represents the grade level (e.g., 'A', 'B') so shouldnt it be string??
-  // // classes       Class[]       
-  // exams         Exam[]     
-  // students      Student[] 
-  // subjects      Subject[]     // Assuming relation to Subject
-  // submissions   Submission[]  
-  // createdAt     DateTime      @default(now())
-  // updatedAt     DateTime      @updatedAt
   id              String        @id @default(uuid())
   studentId       String
   student         Student       @relation(fields: [studentId], references: [id])
