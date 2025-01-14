@@ -7,6 +7,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateGradeInput } from './input/create.grade.input';
 import { GradeType } from './enum/gradeType';
 import { UpdateGradeInput } from './input/update.grade.input';
+import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 
 @Injectable()
 export class GradeService {
@@ -80,9 +82,9 @@ export class GradeService {
   async getMyGrades(
     studentId: string,
     academicPeriod?: string,
-    // params: PaginationParams,
+    params?: PaginationParams,
   ) {
-    return this.prisma.grade.findMany({
+    const baseQuery = {
       where: {
         studentId,
         ...(academicPeriod && { academicPeriod }),
@@ -91,13 +93,38 @@ export class GradeService {
         exam: true,
         assignment: true,
       },
-      orderBy: { createdAt: 'desc' },
-    });
+    };
+
+    if (!params) {
+      return this.prisma.grade.findMany({
+        ...baseQuery,
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    const searchFields = [
+      'score',
+      'exam',
+      'academicPeriod',
+      'exams',
+      'comments',
+    ];
+
+    return PrismaQueryBuilder.paginateResponse(
+      this.prisma.grade,
+      baseQuery,
+      params,
+      searchFields,
+    );
   }
 
   // Retrieve a list of all grades assigned to students in a specific class
-  async getClassGrades(classId: string, academicPeriod?: string) {
-    return this.prisma.grade.findMany({
+  async getClassGrades(
+    classId: string,
+    academicPeriod?: string,
+    params?: PaginationParams,
+  ) {
+    const baseQuery = {
       where: {
         student: {
           classId,
@@ -109,8 +136,21 @@ export class GradeService {
         exam: true,
         assignment: true,
       },
-      orderBy: [{ student: { surname: 'asc' } }, { createdAt: 'desc' }],
-    });
+    };
+
+    if (!params) {
+      return this.prisma.grade.findMany({
+        ...baseQuery,
+        orderBy: [{ student: { surname: 'asc' } }, { createdAt: 'desc' }],
+      });
+    }
+
+    return PrismaQueryBuilder.paginateResponse(
+      this.prisma.grade,
+      baseQuery,
+      params,
+      ['comments', 'student.firstName', 'student.surname'],
+    );
   }
 
   async calculateOverallGrade(studentId: string, academicPeriod: string) {

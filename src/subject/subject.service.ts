@@ -119,7 +119,7 @@ export class SubjectService {
         include: baseInclude,
       };
 
-      const searchFields = ['name', 'description', 'code'];
+      const searchFields = ['name', 'class'];
 
       switch (userRole) {
         case Roles.SUPER_ADMIN:
