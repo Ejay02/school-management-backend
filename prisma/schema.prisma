@@ -81,6 +81,7 @@ model Parent {
   address       String
   img           String?
   students      Student[]
+  payments      Payment[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -285,7 +286,6 @@ model AnnouncementRead {
   @@index([userId])
 }
 
-
 model RefreshToken {
   id            String   @id @default(uuid())
   token         String   @unique
@@ -295,6 +295,28 @@ model RefreshToken {
   updatedAt     DateTime @updatedAt
 }
 
+model Payment {
+  id            String        @id @default(uuid())
+  amount        Float
+  currency      String        @default("USD")
+  status        PaymentStatus
+  paymentMethod String        // e.g., "card", "bank_transfer"
+  stripePaymentId String      @unique  // Stripe's payment intent ID
+  description   String?
+  metadata      Json?         // For any additional payment-related data
+  parentId      String
+  parent        Parent        @relation(fields: [parentId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
 
 enum Sex {
   MALE
