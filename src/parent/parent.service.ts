@@ -20,7 +20,7 @@ export class ParentService {
   async getAllParents(
     userId: string,
     userRole: Roles,
-    params: PaginationParams,
+    params?: PaginationParams,
   ) {
     try {
       const baseInclude = {

@@ -109,7 +109,7 @@ export class ExamService {
     classId: string,
     userId: string,
     userRole: Roles,
-    params: PaginationParams,
+    params?: PaginationParams,
   ) {
     // Verify access based on role
     switch (userRole) {

@@ -26,12 +26,12 @@ export class LessonResolver {
   )
   async getAllLessons(
     @Context() context,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.lessonService.getAllLessons(
       context.req.user.userId,
       context.req.user.role,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }

@@ -26,12 +26,12 @@ export class AssignmentResolver {
   )
   async getAllAssignments(
     @Context() context,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.assignmentService.getAllAssignments(
       context.req.user.userId,
       context.req.user.role,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }

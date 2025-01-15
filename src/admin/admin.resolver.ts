@@ -5,7 +5,6 @@ import { Roles } from 'src/shared/enum/role';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { Admin } from './types/admin.types';
-import { Grade } from 'src/grade/types/grade.types';
 import { Exam } from 'src/exam/types/exam.types';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { EditAdminInput } from './input/edit.admin.input';
@@ -27,12 +26,6 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN)
   async getAllExams(@Context() context) {
     return this.adminService.getAllExams(context.req.user.userId);
-  }
-
-  @Query(() => [Grade])
-  @HasRoles(Roles.ADMIN)
-  async getAllGrades(@Context() context) {
-    return this.adminService.getAllGrades(context.req.user.userId);
   }
 
   @Mutation(() => Admin)

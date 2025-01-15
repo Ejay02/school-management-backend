@@ -131,7 +131,7 @@ export class LessonService {
     return endDate.toISOString().slice(11, 16); // Return HH:mm format
   }
 
-  async getAllLessons(userId: string, role: Roles, params: PaginationParams) {
+  async getAllLessons(userId: string, role: Roles, params?: PaginationParams) {
     try {
       const searchFields = ['name'];
       let baseQuery: any = {};

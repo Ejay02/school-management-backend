@@ -20,12 +20,12 @@ export class SubmissionResolver {
   async getSubmissionsByAssignment(
     @Context() context,
     @Args('assignmentId') assignmentId: string,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.submissionService.getSubmissionsByAssignment(
       assignmentId,
       context.req.user.userId,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }
@@ -34,11 +34,11 @@ export class SubmissionResolver {
   @HasRoles(Roles.STUDENT)
   async getMySubmissions(
     @Context() context,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.submissionService.getMySubmissions(
       context.req.user.userId,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }
@@ -47,11 +47,11 @@ export class SubmissionResolver {
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async getAllClassSubmissions(
     @Args('classId') classId: string,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.submissionService.getAllClassSubmissions(
       classId,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }

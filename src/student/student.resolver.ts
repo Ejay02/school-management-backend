@@ -18,12 +18,12 @@ export class StudentResolver {
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.TEACHER, Roles.PARENT)
   async getAllStudents(
     @Context() context,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.studentService.getAllStudents(
       context.req.user.userId,
       context.req.user.role,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }

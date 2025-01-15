@@ -73,23 +73,6 @@ export class AdminService {
     }
   }
 
-  async getAllGrades(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-      return await this.prisma.grade.findMany({
-        include: {
-          students: true, // Include students related to the grade
-          submissions: true, // Include submissions related to the grade
-          subjects: true, // If there is a relation to subjects
-          exams: true,
-        },
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch grades');
-    }
-  }
-
   async assignAdminRole(adminId: string, targetId: string, newRole: Roles) {
     await this.verifyAdmin(adminId);
 

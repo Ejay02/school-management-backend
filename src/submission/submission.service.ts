@@ -16,7 +16,7 @@ export class SubmissionService {
   async getSubmissionsByAssignment(
     assignmentId: string,
     teacherId: string,
-    params: PaginationParams,
+    params?: PaginationParams,
   ) {
     // Verify teacher has access to this assignment
     const assignment = await this.prisma.assignment.findFirst({
@@ -48,7 +48,7 @@ export class SubmissionService {
     );
   }
 
-  async getMySubmissions(studentId: string, params: PaginationParams) {
+  async getMySubmissions(studentId: string, params?: PaginationParams) {
     const baseQuery = {
       where: { studentId },
       include: {
@@ -66,7 +66,7 @@ export class SubmissionService {
     );
   }
 
-  async getAllClassSubmissions(classId: string, params: PaginationParams) {
+  async getAllClassSubmissions(classId: string, params?: PaginationParams) {
     const baseQuery = {
       where: {
         assignment: {

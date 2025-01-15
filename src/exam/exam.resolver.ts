@@ -42,13 +42,13 @@ export class ExamResolver {
   async getClassExams(
     @Context() context,
     @Args('classId') classId: string,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     return this.examService.getClassExams(
       classId,
       context.req.user.userId,
       context.req.user.role,
-      pagination || {},
+      params || {},
     );
   }
 

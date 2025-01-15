@@ -103,7 +103,7 @@ export class SubjectService {
   async getAllSubjects(
     userId: string,
     userRole: Roles,
-    params: PaginationParams,
+    params?: PaginationParams,
   ) {
     try {
       const baseInclude = {

@@ -46,12 +46,12 @@ export class AnnouncementResolver {
   )
   async getAllAnnouncements(
     @Context() context,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.announcementService.getAllAnnouncements(
       context.req.user.userId,
       context.req.user.role,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }

@@ -22,7 +22,7 @@ export class StudentService {
   async getAllStudents(
     userId: string,
     userRole: Roles,
-    params: PaginationParams,
+    params?: PaginationParams,
   ) {
     try {
       const baseInclude = {

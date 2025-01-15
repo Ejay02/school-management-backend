@@ -38,12 +38,12 @@ export class SubjectResolver {
   )
   async getAllSubjects(
     @Context() context,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.subjectService.getAllSubjects(
       context.req.user.userId,
       context.req.user.role,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }

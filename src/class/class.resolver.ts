@@ -17,9 +17,9 @@ export class ClassResolver {
   @Query(() => [Class])
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async getAllClasses(
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
-    const result = await this.classService.getAllClasses(pagination || {});
+    const result = await this.classService.getAllClasses(params || {});
     return result.data;
   }
 

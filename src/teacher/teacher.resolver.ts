@@ -34,25 +34,13 @@ export class TeacherResolver {
   )
   async getAllTeachers(
     @Context() context,
-    @Args('pagination', { nullable: true }) pagination?: PaginationInput,
+    @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
     const result = await this.teacherService.getAllTeachers(
       context.req.user.userId,
       context.req.user.role,
-      pagination || {},
+      params || {},
     );
     return result.data;
   }
-
-  // @Query(() => PublicTeacherResponse)
-  // async publicTeacherProfile(@Args('id') id: string) {
-  //   return this.teacherService.publicTeacherProfile(id);
-  // }
-
-  // @Query()
-  // @HasRoles(Roles.TEACHER)
-
-  // async getStudentGrades(@Args('studentId') studentId: string) {
-  //   // Only assigned teachers can access
-  // }
 }
