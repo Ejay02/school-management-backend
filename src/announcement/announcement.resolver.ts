@@ -126,4 +126,34 @@ export class AnnouncementResolver {
       context.req.user.role,
     );
   }
+
+  @Mutation(() => Boolean)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.PARENT,
+    Roles.TEACHER,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  async personalAnnouncementDelete(
+    @Context() context,
+    @Args('announcementId') announcementId: string,
+  ) {
+    return await this.announcementService.personalAnnouncementDelete(
+      context.req.user.userId,
+      announcementId,
+    );
+  }
+
+  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
+  async globalAnnouncementDelete(
+    @Context() context,
+    @Args('announcementId') announcementId: string,
+  ) {
+    return await this.announcementService.globalAnnouncementDelete(
+      context.req.user.userId,
+      context.req.user.role,
+      announcementId,
+    );
+  }
 }

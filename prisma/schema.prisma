@@ -278,6 +278,8 @@ model AnnouncementRead {
   announcement  Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   userId        String      // The ID of the user who read the announcement
   readAt        DateTime    @default(now())
+  deletedAt     DateTime?  // Null means not deleted
+
 
   @@unique([announcementId, userId])
   @@index([userId])

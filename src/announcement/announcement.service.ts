@@ -63,7 +63,6 @@ export class AnnouncementService {
     return announcement; // The transaction will be committed, and the announcement is returned
   }
 
-  // announcement.service.ts
   async getAllAnnouncements(
     userId: string,
     role: Roles,
@@ -512,6 +511,67 @@ export class AnnouncementService {
       });
     } catch (error) {
       return 0; // Return 0 on error
+    }
+  }
+
+  // Personal Delete: Remove from personal view
+  async personalAnnouncementDelete(
+    userId: string,
+    announcementId: string,
+  ): Promise<boolean> {
+    try {
+      // Logic to record that the user "deleted" the announcement personally
+      await this.prisma.announcementRead.create({
+        data: {
+          userId,
+          announcementId,
+          deletedAt: new Date(),
+        },
+      });
+      return true;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to perform personal delete',
+      );
+    }
+  }
+
+  // Main Delete: Delete globally for everyone
+  async globalAnnouncementDelete(
+    userId: string,
+    role: Roles,
+    announcementId: string,
+  ): Promise<boolean> {
+    try {
+      // Fetch the announcement
+      const announcement = await this.prisma.announcement.findUnique({
+        where: { id: announcementId },
+      });
+
+      if (!announcement) {
+        throw new NotFoundException('Announcement not found');
+      }
+
+      // Ensure the user has permission to delete globally
+      const isCreator = announcement.creatorId === userId;
+      const isAdmin = [Roles.ADMIN, Roles.SUPER_ADMIN].includes(role);
+
+      if (!isCreator && !isAdmin) {
+        throw new ForbiddenException(
+          'You do not have permission to delete this announcement globally',
+        );
+      }
+
+      // Delete the announcement
+      await this.prisma.announcement.delete({ where: { id: announcementId } });
+      return true;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      )
+        throw error;
+      throw new InternalServerErrorException('Failed to delete announcement');
     }
   }
 }
