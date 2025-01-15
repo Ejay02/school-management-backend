@@ -48,4 +48,12 @@ export class AnnouncementGateway {
   emitToClass(classId: string, announcement: any) {
     this.server.to(`class-${classId}`).emit('newAnnouncement', announcement);
   }
+
+  // Emit read status to specific user
+  emitReadStatus(announcementId: string, userId: string, isRead: boolean) {
+    this.server.to(`user-${userId}`).emit('readStatus', {
+      announcementId,
+      isRead,
+    });
+  }
 }

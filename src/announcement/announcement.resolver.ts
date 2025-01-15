@@ -1,4 +1,4 @@
-import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AnnouncementService } from './announcement.service';
 import { Announcement } from './types/announcement.types';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
@@ -90,6 +90,40 @@ export class AnnouncementResolver {
       context.req.user.role,
       announcementId,
       { title, content, targetRoles },
+    );
+  }
+
+  @Mutation(() => Boolean)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.PARENT,
+    Roles.TEACHER,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  async markAnnouncementAsRead(
+    @Context() context,
+    @Args('announcementId') announcementId: string,
+  ) {
+    return this.announcementService.markAnnouncementAsRead(
+      context.req.user.userId,
+      context.req.user.role,
+      announcementId,
+    );
+  }
+
+  @Query(() => Int)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.PARENT,
+    Roles.TEACHER,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  async getUnreadAnnouncementsCount(@Context() context) {
+    return this.announcementService.getUnreadCount(
+      context.req.user.userId,
+      context.req.user.role,
     );
   }
 }

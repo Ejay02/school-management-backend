@@ -73,6 +73,10 @@ export class AnnouncementService {
       const baseQuery: any = {
         include: {
           class: true,
+          reads: {
+            where: { userId },
+            select: { readAt: true },
+          },
         },
       };
 
@@ -377,6 +381,137 @@ export class AnnouncementService {
       if (error instanceof ForbiddenException) throw error;
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Failed to update announcement');
+    }
+  }
+
+  async markAnnouncementAsRead(
+    userId: string,
+    role: Roles,
+    announcementId: string,
+  ): Promise<boolean> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // First verify the user has access to this announcement
+        const announcement = await this.getAnnouncementById(
+          userId,
+          role,
+          announcementId,
+        );
+
+        if (!announcement) {
+          return false;
+        }
+
+        // Create or update read status
+        await tx.announcementRead.upsert({
+          where: {
+            announcementId_userId: {
+              announcementId,
+              userId,
+            },
+          },
+          create: {
+            announcementId,
+            userId,
+          },
+          update: {
+            readAt: new Date(), // Update if record already exists
+          },
+        });
+
+        // Emit read status update
+        this.announcementGateway.emitReadStatus(announcementId, userId, true);
+
+        return true;
+      });
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async getUnreadCount(userId: string, role: Roles): Promise<number> {
+    try {
+      // Get all read announcements by this user
+      const readAnnouncements = await this.prisma.announcementRead.findMany({
+        where: { userId },
+        select: { announcementId: true },
+      });
+
+      const readIds = readAnnouncements.map((r) => r.announcementId);
+
+      // Build base query similar to getAllAnnouncements
+      const baseQuery: any = {
+        id: { notIn: readIds },
+      };
+
+      // Add role-based filters
+      if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
+        // Admins can see all announcements
+      } else if (role === Roles.TEACHER) {
+        const teacherClassIds = await this.prisma.lesson.findMany({
+          where: { teacherId: userId },
+          select: { classId: true },
+        });
+
+        baseQuery.OR = [
+          {
+            classId: {
+              in: teacherClassIds.map((lesson) => lesson.classId),
+            },
+          },
+          { creatorId: userId },
+          {
+            AND: [
+              { targetRoles: { hasSome: [Roles.TEACHER] } },
+              { creatorRole: { in: [Roles.ADMIN, Roles.SUPER_ADMIN] } },
+            ],
+          },
+        ];
+      } else if (role === Roles.STUDENT) {
+        baseQuery.OR = [
+          { classId: userId },
+          {
+            AND: [
+              { targetRoles: { hasSome: [Roles.STUDENT] } },
+              {
+                creatorRole: {
+                  in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
+                },
+              },
+            ],
+          },
+        ];
+      } else if (role === Roles.PARENT) {
+        const childrenClasses = await this.prisma.student.findMany({
+          where: { parentId: userId },
+          select: { classId: true },
+        });
+
+        baseQuery.OR = [
+          {
+            classId: {
+              in: childrenClasses.map((student) => student.classId),
+            },
+          },
+          {
+            AND: [
+              { targetRoles: { hasSome: [Roles.PARENT] } },
+              {
+                creatorRole: {
+                  in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
+                },
+              },
+            ],
+          },
+        ];
+      }
+
+      // Count unread announcements with proper filters
+      return await this.prisma.announcement.count({
+        where: baseQuery,
+      });
+    } catch (error) {
+      return 0; // Return 0 on error
     }
   }
 }
