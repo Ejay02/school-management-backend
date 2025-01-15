@@ -264,12 +264,25 @@ model Announcement {
   content       String
   classId       String?
   class         Class?          @relation(fields: [classId], references: [id])
-  targetRoles   Role[]    
+  targetRoles   Role[] 
+  reads         AnnouncementRead[]   
   creatorId     String
   creatorRole   Role 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 }
+
+model AnnouncementRead {
+  id            String      @id @default(uuid())
+  announcementId String
+  announcement  Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId        String      // The ID of the user who read the announcement
+  readAt        DateTime    @default(now())
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+}
+
 
 model RefreshToken {
   id            String   @id @default(uuid())
