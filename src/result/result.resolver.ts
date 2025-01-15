@@ -6,6 +6,7 @@ import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Result } from './types/result.types';
 import { Roles } from 'src/shared/enum/role';
+import { ResultStatistics } from './types/result.statistics';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -67,7 +68,7 @@ export class ResultResolver {
     return this.resultService.getClassResults(classId);
   }
 
-  @Query(() => JSON)
+  @Query(() => ResultStatistics)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
   async getResultStatistics(@Args('classId') classId: string) {
     return this.resultService.getResultStatistics(classId);

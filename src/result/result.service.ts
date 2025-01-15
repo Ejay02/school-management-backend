@@ -98,15 +98,23 @@ export class ResultService {
 
   async getResultStatistics(classId: string) {
     return this.prisma.$transaction(async (tx) => {
+      // Fetch all results related to the specified class, which can be linked to exams or assignments
       const results = await tx.result.findMany({
         where: {
           OR: [{ exam: { classId } }, { assignment: { classId } }],
         },
       });
 
+      // Extract scores from the fetched results
       const scores = results.map((r) => r.score);
+
+      // Calculate the average score by summing all scores and dividing by the total count
       const average = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+      // Determine the highest score among all results
       const highest = Math.max(...scores);
+
+      // Determine the lowest score among all results
       const lowest = Math.min(...scores);
 
       return {

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -35,6 +36,37 @@ export class AuthService {
     private lessonService: LessonService,
     private subjectService: SubjectService,
   ) {}
+
+  private async validateForeignKeys(tx: any, input: StudentSignupInput) {
+    // Validate that parent exists
+    const parent = await tx.parent.findUnique({
+      where: { id: input.parentId },
+    });
+    if (!parent) {
+      throw new NotFoundException(
+        `Parent with ID ${input.parentId} not found. Please verify the parent ID.`,
+      );
+    }
+
+    // Validate that class exists and has capacity
+    const targetClass = await tx.class.findUnique({
+      where: { id: input.classId },
+      include: {
+        students: true,
+      },
+    });
+    if (!targetClass) {
+      throw new NotFoundException(
+        `Class with ID ${input.classId} not found. Please verify the class ID.`,
+      );
+    }
+
+    if (targetClass.students.length >= targetClass.capacity) {
+      throw new BadRequestException(
+        `Class ${targetClass.name} has reached its maximum capacity of ${targetClass.capacity} students.`,
+      );
+    }
+  }
 
   async signup(input: SignupInputType): Promise<AuthResponse> {
     try {
@@ -119,6 +151,9 @@ export class AuthService {
 
           case Roles.STUDENT:
             const studentInput = input as StudentSignupInput;
+
+            await this.validateForeignKeys(tx, studentInput);
+
             newUser = await tx.student.create({
               data: {
                 username,
@@ -132,7 +167,7 @@ export class AuthService {
                 sex: studentInput.sex,
                 parentId: studentInput.parentId,
                 classId: studentInput.classId,
-                gradeId: '0',
+                // gradeId: '0',
               },
             });
             break;
@@ -173,7 +208,7 @@ export class AuthService {
           sex: newUser.sex || null,
           parentId: newUser.parentId || null,
           classId: newUser.classId || null,
-          gradeId: newUser.gradeId || null,
+          // gradeId: newUser.gradeId || null,
         };
         return authResponse;
       });
@@ -254,7 +289,7 @@ export class AuthService {
 
         {
           secret: process.env.JWT_SECRET,
-          expiresIn: '1h',
+          expiresIn: '12h',
         },
       );
     } catch (error) {

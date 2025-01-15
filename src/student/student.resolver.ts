@@ -8,6 +8,7 @@ import { Roles } from 'src/shared/enum/role';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { StudentGenderStatistics } from './types/student.statistic.types';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,12 +32,41 @@ export class StudentResolver {
   @Query(() => Student)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT, Roles.STUDENT)
   async getStudentById(@Args('studentId') studentId: string) {
-    return this.studentService.getStudentById(studentId);
+    return await this.studentService.getStudentById(studentId);
   }
 
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT)
   @Mutation(() => Student)
   async assignStudentToClass(@Args('input') input: AssignStudentToClassInput) {
-    return this.studentService.assignStudentToClass(input);
+    return await this.studentService.assignStudentToClass(input);
+  }
+
+  @Query(() => StudentGenderStatistics)
+  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getStudentGenderStatistics(
+    @Context() context,
+    @Args('classId', { nullable: true }) classId?: string,
+  ) {
+    return await this.studentService.getStudentGenderStatistics(
+      context.req.user.userId,
+      context.req.user.role,
+      classId,
+    );
+  }
+
+  @Query(() => [Student])
+  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getStudentsBySex(
+    @Context() context,
+    @Args('sex') sex: 'MALE' | 'FEMALE',
+    @Args('params', { nullable: true }) params?: PaginationInput,
+  ) {
+    const result = await this.studentService.getStudentsBySex(
+      context.req.user.userId,
+      context.req.user.role,
+      sex,
+      params || {},
+    );
+    return result.data;
   }
 }

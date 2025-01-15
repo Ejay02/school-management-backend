@@ -16,7 +16,7 @@ import { LessonService } from 'src/lesson/lesson.service';
       useFactory: () => ({
         secret: process.env.JWT_SECRET,
         signOptions: {
-          expiresIn: '1h',
+          expiresIn: '12h',
         },
       }),
     }),
