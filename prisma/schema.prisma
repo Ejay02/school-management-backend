@@ -9,82 +9,80 @@ datasource db {
 }
 
 model Admin {
-  id            String        @id @default(uuid())
-  username      String        @unique
-  role          Role
-  email         String?       
-  password      String
-  img           String?
-  // events        Event[]
-  // announcements Announcement[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  username        String        @unique
+  role            Role
+  email           String?       
+  password        String
+  img             String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Student {
-  id            String        @id @default(uuid())
-  username      String        @unique
-  role          Role
-  name          String  
-  surname       String  
-  email         String?       @unique
-  password      String
-  phone         String?       @unique
-  address       String
-  img           String?
-  bloodType     String
-  sex           Sex
-  parentId      String
-  parent        Parent        @relation(fields: [parentId], references: [id] )
-  classId       String
-  class         Class         @relation(fields: [classId], references: [id] )
-  gradeId       String        @default(uuid())
-  grade         Grade[]       
-  attendances   Attendance[]
-  results       Result[]
-  submissions   Submission[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  username        String        @unique
+  role            Role
+  name            String  
+  surname         String  
+  email           String?       @unique
+  password        String
+  phone           String?       @unique
+  address         String
+  img             String?
+  bloodType       String
+  sex             Sex
+  parentId        String
+  parent          Parent        @relation(fields: [parentId], references: [id] )
+  classId         String
+  class           Class         @relation(fields: [classId], references: [id] )
+  gradeId         String        @default(uuid())
+  grade           Grade[]       
+  attendances     Attendance[]
+  results         Result[]
+  submissions     Submission[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Teacher{
-  id            String        @id @default(uuid())
-  username      String        @unique
-  role          Role
-  name          String  
-  surname       String  
-  email         String?       @unique
-  password      String
-  phone         String?       @unique
-  address       String
-  img           String?
-  bloodType     String
-  sex           Sex
-  exams         Exam[]
-  subjects      Subject[]
-  lessons       Lesson[]
-  classes       Class[]
-  assignments   Assignment[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  username        String        @unique
+  role            Role
+  name            String  
+  surname         String  
+  email           String?       @unique
+  password        String
+  phone           String?       @unique
+  address         String
+  img             String?
+  bloodType       String
+  sex             Sex
+  exams           Exam[]
+  subjects        Subject[]
+  lessons         Lesson[]
+  classes         Class[]
+  assignments     Assignment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Parent {
-  id            String        @id @default(uuid())
-  username      String        @unique
-  role          Role
-  name          String  
-  surname       String  
-  email         String?       @unique
-  password      String
-  phone         String        @unique
-  address       String
-  img           String?
-  students      Student[]
-  invoices      Invoice[]
-  payments      Payment[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  username        String        @unique
+  role            Role
+  name            String  
+  surname         String  
+  email           String?       @unique
+  password        String
+  phone           String        @unique
+  address         String
+  img             String?
+  students        Student[]
+  invoices        Invoice[]
+  payments        Payment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Grade {
@@ -110,177 +108,179 @@ model Grade {
 }
 
 model Class {
-  id            String        @id @default(uuid())
-  name          String        @unique
-  capacity      Int 
-  lessons       Lesson[]
-  students      Student[]
-  supervisorId  String?
-  supervisor    Teacher?      @relation(fields: [supervisorId], references: [id] )
-  exams         Exam[]
-  events        Event[]
-  subjects      Subject[]   
-  assignments   Assignment[]
-  announcements Announcement[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-}
+  id              String        @id @default(uuid())
+  name            String        @unique
+  capacity        Int 
+  lessons         Lesson[]
+  students        Student[]
+  supervisorId    String?
+  supervisor      Teacher?      @relation(fields: [supervisorId], references: [id] )
+  exams           Exam[]
+  events          Event[]
+  subjects        Subject[]   
+  assignments     Assignment[]
+  announcements   Announcement[]
+  feeStructureId  String?
+  feeStructure    FeeStructure?  @relation(fields: [feeStructureId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+} 
 
 model Subject {
-  id            String        @id @default(uuid())
-  name          String        
-  exams         Exam[]
-  teachers      Teacher[]
-  lessons       Lesson[]
-  assignments   Assignment[]
-  gradeId       String?
-  grade         Grade?        @relation(fields: [gradeId], references: [id] )
-  classId       String
-  class         Class         @relation(fields: [classId], references: [id])
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  name            String        
+  exams           Exam[]
+  teachers        Teacher[]
+  lessons         Lesson[]
+  assignments     Assignment[]
+  gradeId         String?
+  grade           Grade?        @relation(fields: [gradeId], references: [id] )
+  classId         String
+  class           Class         @relation(fields: [classId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Lesson {
-  id            String        @id @default(uuid())
-  name          String
-  day           String
-  startTime     String
-  endTime       String
-  subjectId     String
-  subject       Subject       @relation(fields: [subjectId], references: [id] )
-  classId       String
-  class         Class         @relation(fields: [classId], references: [id])
-  teacherId     String?
-  teacher       Teacher?       @relation(fields: [teacherId], references: [id])
-  exams         Exam[]
-  assignments   Assignment[]
-  attendances   Attendance[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  name            String
+  day             String
+  startTime       String
+  endTime         String
+  subjectId       String
+  subject         Subject       @relation(fields: [subjectId], references: [id] )
+  classId         String
+  class           Class         @relation(fields: [classId], references: [id])
+  teacherId       String?
+  teacher         Teacher?      @relation(fields: [teacherId], references: [id])
+  exams           Exam[]
+  assignments     Assignment[]
+  attendances     Attendance[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Exam {
-  id            String        @id @default(uuid())
-  title         String
-  startTime     DateTime
-  endTime       DateTime
-  lessonId      String
-  lesson        Lesson        @relation(fields: [lessonId], references: [id])
-  classId       String          
-  class         Class         @relation(fields: [classId], references: [id])
-  subjectId     String          
-  subject       Subject       @relation(fields: [subjectId], references: [id])
-  teacherId     String       
-  teacher       Teacher       @relation(fields: [teacherId], references: [id])
-  results       Result[]
-  gradeId       String?
-  grade         Grade[] //?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  title           String
+  startTime       DateTime
+  endTime         DateTime
+  lessonId        String
+  lesson          Lesson        @relation(fields: [lessonId], references: [id])
+  classId         String          
+  class           Class         @relation(fields: [classId], references: [id])
+  subjectId       String          
+  subject         Subject       @relation(fields: [subjectId], references: [id])
+  teacherId       String       
+  teacher         Teacher       @relation(fields: [teacherId], references: [id])
+  results         Result[]
+  gradeId         String?
+  grade           Grade[] //?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Assignment {
-  id            String        @id @default(uuid())
-  title         String    
-  startDate     DateTime    
-  dueDate       DateTime    
-  lessonId      String   
-  lesson        Lesson        @relation(fields: [lessonId], references: [id])
-  teacherId     String        
-  teacher       Teacher       @relation(fields: [teacherId], references: [id])
-  subjectId     String   
-  subject       Subject       @relation(fields: [subjectId], references: [id])
-  classId       String   
-  class         Class         @relation(fields: [classId], references: [id])
-  grade         Grade[]
-  results       Result[]    
-  submissions   Submission[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  title           String    
+  startDate       DateTime    
+  dueDate         DateTime    
+  lessonId        String   
+  lesson          Lesson        @relation(fields: [lessonId], references: [id])
+  teacherId       String        
+  teacher         Teacher       @relation(fields: [teacherId], references: [id])
+  subjectId       String   
+  subject         Subject       @relation(fields: [subjectId], references: [id])
+  classId         String   
+  class           Class         @relation(fields: [classId], references: [id])
+  grade           Grade[]
+  results         Result[]    
+  submissions     Submission[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Submission {
-  id            String        @id @default(uuid())
-  assignmentId  String
-  assignment    Assignment    @relation(fields: [assignmentId], references: [id])
-  studentId     String
-  student       Student       @relation(fields: [studentId], references: [id] )
-  gradeId       String
-  grade         Grade?        @relation(fields: [gradeId], references: [id])  
-  submissionDate DateTime     @default(now()) 
-  status        String        // Submission status (e.g., 'submitted', 'graded', 'late')
-  content       String?       // Optional field to store submission content (e.g., file URL or text)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  assignmentId    String
+  assignment      Assignment    @relation(fields: [assignmentId], references: [id])
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id] )
+  gradeId         String
+  grade           Grade?        @relation(fields: [gradeId], references: [id])  
+  submissionDate  DateTime      @default(now()) 
+  status          String        // Submission status (e.g., 'submitted', 'graded', 'late')
+  content         String?       // Optional field to store submission content (e.g., file URL or text)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Result {
-  id            String        @id @default(uuid())
-  score         Int
-  examId        String?
-  exam          Exam?         @relation(fields: [examId], references: [id]) 
-  assignmentId  String?
-  assignment    Assignment?   @relation(fields: [assignmentId], references: [id])  
-  studentId     String
-  student       Student       @relation(fields: [studentId], references: [id] )    
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  score           Int
+  examId          String?
+  exam            Exam?         @relation(fields: [examId], references: [id]) 
+  assignmentId    String?
+  assignment      Assignment?   @relation(fields: [assignmentId], references: [id])  
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id] )    
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Attendance{
-  id            String        @id @default(uuid())
-  date          DateTime
-  present       Boolean
-  studentId     String
-  student       Student       @relation(fields: [studentId], references: [id] )
-  lessonId      String
-  lesson        Lesson        @relation(fields: [lessonId], references: [id]) 
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  date            DateTime
+  present         Boolean
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id] )
+  lessonId        String
+  lesson          Lesson        @relation(fields: [lessonId], references: [id]) 
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@unique([lessonId, studentId, date])
 }
 
 model Event {
-  id            String           @id @default(uuid())
-  title         String          
-  description   String      
-  classId       String?      
-  class         Class?          @relation(fields: [classId], references: [id])
-  creatorId     String         
-  type          String       // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
-  location      String?
-  targetRoles   Role[]
-  visibility    EventVisibility
-  status        EventStatus     @default(SCHEDULED)
-  startTime     DateTime      
-  endTime       DateTime      
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id              String        @id @default(uuid())
+  title           String          
+  description     String      
+  classId         String?      
+  class           Class?        @relation(fields: [classId], references: [id])
+  creatorId       String         
+  type            String       // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
+  location        String?
+  targetRoles     Role[]
+  visibility      EventVisibility
+  status          EventStatus   @default(SCHEDULED)
+  startTime       DateTime      
+  endTime         DateTime      
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Announcement {
-  id            String           @id @default(uuid())
-  title         String
-  content       String
-  classId       String?
-  class         Class?          @relation(fields: [classId], references: [id])
-  targetRoles   Role[] 
-  reads         AnnouncementRead[]   
-  creatorId     String
-  creatorRole   Role 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id              String        @id @default(uuid())
+  title           String
+  content         String
+  classId         String?
+  class           Class?        @relation(fields: [classId], references: [id])
+  targetRoles     Role[] 
+  reads           AnnouncementRead[]   
+  creatorId       String
+  creatorRole     Role 
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model AnnouncementRead {
-  id            String      @id @default(uuid())
-  announcementId String
-  announcement  Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  userId        String      // The ID of the user who read the announcement
-  readAt        DateTime    @default(now())
-  deletedAt     DateTime?  // Null means not deleted
+  id              String        @id @default(uuid())
+  announcementId  String
+  announcement    Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId          String        // The ID of the user who read the announcement
+  readAt          DateTime      @default(now())
+  deletedAt       DateTime?     // Null means not deleted
 
 
   @@unique([announcementId, userId])
@@ -288,24 +288,25 @@ model AnnouncementRead {
 }
 
 model RefreshToken {
-  id              String   @id @default(uuid())
-  token           String   @unique
+  id              String       @id @default(uuid())
+  token           String       @unique
   userId          String
   expires         DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }
 
 model FeeStructure {
   id              String        @id @default(uuid())
   academicYear    String
-  term            Term
+  term            Term?
   type            FeeType      // YEARLY or TERM
   components      FeeComponent[]
   totalAmount     Float
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   invoices        Invoice[]
+  classes         Class[]    
 }
 
 model FeeComponent {
@@ -335,14 +336,13 @@ model Invoice {
   updatedAt       DateTime      @updatedAt
 }
 
-
 model Payment {
   id              String        @id @default(uuid())
   amount          Float
   currency        String        @default("USD")
   status          PaymentStatus
   paymentMethod   String        // e.g., "card", "bank_transfer"
-  stripePaymentId String      @unique  // Stripe's payment intent ID
+  stripePaymentId String        @unique  // Stripe's payment intent ID
   description     String?
   metadata        Json?         // For any additional payment-related data
   invoiceId       String

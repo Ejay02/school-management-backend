@@ -7,13 +7,13 @@ import {
 } from '@nestjs/graphql';
 import { Term } from '../enum/term';
 import { FeeType } from '../enum/fee.type';
-import { FeeComponentType } from './fee.component.type';
+import { FeeComponent } from './fee.component.type';
 
 registerEnumType(Term, { name: 'Term' });
 registerEnumType(FeeType, { name: 'FeeType' });
 
 @ObjectType()
-export class FeeStructureType {
+export class FeeStructure {
   @Field(() => ID)
   id: string;
 
@@ -21,7 +21,7 @@ export class FeeStructureType {
   academicYear: string;
 
   @Field(() => Term)
-  term: Term;
+  term?: Term;
 
   @Field(() => FeeType)
   type: FeeType;
@@ -29,8 +29,8 @@ export class FeeStructureType {
   @Field(() => Float)
   totalAmount: number;
 
-  @Field(() => [FeeComponentType])
-  components: FeeComponentType[];
+  @Field(() => [FeeComponent])
+  components: FeeComponent[];
 
   @Field()
   createdAt: Date;

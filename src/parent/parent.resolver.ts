@@ -19,7 +19,7 @@ export class ParentResolver {
     Roles.TEACHER,
     Roles.PARENT,
     Roles.STUDENT,
-    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
   )
   async getAllParents(
     @Context() context,
@@ -39,7 +39,7 @@ export class ParentResolver {
     Roles.TEACHER,
     Roles.PARENT,
     Roles.STUDENT,
-    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
   )
   async getParentById(@Args('parentId') parentId: string) {
     return this.parentService.getParentById(parentId);

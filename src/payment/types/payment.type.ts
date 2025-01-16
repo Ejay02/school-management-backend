@@ -10,7 +10,7 @@ import { PaymentStatus } from '../enum/payment.status';
 registerEnumType(PaymentStatus, { name: 'PaymentStatus' });
 
 @ObjectType()
-export class PaymentType {
+export class Payment {
   @Field(() => ID)
   id: string;
 

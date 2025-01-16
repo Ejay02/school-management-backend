@@ -1,7 +1,7 @@
 import { Field, Float, ID, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
-export class FeeComponentType {
+export class FeeComponent {
   @Field(() => ID)
   id: string;
 

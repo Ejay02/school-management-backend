@@ -6,12 +6,12 @@ import {
   registerEnumType,
 } from '@nestjs/graphql';
 import { InvoiceStatus } from '../enum/invoice.status';
-import { PaymentType } from './payment.type';
+import { Payment } from './payment.type';
 
 registerEnumType(InvoiceStatus, { name: 'InvoiceStatus' });
 
 @ObjectType()
-export class InvoiceType {
+export class Invoice {
   @Field(() => ID)
   id: string;
 
@@ -36,8 +36,8 @@ export class InvoiceType {
   @Field()
   dueDate: Date;
 
-  @Field(() => [PaymentType])
-  payments: PaymentType[];
+  @Field(() => [Payment])
+  payments: Payment[];
 
   @Field()
   createdAt: Date;

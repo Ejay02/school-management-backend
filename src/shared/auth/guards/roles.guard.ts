@@ -118,11 +118,11 @@ export class RolesGuard implements CanActivate {
   ): Promise<boolean> {
     try {
       const args = ctx.getArgs();
+      const info = ctx.getInfo();
 
       // If accessing parent info
       if (args.parentId) {
-        // Allow if it's their own info
-        return args.parentId === user.id;
+        return args.parentId === user.id; // Allow if it's their own info
       }
 
       // If accessing student info
@@ -153,6 +153,56 @@ export class RolesGuard implements CanActivate {
           },
         });
         return !!teachesChildClass;
+      }
+
+      // Handle invoice generation and fee structure access
+      if (info.fieldName === 'generateInvoice' && args.feeStructureId) {
+        const parentStudents = await this.prisma.student.findMany({
+          where: {
+            parentId: user.id,
+          },
+          include: {
+            class: true,
+          },
+        });
+        if (!parentStudents)
+          throw new Error(`You don't have any child in this class`);
+
+        // Then, check if any of these students' classes have the fee structure
+        const feeStructure = await this.prisma.feeStructure.findFirst({
+          where: {
+            id: args.feeStructureId,
+            OR: [
+              {
+                // Check direct class association
+                classes: {
+                  some: {
+                    students: {
+                      some: {
+                        parentId: user.id,
+                      },
+                    },
+                  },
+                },
+              },
+              {
+                // Check school-wide fee structures
+
+                classes: {
+                  some: {
+                    students: {
+                      some: {
+                        parentId: user.id,
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        });
+
+        return !!feeStructure;
       }
 
       return false;
