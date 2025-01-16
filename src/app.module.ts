@@ -23,6 +23,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './shared/auth/auth.module';
 import { SubmissionModule } from './submission/submission.module';
 import { MailModule } from './mail/mail.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { MailModule } from './mail/mail.module';
     AuthModule,
     SubmissionModule,
     MailModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],
