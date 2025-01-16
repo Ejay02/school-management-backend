@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import Stripe from 'stripe';
@@ -183,6 +184,21 @@ export class PaymentService {
 
         if (!feeStructure) {
           throw new NotFoundException('Fee structure not found');
+        }
+
+        // Check if an invoice already exists for this parent and fee structure
+        const existingInvoice = await tx.invoice.findFirst({
+          where: {
+            parentId,
+            feeStructureId,
+            status: { not: InvoiceStatus.PAID }, // Adjust based on your requirements
+          },
+        });
+
+        if (existingInvoice) {
+          throw new ConflictException(
+            'An invoice already exists for this parent and fee structure',
+          );
         }
 
         // Generate unique invoice number
