@@ -81,6 +81,7 @@ model Parent {
   address       String
   img           String?
   students      Student[]
+  invoices      Invoice[]
   payments      Payment[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -287,27 +288,88 @@ model AnnouncementRead {
 }
 
 model RefreshToken {
-  id            String   @id @default(uuid())
-  token         String   @unique
-  userId        String
-  expires       DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(uuid())
+  token           String   @unique
+  userId          String
+  expires         DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
+model FeeStructure {
+  id              String        @id @default(uuid())
+  academicYear    String
+  term            Term
+  type            FeeType      // YEARLY or TERM
+  components      FeeComponent[]
+  totalAmount     Float
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  invoices        Invoice[]
+}
+
+model FeeComponent {
+  id              String        @id @default(uuid())
+  name            String        // e.g., "Tuition", "Boarding", "Meals"
+  description     String?
+  amount          Float
+  feeStructureId  String
+  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  invoiceNumber   String        @unique
+  parentId        String
+  parent          Parent        @relation(fields: [parentId], references: [id])
+  feeStructureId  String
+  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id])
+  totalAmount     Float
+  paidAmount      Float         @default(0)
+  status          InvoiceStatus @default(PENDING)
+  dueDate         DateTime
+  payments        Payment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+
 model Payment {
-  id            String        @id @default(uuid())
-  amount        Float
-  currency      String        @default("USD")
-  status        PaymentStatus
-  paymentMethod String        // e.g., "card", "bank_transfer"
+  id              String        @id @default(uuid())
+  amount          Float
+  currency        String        @default("USD")
+  status          PaymentStatus
+  paymentMethod   String        // e.g., "card", "bank_transfer"
   stripePaymentId String      @unique  // Stripe's payment intent ID
-  description   String?
-  metadata      Json?         // For any additional payment-related data
-  parentId      String
-  parent        Parent        @relation(fields: [parentId], references: [id])
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  description     String?
+  metadata        Json?         // For any additional payment-related data
+  invoiceId       String
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+  parentId        String
+  parent          Parent        @relation(fields: [parentId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+enum Term {
+  FIRST
+  SECOND
+  THIRD
+}
+
+enum FeeType {
+  YEARLY
+  TERM
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
 }
 
 enum PaymentStatus {
