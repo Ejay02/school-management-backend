@@ -33,6 +33,7 @@
     "@nestjs/platform-socket.io": "^10.4.15",
     "@nestjs/websockets": "^10.4.15",
     "@prisma/client": "^6.2.1",
+    "@stripe/stripe-js": "^5.5.0",
     "@types/nodemailer": "^6.4.17",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
@@ -46,6 +47,7 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
+    "stripe": "^17.5.0",
     "uuid": "^11.0.3"
   },
   "devDependencies": {
