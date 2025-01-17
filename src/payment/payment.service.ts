@@ -263,7 +263,6 @@ export class PaymentService {
       searchFields,
     );
   }
-  // pi_3Qi8RZC487jsW5be01CzlEie_secret_PqJV7UsdDUMbCaqH21ap0efr0
 
   async initiatePayment(parentId: string, invoiceId: string, amount: number) {
     try {

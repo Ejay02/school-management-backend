@@ -58,7 +58,7 @@ export class PaymentResolver {
     @Args('invoiceId') invoiceId: string,
     @Args('amount') amount: number,
   ) {
-    return this.paymentService.initiatePayment(
+    return await this.paymentService.initiatePayment(
       context.req.user.userId,
       invoiceId,
       amount,
