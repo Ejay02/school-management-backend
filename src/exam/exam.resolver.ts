@@ -18,7 +18,7 @@ export class ExamResolver {
   @Mutation(() => Exam)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
   async createExam(@Context() context, @Args('input') input: CreateExamInput) {
-    return this.examService.createExam(context.req.user.userId, input);
+    return await this.examService.createExam(context.req.user.userId, input);
   }
 
   @Mutation(() => Exam)
@@ -28,7 +28,11 @@ export class ExamResolver {
     @Args('examId') examId: string,
     @Args('input') input: UpdateExamInput,
   ) {
-    return this.examService.updateExam(examId, context.req.user.userId, input);
+    return await this.examService.updateExam(
+      examId,
+      context.req.user.userId,
+      input,
+    );
   }
 
   @Query(() => [Exam])
@@ -44,7 +48,7 @@ export class ExamResolver {
     @Args('classId') classId: string,
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
-    return this.examService.getClassExams(
+    return await this.examService.getClassExams(
       classId,
       context.req.user.userId,
       context.req.user.role,
@@ -61,7 +65,7 @@ export class ExamResolver {
     Roles.SUPER_ADMIN,
   )
   async getExamDetails(@Context() context, @Args('examId') examId: string) {
-    return this.examService.getExamDetails(
+    return await this.examService.getExamDetails(
       examId,
       context.req.user.userId,
       context.req.user.role,
@@ -71,6 +75,6 @@ export class ExamResolver {
   @Mutation(() => Boolean)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async deleteExam(@Args('examId') examId: string) {
-    return this.examService.deleteExam(examId);
+    return await this.examService.deleteExam(examId);
   }
 }

@@ -21,7 +21,7 @@ export class GradeResolver {
     @Context() context,
     @Args('input') input: CreateGradeInput,
   ) {
-    return this.gradeService.assignGrade(context.req.user.userId, input);
+    return await this.gradeService.assignGrade(context.req.user.userId, input);
   }
 
   @Mutation(() => Grade)
@@ -30,7 +30,7 @@ export class GradeResolver {
     @Context() context,
     @Args('input') input: UpdateGradeInput,
   ) {
-    return this.gradeService.updateGrade(context.req.user.userId, input);
+    return await this.gradeService.updateGrade(context.req.user.userId, input);
   }
 
   @Query(() => Grade)
@@ -73,7 +73,7 @@ export class GradeResolver {
     @Args('academicPeriod') academicPeriod: string,
     @Args('comments', { nullable: true }) comments?: string,
   ) {
-    return this.gradeService.assignAssignmentGrade(
+    return await this.gradeService.assignAssignmentGrade(
       studentId,
       assignmentId,
       score,
@@ -91,7 +91,7 @@ export class GradeResolver {
     @Args('academicPeriod') academicPeriod: string,
     @Args('comments', { nullable: true }) comments?: string,
   ) {
-    return this.gradeService.assignExamGrade(
+    return await this.gradeService.assignExamGrade(
       studentId,
       examId,
       score,
@@ -107,13 +107,16 @@ export class GradeResolver {
     @Args('academicPeriod') academicPeriod: string,
   ) {
     // Adjust return type to Grade
-    return this.gradeService.calculateOverallGrade(studentId, academicPeriod);
+    return await this.gradeService.calculateOverallGrade(
+      studentId,
+      academicPeriod,
+    );
   }
 
   @Mutation(() => Boolean)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async deleteGrade(@Args('gradeId') gradeId: string): Promise<boolean> {
-    await this.gradeService.deleteGrade(gradeId);
+    await await this.gradeService.deleteGrade(gradeId);
     return true;
   }
 }
