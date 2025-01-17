@@ -138,8 +138,8 @@ export class RolesGuard implements CanActivate {
         return !!student;
       }
 
+      // Allow if the teacher is teaching the parent's child's class
       if (args.teacherId) {
-        // Allow if the teacher is teaching the parent's child's class
         const teachesChildClass = await this.prisma.lesson.findFirst({
           where: {
             teacherId: args.teacherId,
@@ -203,6 +203,22 @@ export class RolesGuard implements CanActivate {
         });
 
         return !!feeStructure;
+      }
+
+      // Handle payment initiation
+      if (info.fieldName === 'initiatePayment' && args.invoiceId) {
+        const invoice = await this.prisma.invoice.findFirst({
+          where: {
+            id: args.invoiceId,
+            parentId: user.id, // Ensure the invoice belongs to the parent
+          },
+        });
+        return !!invoice; // Allow if the invoice exists and belongs to the parent
+      }
+
+      // Handle getting invoices for the parent
+      if (info.fieldName === 'getMyInvoices') {
+        return user.id === args.parentId; // Allow if parentId matches the user ID
       }
 
       return false;

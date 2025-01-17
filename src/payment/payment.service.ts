@@ -263,6 +263,7 @@ export class PaymentService {
       searchFields,
     );
   }
+  // pi_3Qi8RZC487jsW5be01CzlEie_secret_PqJV7UsdDUMbCaqH21ap0efr0
 
   async initiatePayment(parentId: string, invoiceId: string, amount: number) {
     try {
@@ -293,6 +294,20 @@ export class PaymentService {
           );
         }
 
+        // Check for an existing payment intent and return or skip if expired/non existent
+        if (invoice.paymentIntentId) {
+          const existingPaymentIntent =
+            await this.stripe.paymentIntents.retrieve(invoice.paymentIntentId);
+
+          if (
+            existingPaymentIntent &&
+            existingPaymentIntent.status !== 'canceled' &&
+            existingPaymentIntent.amount === Math.round(amount * 100)
+          ) {
+            return existingPaymentIntent.client_secret;
+          }
+        }
+
         const paymentIntent = await this.stripe.paymentIntents.create({
           amount: Math.round(amount * 100), // Convert to cents
           currency: 'usd',
@@ -302,6 +317,14 @@ export class PaymentService {
             invoiceNumber: invoice.invoiceNumber,
           },
           description: `Payment for invoice ${invoice.invoiceNumber}`,
+        });
+
+        // Update the invoice with the new payment intent ID
+        await tx.invoice.update({
+          where: { id: invoiceId },
+          data: {
+            paymentIntentId: paymentIntent.id, // Store the payment intent ID
+          },
         });
 
         return paymentIntent.client_secret;

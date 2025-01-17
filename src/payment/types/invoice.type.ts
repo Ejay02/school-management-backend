@@ -39,6 +39,9 @@ export class Invoice {
   @Field(() => [Payment])
   payments: Payment[];
 
+  @Field({ nullable: true })
+  paymentIntentId?: string;
+
   @Field()
   createdAt: Date;
 

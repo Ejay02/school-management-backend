@@ -332,6 +332,7 @@ model Invoice {
   status          InvoiceStatus @default(PENDING)
   dueDate         DateTime
   payments        Payment[]
+  paymentIntentId String? 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
