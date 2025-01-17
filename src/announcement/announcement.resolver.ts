@@ -26,7 +26,7 @@ export class AnnouncementResolver {
     const creatorId = context.req.user.userId;
     const creatorRole = context.req.user.role;
 
-    return this.announcementService.createAnnouncement({
+    return await this.announcementService.createAnnouncement({
       title,
       content,
       creatorId,
@@ -85,7 +85,7 @@ export class AnnouncementResolver {
     @Args('targetRoles', { type: () => [String], nullable: true })
     targetRoles?: Roles[],
   ) {
-    return this.announcementService.editAnnouncement(
+    return await this.announcementService.editAnnouncement(
       context.req.user.userId,
       context.req.user.role,
       announcementId,
@@ -105,7 +105,7 @@ export class AnnouncementResolver {
     @Context() context,
     @Args('announcementId') announcementId: string,
   ) {
-    return this.announcementService.markAnnouncementAsRead(
+    return await this.announcementService.markAnnouncementAsRead(
       context.req.user.userId,
       context.req.user.role,
       announcementId,
@@ -121,7 +121,7 @@ export class AnnouncementResolver {
     Roles.SUPER_ADMIN,
   )
   async getUnreadAnnouncementsCount(@Context() context) {
-    return this.announcementService.getUnreadCount(
+    return await this.announcementService.getUnreadCount(
       context.req.user.userId,
       context.req.user.role,
     );

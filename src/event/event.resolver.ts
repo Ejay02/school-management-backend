@@ -34,7 +34,7 @@ export class EventResolver {
   @Mutation(() => Event)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async createEvent(@Args('data') data: CreateEventInput, @Context() context) {
-    return this.eventService.createEvent(
+    return await this.eventService.createEvent(
       data,
       context.req.user.role,
       context.req.user.userId,
@@ -48,7 +48,7 @@ export class EventResolver {
     @Args('input') input: EditEventInput,
     @Context() context,
   ) {
-    return this.eventService.updateEvent(
+    return await this.eventService.updateEvent(
       eventId,
       input,
       context.req.user.userId,
@@ -62,12 +62,16 @@ export class EventResolver {
     @Args('reason') reason: string,
     @Context() context,
   ) {
-    return this.eventService.cancelEvent(id, reason, context.req.user.userId);
+    return await this.eventService.cancelEvent(
+      id,
+      reason,
+      context.req.user.userId,
+    );
   }
 
   @Mutation(() => Boolean)
   async deleteEvent(@Args('eventId') eventId: string, @Context() context) {
-    return this.eventService.deleteEvent(
+    return await this.eventService.deleteEvent(
       eventId,
       context.req.user.userId,
       context.req.user.role,

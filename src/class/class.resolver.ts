@@ -26,12 +26,12 @@ export class ClassResolver {
   @Mutation(() => Class)
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async createClass(@Args('input') input: CreateClassInput) {
-    return this.classService.createClass(input);
+    return await this.classService.createClass(input);
   }
 
   @Query(() => Class)
   async getClassById(@Args('id', { type: () => String }) id: string) {
-    return this.classService.getClassById(id);
+    return await this.classService.getClassById(id);
   }
 
   @Mutation(() => Class)

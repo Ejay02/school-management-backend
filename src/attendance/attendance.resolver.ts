@@ -40,7 +40,7 @@ export class AttendanceResolver {
     @Args('lessonId') lessonId: string,
     @Context() context,
   ) {
-    return this.attendanceService.getAttendanceByLesson(
+    return await this.attendanceService.getAttendanceByLesson(
       lessonId,
       context.req.user.userId,
       context.req.user.role,
@@ -55,7 +55,7 @@ export class AttendanceResolver {
     attendanceData: MarkAttendanceInput[],
     @Context() context,
   ) {
-    return this.attendanceService.markAttendance(
+    return await this.attendanceService.markAttendance(
       lessonId,
       attendanceData,
       context.req.user.userId,
@@ -77,7 +77,7 @@ export class AttendanceResolver {
     @Args('endDate') endDate: Date,
     @Context() context,
   ) {
-    return this.attendanceService.getAttendanceStats(
+    return await this.attendanceService.getAttendanceStats(
       studentId,
       startDate,
       endDate,

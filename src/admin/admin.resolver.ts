@@ -19,13 +19,13 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN)
   async getAllAdmins(@Context() context) {
     const userId = context.req.user.userId;
-    return this.adminService.getAllAdmins(userId);
+    return await this.adminService.getAllAdmins(userId);
   }
 
   @Query(() => [Exam])
   @HasRoles(Roles.ADMIN)
   async getAllExams(@Context() context) {
-    return this.adminService.getAllExams(context.req.user.userId);
+    return await this.adminService.getAllExams(context.req.user.userId);
   }
 
   @Mutation(() => Admin)
@@ -35,7 +35,7 @@ export class AdminResolver {
     @Args('targetId') targetId: string,
     @Args('role') role: Roles,
   ) {
-    return this.adminService.assignAdminRole(
+    return await this.adminService.assignAdminRole(
       context.req.user.userId,
       targetId,
       role,
@@ -46,7 +46,7 @@ export class AdminResolver {
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   @Mutation(() => EditAdminResponse)
   async editAdmin(@Context() context, @Args('input') input: EditAdminInput) {
-    return this.adminService.editAdmin(context.req.user.userId, input);
+    return await this.adminService.editAdmin(context.req.user.userId, input);
   }
 
   @Mutation(() => Boolean)
@@ -55,6 +55,9 @@ export class AdminResolver {
     @Context() context,
     @Args('targetId') targetId: string,
   ): Promise<boolean> {
-    return this.adminService.deleteUser(context.req.user.userId, targetId);
+    return await this.adminService.deleteUser(
+      context.req.user.userId,
+      targetId,
+    );
   }
 }
