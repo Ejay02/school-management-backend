@@ -233,6 +233,15 @@ export class PaymentService {
 
   // get individual invoice[parent]
   async getMyInvoices(parentId: string, params?: PaginationParams) {
+    // Verify parent exists and has access
+    const parent = await this.prisma.parent.findUnique({
+      where: { id: parentId },
+    });
+
+    if (!parent) {
+      throw new NotFoundException('Parent not found');
+    }
+
     const baseQuery = {
       where: { parentId },
       include: {
@@ -263,7 +272,11 @@ export class PaymentService {
             id: invoiceId,
             parentId, // Ensure invoice belongs to the parent
           },
-          include: { parent: true },
+          include: {
+            feeStructure: true,
+          },
+
+          // include: { parent: true },
         });
 
         if (!invoice) {
