@@ -13,6 +13,11 @@ import { Roles } from 'src/shared/enum/role';
 import * as bcrypt from 'bcrypt';
 import { EditAdminInput } from './input/edit.admin.input';
 import { EditAdminResponse } from './response/edit.admin.response';
+import { IncomeGraph } from './types/income.graph.type';
+import { Prisma } from '@prisma/client';
+import { Term } from 'src/payment/enum/term';
+import { FeeType } from 'src/payment/enum/fee.type';
+import { PaymentStatus } from 'src/payment/enum/payment.status';
 
 @Injectable()
 export class AdminService {
@@ -264,12 +269,11 @@ export class AdminService {
 
     // Determine the current academic year and next year
     const currentYear = new Date().getFullYear();
-    console.log('currentYear:', currentYear);
+
     const academicYear = {
       current: `${currentYear}`,
       next: `${currentYear + 1}`,
     };
-    console.log('academicYear:', academicYear);
 
     return {
       role: role,
@@ -281,5 +285,103 @@ export class AdminService {
       },
       academicYear,
     };
+  }
+
+  async getIncomeGraphData(data: IncomeGraph) {
+    const { year, classId, term } = data;
+
+    // Create properly typed where clause
+    const where: Prisma.FeeStructureWhereInput = {
+      academicYear: year.toString(),
+      ...(classId && {
+        classes: {
+          some: {
+            id: classId,
+          },
+        },
+      }),
+      ...(term && { term: term as Term }),
+    };
+
+    const feeStructures = await this.prisma.feeStructure.findMany({
+      where,
+      include: {
+        invoices: {
+          include: {
+            payments: true,
+          },
+        },
+      },
+    });
+
+    // Initialize monthly revenue array
+    const monthlyRevenue = Array(12).fill(0);
+
+    // Process fee structures and their payments
+    for (const feeStructure of feeStructures) {
+      // Get all completed payments for this fee structure
+      const payments = feeStructure.invoices.flatMap((invoice) =>
+        invoice.payments.filter(
+          (payment) => payment.status === PaymentStatus.COMPLETED,
+        ),
+      );
+
+      for (const payment of payments) {
+        if (feeStructure.type === FeeType.YEARLY) {
+          // Distribute yearly payment across all 12 months
+          const monthlyValue = payment.amount / 12;
+          monthlyRevenue.forEach((_, index) => {
+            monthlyRevenue[index] += monthlyValue;
+          });
+        } else if (feeStructure.type === FeeType.TERM && feeStructure.term) {
+          // Distribute term payment based on the term months
+          const termMonths = this.getTermMonths(feeStructure.term as Term);
+          if (termMonths.length > 0) {
+            const monthlyValue = payment.amount / termMonths.length;
+            termMonths.forEach((month) => {
+              monthlyRevenue[month - 1] += monthlyValue;
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      labels: [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ],
+      datasets: [
+        {
+          label: 'Revenue',
+          data: monthlyRevenue,
+          borderColor: '#C3EBFA',
+          tension: 0,
+        },
+      ],
+    };
+  }
+
+  private getTermMonths(term: Term): number[] {
+    switch (term) {
+      case Term.FIRST:
+        return [1, 2, 3];
+      case Term.SECOND:
+        return [4, 5, 6];
+      case Term.THIRD:
+        return [9, 10, 11, 12];
+      default:
+        return [];
+    }
   }
 }

@@ -5,11 +5,11 @@ import { IsOptional, IsInt, Min } from 'class-validator';
 export class IncomeGraph {
   @IsInt()
   @Min(2000)
-  year: number; // Academic year
+  year: string | number; // Academic year
 
   @IsOptional()
   @IsInt()
-  classId?: number; // Optional class filter
+  classId?: string; // Optional class filter
 
   @IsOptional()
   term?: string; // Optional term filter (e.g., 'Term 1', 'Term 2', etc.)

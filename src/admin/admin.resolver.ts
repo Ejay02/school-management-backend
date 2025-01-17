@@ -9,6 +9,7 @@ import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { EditAdminInput } from './input/edit.admin.input';
 import { EditAdminResponse } from './response/edit.admin.response';
 import { DashboardSummary } from './types/dashboard.summary.type';
+import { IncomeGraph } from './types/income.graph.type';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -59,5 +60,11 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async getDashboardSummary(@Context() context) {
     return await this.adminService.getDashboardSummary(context.req.user.role);
+  }
+
+  @Query(() => IncomeGraph)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getIncomeGraphData(@Args('data') data: IncomeGraph) {
+    return await this.adminService.getIncomeGraphData(data);
   }
 }
