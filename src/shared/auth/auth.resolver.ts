@@ -21,40 +21,40 @@ export class AuthResolver {
   async adminSignup(
     @Args('input') input: AdminSignupInput,
   ): Promise<AuthResponse> {
-    return this.authService.signup(input);
+    return await this.authService.signup(input);
   }
 
   @Mutation(() => AuthResponse)
   async teacherSignup(
     @Args('input') input: TeacherSignupInput,
   ): Promise<AuthResponse> {
-    return this.authService.signup(input);
+    return await this.authService.signup(input);
   }
 
   @Mutation(() => AuthResponse)
   async studentSignup(
     @Args('input') input: StudentSignupInput,
   ): Promise<AuthResponse> {
-    return this.authService.signup(input);
+    return await this.authService.signup(input);
   }
 
   @Mutation(() => AuthResponse)
   async parentSignup(
     @Args('input') input: ParentSignupInput,
   ): Promise<AuthResponse> {
-    return this.authService.signup(input);
+    return await this.authService.signup(input);
   }
 
   @Mutation(() => AuthResponse)
   async login(@Args('input') input: BaseLoginInput): Promise<AuthResponse> {
-    return this.authService.login(input);
+    return await this.authService.login(input);
   }
 
   @Mutation(() => TokenResponse)
   async refreshTokens(
     @Args('refreshToken') refreshToken: string,
   ): Promise<TokenResponse> {
-    return this.authService.refreshTokens(refreshToken);
+    return await this.authService.refreshTokens(refreshToken);
   }
 
   @Mutation(() => Boolean)
@@ -68,7 +68,7 @@ export class AuthResolver {
   async resetPassword(
     @Args('input') input: ResetPasswordInput,
   ): Promise<AuthResponse> {
-    return this.authService.resetPassword(
+    return await this.authService.resetPassword(
       input.username,
       input.newPassword,
       input.role,

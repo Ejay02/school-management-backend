@@ -21,7 +21,7 @@ export class SubjectResolver {
     @Args('input') input: AssignSubjectsInput,
     @Context() context,
   ) {
-    return this.subjectService.assignSubjectsToClass(
+    return await this.subjectService.assignSubjectsToClass(
       input.classId,
       input.subjectIds,
       context.req.user.role,
@@ -51,6 +51,6 @@ export class SubjectResolver {
   @Query(() => Subject)
   @UseGuards(JwtAuthGuard)
   async getSubjectById(@Args('id', { type: () => String }) id: string) {
-    return this.subjectService.getSubjectById(id);
+    return await this.subjectService.getSubjectById(id);
   }
 }

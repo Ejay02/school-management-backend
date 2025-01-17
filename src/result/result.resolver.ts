@@ -21,7 +21,7 @@ export class ResultResolver {
     @Args('examId', { nullable: true }) examId?: string,
     @Args('assignmentId', { nullable: true }) assignmentId?: string,
   ) {
-    return this.resultService.generateResults({
+    return await this.resultService.generateResults({
       studentId,
       score,
       examId,
@@ -37,7 +37,7 @@ export class ResultResolver {
     @Args('examId', { nullable: true }) examId?: string,
     @Args('assignmentId', { nullable: true }) assignmentId?: string,
   ) {
-    return this.resultService.updateResult(id, {
+    return await this.resultService.updateResult(id, {
       score,
       examId,
       assignmentId,
@@ -47,7 +47,7 @@ export class ResultResolver {
   @Mutation(() => Boolean)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
   async deleteResult(@Args('id') id: string) {
-    return this.resultService.deleteResult(id);
+    return await this.resultService.deleteResult(id);
   }
 
   @Query(() => [Result])
@@ -59,19 +59,19 @@ export class ResultResolver {
     Roles.PARENT,
   )
   async getStudentResults(@Args('studentId') studentId: string) {
-    return this.resultService.getStudentResults(studentId);
+    return await this.resultService.getStudentResults(studentId);
   }
 
   @Query(() => [Result])
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
   async getClassResults(@Args('classId') classId: string) {
-    return this.resultService.getClassResults(classId);
+    return await this.resultService.getClassResults(classId);
   }
 
   @Query(() => ResultStatistics)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
   async getResultStatistics(@Args('classId') classId: string) {
-    return this.resultService.getResultStatistics(classId);
+    return await this.resultService.getResultStatistics(classId);
   }
 
   @Query(() => [Result])
@@ -86,7 +86,7 @@ export class ResultResolver {
     @Args('studentId') studentId: string,
     @Args('academicYear', { nullable: true }) academicYear?: string,
   ) {
-    return this.resultService.getResultHistory(studentId, academicYear);
+    return await this.resultService.getResultHistory(studentId, academicYear);
   }
 
   @Mutation(() => [Result])
@@ -97,7 +97,7 @@ export class ResultResolver {
     @Args('term') term: string,
     @Args('message', { nullable: true }) message?: string,
   ) {
-    return this.resultService.publishResults({
+    return await this.resultService.publishResults({
       classId,
       creatorId: context.req.user.userId,
       term,
@@ -113,7 +113,7 @@ export class ResultResolver {
     @Args('term') term: string,
     @Args('message', { nullable: true }) message?: string,
   ) {
-    return this.resultService.notifySpecificStudent({
+    return await this.resultService.notifySpecificStudent({
       studentId,
       creatorId: context.req.user.userId,
       term,

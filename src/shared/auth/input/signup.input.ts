@@ -100,10 +100,6 @@ export class StudentSignupInput extends BaseSignupInput {
   @Field()
   @IsNotEmpty()
   classId: string;
-
-  // @Field()
-  // @IsNotEmpty()
-  // gradeId?: string;
 }
 
 @InputType()

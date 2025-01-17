@@ -1,8 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { Roles } from '../../enum/role';
-import { Sex } from 'src/shared/enum/sex';
-import { BloodType } from 'src/shared/enum/bloodType';
 
 @InputType()
 export class BaseLoginInput {
@@ -36,22 +34,6 @@ export class TeacherLoginInput extends BaseLoginInput {
   @Field()
   @IsString()
   surname: string;
-
-  @Field()
-  @IsString()
-  address: string;
-
-  @Field(() => BloodType)
-  @IsEnum(BloodType)
-  bloodType: BloodType;
-
-  @Field(() => Sex)
-  @IsEnum(Sex)
-  sex: Sex;
-
-  @Field({ nullable: true })
-  @IsString()
-  phone?: string;
 }
 
 @InputType()
@@ -66,34 +48,6 @@ export class StudentLoginInput extends BaseLoginInput {
   @Field()
   @IsString()
   surname: string;
-
-  @Field()
-  @IsString()
-  phone: string;
-
-  @Field()
-  @IsString()
-  address: string;
-
-  @Field(() => BloodType)
-  @IsEnum(BloodType)
-  bloodType: BloodType;
-
-  @Field(() => Sex)
-  @IsEnum(Sex)
-  sex: Sex;
-
-  @Field()
-  @IsString()
-  parentId: string;
-
-  @Field()
-  @IsNotEmpty()
-  classId: string;
-
-  @Field()
-  @IsNotEmpty()
-  gradeId: string;
 }
 
 @InputType()
@@ -108,12 +62,4 @@ export class ParentLoginInput extends BaseLoginInput {
   @Field()
   @IsString()
   surname: string;
-
-  @Field()
-  @IsString()
-  phone: string;
-
-  @Field()
-  @IsString()
-  address: string;
 }

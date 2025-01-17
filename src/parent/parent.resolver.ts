@@ -42,6 +42,6 @@ export class ParentResolver {
     Roles.SUPER_ADMIN,
   )
   async getParentById(@Args('parentId') parentId: string) {
-    return this.parentService.getParentById(parentId);
+    return await this.parentService.getParentById(parentId);
   }
 }

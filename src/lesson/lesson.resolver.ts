@@ -39,7 +39,7 @@ export class LessonResolver {
   @Query(() => Lesson)
   @UseGuards(JwtAuthGuard)
   async getLessonById(@Args('id', { type: () => String }) id: string) {
-    return this.lessonService.getLessonById(id);
+    return await this.lessonService.getLessonById(id);
   }
 
   @Mutation(() => Lesson)
@@ -52,7 +52,7 @@ export class LessonResolver {
   ) {
     const userId = context.req.user.userId;
 
-    return this.lessonService.createLesson(
+    return await this.lessonService.createLesson(
       createLessonInput,
       subjectId,
       classId,
@@ -70,7 +70,7 @@ export class LessonResolver {
   ) {
     const userId = context.req.user.userId;
 
-    return this.lessonService.editLesson(
+    return await this.lessonService.editLesson(
       lessonId,
       userId,
       context.req.user.role,
@@ -99,6 +99,9 @@ export class LessonResolver {
   @Mutation(() => DeleteResponse)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async deleteLesson(@Context() context, @Args('lessonId') lessonId: string) {
-    return this.lessonService.deleteLesson(lessonId, context.req.user.role);
+    return await this.lessonService.deleteLesson(
+      lessonId,
+      context.req.user.role,
+    );
   }
 }

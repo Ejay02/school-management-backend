@@ -208,7 +208,6 @@ export class AuthService {
           sex: newUser.sex || null,
           parentId: newUser.parentId || null,
           classId: newUser.classId || null,
-          // gradeId: newUser.gradeId || null,
         };
         return authResponse;
       });
