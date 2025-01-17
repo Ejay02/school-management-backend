@@ -11,8 +11,6 @@ import { Roles } from 'src/shared/enum/role';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 
-// import { PublicTeacherResponse } from './types/public.teacher.types';
-
 @Injectable()
 export class TeacherService {
   constructor(
@@ -173,7 +171,6 @@ export class TeacherService {
           lessons: true,
           classes: true,
           assignments: true,
-          // announcements: true,
         },
       });
 
@@ -192,45 +189,4 @@ export class TeacherService {
       throw new Error(`Failed to get teacher: ${error.message}`);
     }
   }
-
-  // async publicTeacherProfile(id: string): Promise<PublicTeacherResponse> {
-  //   const teacher = await this.prisma.teacher.findUnique({
-  //     where: { id },
-  //     select: {
-  //       id: true,
-  //       name: true,
-  //       surname: true,
-  //       img: true,
-  //       subjects: {
-  //         select: {
-  //           id: true,
-  //           name: true,
-  //           // teachers: true,
-  //           // lessons: true,
-  //           // createdAt: true,
-  //           // updatedAt: true,
-  //         },
-  //       },
-  //       classes: {
-  //         select: {
-  //           id: true,
-  //           name: true,
-  //         },
-  //       },
-  //     },
-  //   });
-
-  //   if (!teacher) {
-  //     throw new NotFoundException(`Teacher with ID ${id} not found`);
-  //   }
-
-  //   return {
-  //     id: teacher.id,
-  //     name: teacher.name,
-  //     surname: teacher.surname,
-  //     img: teacher.img,
-  //     subjects: teacher.subjects,
-  //     classes: teacher.classes,
-  //   };
-  // }
 }

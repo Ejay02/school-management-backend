@@ -21,7 +21,7 @@ export class TeacherResolver {
     @Args('teacherId', { type: () => String }) teacherId: string,
   ) {
     const userId = context.req.user.userId;
-    return this.teacherService.getTeacherById(userId, teacherId);
+    return await this.teacherService.getTeacherById(userId, teacherId);
   }
 
   @Query(() => [Teacher])

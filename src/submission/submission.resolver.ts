@@ -62,7 +62,7 @@ export class SubmissionResolver {
     @Context() context,
     @Args('input') input: CreateSubmissionInput,
   ) {
-    return this.submissionService.createSubmission(
+    return await this.submissionService.createSubmission(
       context.req.user.userId,
       input,
     );
@@ -75,7 +75,7 @@ export class SubmissionResolver {
     @Args('submissionId') submissionId: string,
     @Args('input') input: UpdateSubmissionInput,
   ) {
-    return this.submissionService.editSubmission(
+    return await this.submissionService.editSubmission(
       submissionId,
       context.req.user.userId,
       input,
@@ -88,7 +88,7 @@ export class SubmissionResolver {
     @Context() context,
     @Args('submissionId') submissionId: string,
   ) {
-    return this.submissionService.deleteSubmission(
+    return await this.submissionService.deleteSubmission(
       submissionId,
       context.req.user.userId,
     );
