@@ -36,6 +36,12 @@ export class ExamResolver {
   }
 
   @Query(() => [Exam])
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getAllExams() {
+    return await this.examService.getAllExams();
+  }
+
+  @Query(() => [Exam])
   @HasRoles(
     Roles.TEACHER,
     Roles.STUDENT,

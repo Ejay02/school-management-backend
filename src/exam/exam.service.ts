@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -102,6 +103,27 @@ export class ExamService {
     });
 
     return result;
+  }
+
+  async getAllExams() {
+    try {
+      return await this.prisma.exam.findMany({
+        include: {
+          subject: true,
+          class: true,
+          teacher: true,
+          lesson: true,
+          results: {
+            include: {
+              student: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      throw new InternalServerErrorException('Failed to fetch exams');
+    }
   }
 
   // Retrieve a list of exams scheduled for a particular class.

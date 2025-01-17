@@ -51,28 +51,6 @@ export class AdminService {
     }
   }
 
-  async getAllExams(userId: string) {
-    try {
-      await this.verifyAdmin(userId);
-      return await this.prisma.exam.findMany({
-        include: {
-          subject: true,
-          class: true,
-          teacher: true,
-          lesson: true,
-          results: {
-            include: {
-              student: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch exams');
-    }
-  }
-
   async assignAdminRole(adminId: string, targetId: string, newRole: Roles) {
     await this.verifyAdmin(adminId);
 
@@ -268,5 +246,40 @@ export class AdminService {
 
       return false;
     });
+  }
+
+  async getDashboardSummary(role: Roles) {
+    if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Unauthorized access');
+    }
+
+    // Fetch the counts
+    const [studentsCount, parentsCount, teachersCount, adminsCount] =
+      await Promise.all([
+        this.prisma.student.count(),
+        this.prisma.parent.count(),
+        this.prisma.teacher.count(),
+        this.prisma.admin.count({ where: { role: 'ADMIN' } }),
+      ]);
+
+    // Determine the current academic year and next year
+    const currentYear = new Date().getFullYear();
+    console.log('currentYear:', currentYear);
+    const academicYear = {
+      current: `${currentYear}`,
+      next: `${currentYear + 1}`,
+    };
+    console.log('academicYear:', academicYear);
+
+    return {
+      role: role,
+      counts: {
+        students: studentsCount,
+        parents: parentsCount,
+        teachers: teachersCount,
+        admins: adminsCount,
+      },
+      academicYear,
+    };
   }
 }
