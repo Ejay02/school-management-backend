@@ -16,8 +16,8 @@ This is the backend for the School Dashboard application, built with NestJS and 
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/Ejay02/school_dash_be.git
-   cd school_dash_be
+   git clone https://github.com/Ejay02/school-management-backend.git
+   cd school-management-backend
    ```
 
 2. Install the dependencies:
