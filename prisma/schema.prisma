@@ -325,6 +325,7 @@ model Invoice {
   invoiceNumber   String        @unique
   parentId        String
   parent          Parent        @relation(fields: [parentId], references: [id])
+  checkoutSessionId String?
   feeStructureId  String
   feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id])
   totalAmount     Float

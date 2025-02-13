@@ -64,6 +64,20 @@ Create a file in the root directory and add the following environment variables:
 DATABASE_URL=your_database_url  #To connect to db via docker
 JWT_SECRET=your_jwt_secret
 JWT_REFRESH_SECRET=your_jwt_refresh_secret
+FRONTEND_URL= 
+
+MAIL_HOST=
+MAIL_USER=
+MAIL_PASSWORD=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URL=
+GOOGLE_REFRESH_TOKEN=
+
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PUBLIC_KEY=
 ```
 
 ## Database
@@ -85,6 +99,10 @@ npx prisma migrate dev --name init
 ```sh
 npx prisma studio
 ```
+
+## Docker
+
+If using docker, remember to start your postgres container on docker
 
 #### License
 

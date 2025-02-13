@@ -42,6 +42,9 @@ export class Invoice {
   @Field({ nullable: true })
   paymentIntentId?: string;
 
+  @Field({ nullable: true })
+  checkoutSessionId?: string;
+
   @Field()
   createdAt: Date;
 

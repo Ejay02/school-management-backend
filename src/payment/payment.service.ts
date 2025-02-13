@@ -1,4 +1,3 @@
-// payment/payment.service.ts
 import {
   Injectable,
   BadRequestException,
@@ -270,13 +269,12 @@ export class PaymentService {
         const invoice = await tx.invoice.findFirst({
           where: {
             id: invoiceId,
-            parentId, // Ensure invoice belongs to the parent
+            parentId,
           },
           include: {
+            parent: true,
             feeStructure: true,
           },
-
-          // include: { parent: true },
         });
 
         if (!invoice) {
@@ -293,47 +291,51 @@ export class PaymentService {
           );
         }
 
-        // Check for an existing payment intent and return or skip if expired/non existent
-        if (invoice.paymentIntentId) {
-          const existingPaymentIntent =
-            await this.stripe.paymentIntents.retrieve(invoice.paymentIntentId);
-
-          if (
-            existingPaymentIntent &&
-            existingPaymentIntent.status !== 'canceled' &&
-            existingPaymentIntent.amount === Math.round(amount * 100)
-          ) {
-            return existingPaymentIntent.client_secret;
-          }
-        }
-
-        const paymentIntent = await this.stripe.paymentIntents.create({
-          amount: Math.round(amount * 100), // Convert to cents
-          currency: 'usd',
+        // Create Checkout Session with payment intent data
+        const session = await this.stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          mode: 'payment',
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                unit_amount: Math.round(amount * 100),
+                product_data: {
+                  name: `Invoice ${invoice.invoiceNumber}`,
+                  description: `Payment for ${invoice.feeStructure.type} fees`,
+                },
+              },
+              quantity: 1,
+            },
+          ],
+          customer_email: invoice.parent.email,
           metadata: {
             invoiceId,
             parentId: invoice.parentId,
             invoiceNumber: invoice.invoiceNumber,
           },
-          description: `Payment for invoice ${invoice.invoiceNumber}`,
+          success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
         });
 
-        // Update the invoice with the new payment intent ID
+        // Update invoice with session ID
         await tx.invoice.update({
           where: { id: invoiceId },
           data: {
-            paymentIntentId: paymentIntent.id, // Store the payment intent ID
+            checkoutSessionId: session.id,
           },
         });
 
-        return paymentIntent.client_secret;
+        return session.url;
       });
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to create payment intent: ${error.message}`,
+        `Failed to create checkout session: ${error.message}`,
       );
     }
   }
+
+  // TODO : NOT FIRING COZ OF LOCAL HOST DO THIS WHEN DONE WITH TASK
 
   async handlePaymentWebhook(signature: string, payload: Buffer) {
     try {
@@ -347,6 +349,17 @@ export class PaymentService {
 
       // 2. Handle the different types of events sent by Stripe
       switch (event.type) {
+        case 'checkout.session.completed': {
+          // Retrieve the session with expanded payment intent
+          const session = await this.stripe.checkout.sessions.retrieve(
+            (event.data.object as Stripe.Checkout.Session).id,
+            {
+              expand: ['payment_intent'],
+            },
+          );
+          await this.handleSuccessfulCheckoutSession(session);
+          break;
+        }
         case 'payment_intent.succeeded':
           await this.handleSuccessfulPayment(
             event.data.object as Stripe.PaymentIntent,
@@ -357,8 +370,11 @@ export class PaymentService {
             event.data.object as Stripe.PaymentIntent,
           );
           break;
-        default:
-          throw new Error(`Unhandled event type: ${event.type}`);
+        case 'checkout.session.expired':
+          await this.handleExpiredCheckoutSession(
+            event.data.object as Stripe.Checkout.Session,
+          );
+          break;
       }
 
       // 3. Respond to Stripe to confirm the webhook was received successfully.
@@ -368,6 +384,100 @@ export class PaymentService {
       throw new BadRequestException(
         `Invalid webhook payload: ${error.message}`,
       );
+    }
+  }
+
+  private async handleSuccessfulCheckoutSession(
+    session: Stripe.Checkout.Session,
+  ) {
+    const { invoiceId, parentId } = session.metadata;
+
+    console.log('Webhook received for session:', session.id);
+    console.log('Invoice ID:', invoiceId);
+    console.log('Parent ID:', parentId);
+
+    if (!invoiceId || !parentId) {
+      throw new InternalServerErrorException(
+        'Missing invoiceId or parentId in session metadata',
+      );
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const invoice = await tx.invoice.findFirst({
+          where: {
+            id: invoiceId,
+            parentId,
+          },
+        });
+
+        if (!invoice) {
+          console.log('Invoice not found for ID:', invoiceId);
+          throw new NotFoundException('Invoice not found or access denied');
+        }
+
+        console.log('Invoice found:', invoice);
+
+        // Get the payment intent ID from the expanded session
+        const paymentIntentId =
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : (session.payment_intent as Stripe.PaymentIntent).id;
+
+        console.log('Payment Intent ID:', paymentIntentId);
+
+        // Create payment record
+        const payment = await tx.payment.create({
+          data: {
+            amount: session.amount_total / 100,
+            currency: session.currency,
+            status: PaymentStatus.COMPLETED,
+            stripePaymentId: paymentIntentId, // Use payment intent ID here
+            paymentMethod: session.payment_method_types?.[0] || 'card',
+            invoiceId,
+            parentId,
+            description: `Payment for invoice ${session.metadata.invoiceNumber}`,
+          },
+        });
+
+        console.log('Payment created:', payment);
+
+        // Update invoice status, paid amount, and payment intent ID
+        const newPaidAmount = invoice.paidAmount + payment.amount;
+        const newStatus =
+          newPaidAmount >= invoice.totalAmount
+            ? InvoiceStatus.PAID
+            : InvoiceStatus.PARTIAL;
+
+        await tx.invoice.update({
+          where: { id: invoiceId },
+          data: {
+            paidAmount: newPaidAmount,
+            status: newStatus,
+            checkoutSessionId: null, // Clear session ID after successful payment
+            paymentIntentId, // Store the payment intent ID
+          },
+        });
+
+        console.log('Invoice updated to status:', newStatus);
+      });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to process successful checkout session',
+      );
+    }
+  }
+
+  private async handleExpiredCheckoutSession(session: Stripe.Checkout.Session) {
+    const { invoiceId } = session.metadata;
+
+    if (invoiceId) {
+      await this.prisma.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          checkoutSessionId: null,
+        },
+      });
     }
   }
 
