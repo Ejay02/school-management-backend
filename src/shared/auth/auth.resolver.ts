@@ -8,8 +8,8 @@ import {
   StudentSignupInput,
   ParentSignupInput,
 } from './input/signup.input';
-import { JwtAuthGuard } from './guards/jwtAuth.guard';
-import { UseGuards } from '@nestjs/common';
+// import { JwtAuthGuard } from './guards/jwtAuth.guard';
+// import { UseGuards } from '@nestjs/common';
 import { TokenResponse } from './response/token.response';
 import { ResetPasswordInput } from './input/reset.password.input';
 
@@ -58,7 +58,7 @@ export class AuthResolver {
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   async logout(@Args('refreshToken') refreshToken: string): Promise<boolean> {
     await this.authService.logout(refreshToken);
     return true;

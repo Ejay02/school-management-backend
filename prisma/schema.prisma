@@ -28,10 +28,10 @@ model Student {
   email           String?       @unique
   password        String
   phone           String?       @unique
-  address         String
+  address         String?
   img             String?
-  bloodType       String
-  sex             Sex
+  bloodType       String?
+  sex             Sex?
   parentId        String
   parent          Parent        @relation(fields: [parentId], references: [id] )
   classId         String
@@ -54,10 +54,10 @@ model Teacher{
   email           String?       @unique
   password        String
   phone           String?       @unique
-  address         String
+  address         String?
   img             String?
-  bloodType       String
-  sex             Sex
+  bloodType       String?
+  sex             Sex?
   exams           Exam[]
   subjects        Subject[]
   lessons         Lesson[]
@@ -75,8 +75,8 @@ model Parent {
   surname         String  
   email           String?       @unique
   password        String
-  phone           String        @unique
-  address         String
+  phone           String ?       @unique
+  address         String?
   img             String?
   students        Student[]
   invoices        Invoice[]

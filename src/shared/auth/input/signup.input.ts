@@ -7,8 +7,8 @@ import {
   MinLength,
 } from 'class-validator';
 import { Roles } from '../../enum/role';
-import { Sex } from 'src/shared/enum/sex';
-import { BloodType } from 'src/shared/enum/bloodType';
+// import { Sex } from 'src/shared/enum/sex';
+// import { BloodType } from 'src/shared/enum/bloodType';
 
 @InputType()
 export class BaseSignupInput {
@@ -47,21 +47,21 @@ export class TeacherSignupInput extends BaseSignupInput {
   @IsString()
   surname: string;
 
-  @Field()
-  @IsString()
-  address: string;
+  // @Field()
+  // @IsString()
+  // address: string;
 
-  @Field(() => BloodType)
-  @IsEnum(BloodType)
-  bloodType: BloodType;
+  // @Field(() => BloodType)
+  // @IsEnum(BloodType)
+  // bloodType: BloodType;
 
-  @Field(() => Sex)
-  @IsEnum(Sex)
-  sex: Sex;
+  // @Field(() => Sex)
+  // @IsEnum(Sex)
+  // sex: Sex;
 
-  @Field({ nullable: true })
-  @IsString()
-  phone?: string;
+  // @Field({ nullable: true })
+  // @IsString()
+  // phone?: string;
 }
 
 @InputType()
@@ -77,21 +77,21 @@ export class StudentSignupInput extends BaseSignupInput {
   @IsString()
   surname: string;
 
-  @Field()
-  @IsString()
-  phone: string;
+  // @Field()
+  // @IsString()
+  // phone: string;
 
-  @Field()
-  @IsString()
-  address: string;
+  // @Field()
+  // @IsString()
+  // address: string;
 
-  @Field(() => BloodType)
-  @IsEnum(BloodType)
-  bloodType: BloodType;
+  // @Field(() => BloodType)
+  // @IsEnum(BloodType)
+  // bloodType: BloodType;
 
-  @Field(() => Sex)
-  @IsEnum(Sex)
-  sex: Sex;
+  // @Field(() => Sex)
+  // @IsEnum(Sex)
+  // sex: Sex;
 
   @Field()
   @IsString()
@@ -115,11 +115,11 @@ export class ParentSignupInput extends BaseSignupInput {
   @IsString()
   surname: string;
 
-  @Field()
-  @IsString()
-  phone: string;
+  // @Field()
+  // @IsString()
+  // phone: string;
 
-  @Field()
-  @IsString()
-  address: string;
+  // @Field()
+  // @IsString()
+  // address: string;
 }

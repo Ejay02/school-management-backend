@@ -26,17 +26,17 @@ export class AuthResponse {
   @Field({ nullable: false })
   email?: string;
 
-  @Field({ nullable: true })
-  address?: string;
+  // @Field({ nullable: true })
+  // address?: string;
 
-  @Field({ nullable: true })
-  phone?: string;
+  // @Field({ nullable: true })
+  // phone?: string;
 
-  @Field({ nullable: true })
-  bloodType?: string;
+  // @Field({ nullable: true })
+  // bloodType?: string;
 
-  @Field({ nullable: true })
-  sex?: string;
+  // @Field({ nullable: true })
+  // sex?: string;
 
   @Field({ nullable: true })
   parentId?: string;

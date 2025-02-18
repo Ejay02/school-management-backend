@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "Parent" ALTER COLUMN "phone" DROP NOT NULL,
+ALTER COLUMN "address" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "Student" ALTER COLUMN "address" DROP NOT NULL,
+ALTER COLUMN "bloodType" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "Teacher" ALTER COLUMN "address" DROP NOT NULL,
+ALTER COLUMN "bloodType" DROP NOT NULL;
