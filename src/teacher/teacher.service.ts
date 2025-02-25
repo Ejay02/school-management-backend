@@ -28,7 +28,7 @@ export class TeacherService {
       const baseInclude = {
         subjects: true,
         classes: true,
-        grade: true,
+        // grade: true,
       };
 
       const baseQuery: any = {

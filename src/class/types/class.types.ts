@@ -8,6 +8,7 @@ import { Announcement } from 'src/announcement/types/announcement.types';
 import { Subject } from 'src/subject/types/subject.types';
 import { Exam } from 'src/exam/types/exam.types';
 import { Assignment } from 'src/assignment/types/assignment.types';
+import { FeeStructure } from 'src/payment/types/fee.structure.type';
 
 @ObjectType()
 export class Class {
@@ -46,6 +47,9 @@ export class Class {
 
   @Field(() => [Announcement])
   announcements: Announcement[];
+
+  @Field(() => FeeStructure, { nullable: true })
+  feeStructure?: FeeStructure;
 
   @Field()
   createdAt: Date;

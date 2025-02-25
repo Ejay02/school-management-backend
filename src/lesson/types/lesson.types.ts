@@ -38,7 +38,7 @@ export class Lesson {
   @Field()
   teacherId: string;
 
-  @Field(() => Teacher)
+  @Field(() => Teacher, { nullable: true })
   teacher?: Teacher;
 
   @Field(() => [Exam])

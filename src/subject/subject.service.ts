@@ -17,25 +17,34 @@ import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 export class SubjectService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async generateAllSubjects(tx: any): Promise<void> {
+  public async generateAllSubjects(tx: any): Promise<void> {
     // Fetch all classes from the database
     const classes = await tx.class.findMany();
 
     for (const classItem of classes) {
       // Get the DefaultClass name for this class
       const defaultClassName = classItem.name as DefaultClass;
-
-      // Get the subjects for this class from SubjectsForClasses
+      // Get the subjects for this class from your mapping
       const subjectsForClass = SubjectsForClasses[defaultClassName] || [];
 
       for (const subjectName of subjectsForClass) {
-        await tx.subject.create({
-          data: {
+        // Check if the subject already exists for this class
+        const existingSubject = await tx.subject.findFirst({
+          where: {
             name: subjectName,
             classId: classItem.id,
-            gradeId: classItem.supervisorId,
           },
         });
+
+        if (!existingSubject) {
+          await tx.subject.create({
+            data: {
+              name: subjectName,
+              classId: classItem.id,
+              gradeId: classItem.supervisorId, // adjust as necessary
+            },
+          });
+        }
       }
     }
   }

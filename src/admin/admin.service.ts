@@ -52,7 +52,7 @@ export class AdminService {
       return await this.prisma.admin.findMany({ where });
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch admins');
+      throw new UnauthorizedException('User is not authorized as admin');
     }
   }
 
@@ -253,7 +253,7 @@ export class AdminService {
     });
   }
 
-  async getDashboardSummary(role: Roles) {
+  async getDashboardUserCardSummary(role: Roles) {
     if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Unauthorized access');
     }
@@ -264,7 +264,7 @@ export class AdminService {
         this.prisma.student.count(),
         this.prisma.parent.count(),
         this.prisma.teacher.count(),
-        this.prisma.admin.count({ where: { role: 'ADMIN' } }),
+        this.prisma.admin.count(),
       ]);
 
     // Determine the current academic year and next year

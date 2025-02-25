@@ -16,4 +16,7 @@ export class StudentGenderStatistics {
 
   @Field(() => Float)
   femalePercentage: number;
+
+  @Field()
+  totalCapacity: number;
 }

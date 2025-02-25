@@ -101,6 +101,8 @@ export class StudentService {
           attendances: true,
           results: true,
           submissions: true,
+          class: true,
+          parent: true,
         },
       });
 
@@ -157,13 +159,21 @@ export class StudentService {
     });
   }
 
-  async getStudentGenderStatistics(
+  async getStudentsByGender(
     userId: string,
     userRole: Roles,
+    params?: PaginationParams,
     classId?: string,
   ) {
     try {
-      // Define the query filter
+      // Base include for student details
+      const baseInclude = {
+        parent: true,
+        class: true,
+        grade: true,
+      };
+
+      // Initialize where clause
       const whereClause: any = {};
 
       // Add class filter if provided
@@ -171,7 +181,33 @@ export class StudentService {
         whereClause.classId = classId;
       }
 
-      // Get total capacity based on class or school
+      // Apply role-based restrictions
+      switch (userRole) {
+        case Roles.SUPER_ADMIN:
+        case Roles.ADMIN:
+          break;
+        case Roles.TEACHER:
+          const teacherClasses = await this.prisma.class.findMany({
+            where: { id: userId },
+            select: { id: true },
+          });
+          whereClause.classId = {
+            in: teacherClasses.map((c) => c.id),
+          };
+          break;
+        case Roles.PARENT:
+          whereClause.parentId = userId;
+          break;
+        case Roles.STUDENT:
+          whereClause.id = userId;
+          break;
+        default:
+          throw new ForbiddenException(
+            'You do not have permission to view students',
+          );
+      }
+
+      // Get total capacity
       const totalCapacity = classId
         ? (
             await this.prisma.class.findUnique({
@@ -185,97 +221,49 @@ export class StudentService {
             })
           ).reduce((sum, cls) => sum + cls.capacity, 0);
 
-      if (totalCapacity === 0) {
-        throw new Error('No capacity found for the given class or school.');
-      }
-
-      // Calculate student counts
-      const [maleCount, femaleCount] = await Promise.all([
+      // Get gender counts and student list in parallel
+      const [maleCount, femaleCount, studentList] = await Promise.all([
         this.prisma.student.count({ where: { ...whereClause, sex: 'MALE' } }),
         this.prisma.student.count({ where: { ...whereClause, sex: 'FEMALE' } }),
+        params && params.page !== undefined
+          ? PrismaQueryBuilder.paginateResponse(
+              this.prisma.student,
+              {
+                include: baseInclude,
+                where: whereClause,
+              },
+              params,
+              ['name', 'email', 'studentId'],
+            )
+          : this.prisma.student.findMany({
+              include: baseInclude,
+              where: whereClause,
+            }),
       ]);
 
-      // Total students
+      // Calculate statistics
       const totalStudents = maleCount + femaleCount;
-
-      // Define baseline for male and female percentages
       const baselineCapacity = totalCapacity / 2;
-
-      // Calculate percentages relative to capacity
       const malePercentage = (maleCount / baselineCapacity) * 100;
       const femalePercentage = (femaleCount / baselineCapacity) * 100;
 
+      // Return combined response
       return {
-        totalStudents,
-        maleCount,
-        femaleCount,
-        malePercentage: Number(malePercentage.toFixed(1)),
-        femalePercentage: Number(femalePercentage.toFixed(1)),
+        statistics: {
+          totalStudents,
+          maleCount,
+          femaleCount,
+          malePercentage: Number(malePercentage.toFixed(1)),
+          femalePercentage: Number(femalePercentage.toFixed(1)),
+          totalCapacity,
+        },
+        students: studentList,
       };
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException(
-        'Failed to fetch student gender statistics',
+        'Failed to fetch student gender statistics and list',
       );
-    }
-  }
-
-  // Add a method to filter students by sex
-  async getStudentsBySex(
-    userId: string,
-    userRole: Roles,
-    sex: 'MALE' | 'FEMALE',
-    params?: PaginationParams,
-  ) {
-    try {
-      const baseInclude = {
-        parent: true,
-        class: true,
-        grade: true,
-      };
-
-      const baseQuery: any = {
-        include: baseInclude,
-        where: { sex },
-      };
-
-      const searchFields = ['name', 'email', 'studentId'];
-
-      // Apply the same role-based restrictions
-      switch (userRole) {
-        case Roles.SUPER_ADMIN:
-        case Roles.ADMIN:
-          break;
-        case Roles.TEACHER:
-          const teacherClasses = await this.prisma.class.findMany({
-            where: { id: userId },
-            select: { id: true },
-          });
-          baseQuery.where.classId = {
-            in: teacherClasses.map((c) => c.id),
-          };
-          break;
-        case Roles.PARENT:
-          baseQuery.where.parentId = userId;
-          break;
-        case Roles.STUDENT:
-          baseQuery.where.id = userId;
-          break;
-        default:
-          throw new ForbiddenException(
-            'You do not have permission to view students',
-          );
-      }
-
-      return await PrismaQueryBuilder.paginateResponse(
-        this.prisma.student,
-        baseQuery,
-        params,
-        searchFields,
-      );
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      throw new InternalServerErrorException('Failed to fetch students');
     }
   }
 }

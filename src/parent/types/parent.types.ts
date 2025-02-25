@@ -30,6 +30,9 @@ export class Parent {
   @Field()
   address: string;
 
+  @Field({ nullable: true })
+  img?: string;
+
   @Field(() => [Student])
   students: Student[];
 

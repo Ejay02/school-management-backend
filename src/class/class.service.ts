@@ -31,11 +31,12 @@ export class ClassService {
     const defaultClasses = await this.getDefaultClasses();
 
     for (const className of defaultClasses) {
-      // Create the class
-      await tx.class.create({
-        data: {
-          name: className, // Class name from DefaultClass enum
-          capacity: 30, // Set default capacity, adjust as needed
+      await tx.class.upsert({
+        where: { name: className },
+        update: {}, // No update needed if it exists
+        create: {
+          name: className,
+          capacity: 30, // default capacity, adjust as needed
         },
       });
     }
@@ -48,6 +49,8 @@ export class ClassService {
       const baseQuery = {
         include: {
           announcements: true,
+          students: true,
+          feeStructure: true,
           subjects: {
             include: {
               teachers: true,

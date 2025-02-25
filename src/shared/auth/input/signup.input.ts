@@ -7,8 +7,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { Roles } from '../../enum/role';
-// import { Sex } from 'src/shared/enum/sex';
-// import { BloodType } from 'src/shared/enum/bloodType';
+import { DefaultClass } from 'src/class/enum/class';
 
 @InputType()
 export class BaseSignupInput {
@@ -16,6 +15,14 @@ export class BaseSignupInput {
   @IsString()
   @IsNotEmpty()
   username: string;
+
+  @Field()
+  @IsString()
+  name: string;
+
+  @Field()
+  @IsString()
+  surname: string;
 
   @Field()
   @IsString()
@@ -38,30 +45,6 @@ export class AdminSignupInput extends BaseSignupInput {
 export class TeacherSignupInput extends BaseSignupInput {
   @Field(() => Roles)
   role: Roles = Roles.TEACHER;
-
-  @Field()
-  @IsString()
-  name: string;
-
-  @Field()
-  @IsString()
-  surname: string;
-
-  // @Field()
-  // @IsString()
-  // address: string;
-
-  // @Field(() => BloodType)
-  // @IsEnum(BloodType)
-  // bloodType: BloodType;
-
-  // @Field(() => Sex)
-  // @IsEnum(Sex)
-  // sex: Sex;
-
-  // @Field({ nullable: true })
-  // @IsString()
-  // phone?: string;
 }
 
 @InputType()
@@ -71,55 +54,14 @@ export class StudentSignupInput extends BaseSignupInput {
 
   @Field()
   @IsString()
-  name: string;
-
-  @Field()
-  @IsString()
-  surname: string;
-
-  // @Field()
-  // @IsString()
-  // phone: string;
-
-  // @Field()
-  // @IsString()
-  // address: string;
-
-  // @Field(() => BloodType)
-  // @IsEnum(BloodType)
-  // bloodType: BloodType;
-
-  // @Field(() => Sex)
-  // @IsEnum(Sex)
-  // sex: Sex;
-
-  @Field()
-  @IsString()
   parentId: string;
 
-  @Field()
-  @IsNotEmpty()
-  classId: string;
+  @Field(() => DefaultClass)
+  classId: DefaultClass;
 }
 
 @InputType()
 export class ParentSignupInput extends BaseSignupInput {
   @Field(() => Roles)
   role: Roles = Roles.PARENT;
-
-  @Field()
-  @IsString()
-  name: string;
-
-  @Field()
-  @IsString()
-  surname: string;
-
-  // @Field()
-  // @IsString()
-  // phone: string;
-
-  // @Field()
-  // @IsString()
-  // address: string;
 }

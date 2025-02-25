@@ -43,30 +43,40 @@ export class LessonService {
 
         // Create lessons for this subject
         for (const lessonName of subjectLessons) {
-          const [firstDay, secondDay] = this.getRandomDays();
-          const daysString = `${firstDay}, ${secondDay}`;
-
-          const { startTime1, endTime1, startTime2, endTime2 } =
-            this.generateLessonTimes();
-
-          const start = `${startTime1}, ${startTime2}`;
-          const end = `${endTime1}, ${endTime2}`;
-
-          await tx.lesson.create({
-            data: {
+          const existingLesson = await tx.lesson.findFirst({
+            where: {
               name: lessonName,
-              subject: {
-                connect: { id: subject.id }, // Connect to existing subject using its ID
-              },
-              class: {
-                connect: { id: classItem.id },
-              },
-              // gradeId: classItem.supervisorId,
-              day: daysString,
-              startTime: start,
-              endTime: end,
+              subject: { id: subject.id },
+              class: { id: classItem.id },
             },
           });
+
+          if (!existingLesson) {
+            const [firstDay, secondDay] = this.getRandomDays();
+            const daysString = `${firstDay}, ${secondDay}`;
+
+            const { startTime1, endTime1, startTime2, endTime2 } =
+              this.generateLessonTimes();
+
+            const start = `${startTime1}, ${startTime2}`;
+            const end = `${endTime1}, ${endTime2}`;
+
+            await tx.lesson.create({
+              data: {
+                name: lessonName,
+                subject: {
+                  connect: { id: subject.id }, // Connect to existing subject using its ID
+                },
+                class: {
+                  connect: { id: classItem.id },
+                },
+                // gradeId: classItem.supervisorId,
+                day: daysString,
+                startTime: start,
+                endTime: end,
+              },
+            });
+          }
         }
       }
     }

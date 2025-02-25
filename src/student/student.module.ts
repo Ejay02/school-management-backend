@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { StudentService } from './student.servcie';
+import { StudentService } from './student.service';
 import { JwtService } from '@nestjs/jwt';
 import { StudentResolver } from './student.resolver';
 

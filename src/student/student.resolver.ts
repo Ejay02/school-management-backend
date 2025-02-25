@@ -1,5 +1,5 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { StudentService } from './student.servcie';
+import { StudentService } from './student.service';
 import { Student } from './types/student.types';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
@@ -43,30 +43,17 @@ export class StudentResolver {
 
   @Query(() => StudentGenderStatistics)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
-  async getStudentGenderStatistics(
+  async getStudentsByGender(
     @Context() context,
+    @Args('params', { nullable: true }) params?: PaginationInput,
     @Args('classId', { nullable: true }) classId?: string,
   ) {
-    return await this.studentService.getStudentGenderStatistics(
+    const result = await this.studentService.getStudentsByGender(
       context.req.user.userId,
       context.req.user.role,
+      params,
       classId,
     );
-  }
-
-  @Query(() => [Student])
-  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
-  async getStudentsBySex(
-    @Context() context,
-    @Args('sex') sex: 'MALE' | 'FEMALE',
-    @Args('params', { nullable: true }) params?: PaginationInput,
-  ) {
-    const result = await this.studentService.getStudentsBySex(
-      context.req.user.userId,
-      context.req.user.role,
-      sex,
-      params || {},
-    );
-    return result.data;
+    return result.statistics;
   }
 }

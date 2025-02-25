@@ -44,6 +44,7 @@ export class AdminResolver {
     return await this.adminService.editAdmin(context.req.user.userId, input);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Mutation(() => Boolean)
   @HasRoles(Roles.SUPER_ADMIN)
   async deleteUser(
@@ -56,10 +57,13 @@ export class AdminResolver {
     );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Query(() => DashboardSummary)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  async getDashboardSummary(@Context() context) {
-    return await this.adminService.getDashboardSummary(context.req.user.role);
+  async getDashboardUserCardSummary(@Context() context) {
+    return await this.adminService.getDashboardUserCardSummary(
+      context.req.user.role,
+    );
   }
 
   @Query(() => MonthlyRevenue)

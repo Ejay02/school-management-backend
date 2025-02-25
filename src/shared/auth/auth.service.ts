@@ -78,7 +78,9 @@ export class AuthService {
         switch (role) {
           case Roles.ADMIN:
           case Roles.SUPER_ADMIN:
-            existingUser = await tx.admin.findUnique({ where: { username } });
+            existingUser = await tx.admin.findUnique({
+              where: { username },
+            });
             break;
           case Roles.TEACHER:
             existingUser = await tx.teacher.findUnique({ where: { username } });
@@ -121,12 +123,15 @@ export class AuthService {
         switch (effectiveRole) {
           case Roles.ADMIN:
           case Roles.SUPER_ADMIN:
+            const adminInput = input as AdminSignupInput;
             newUser = await tx.admin.create({
               data: {
                 username,
                 password: hashedPassword,
                 email,
                 role: effectiveRole,
+                name: adminInput.name,
+                surname: adminInput.surname,
               },
             });
             break;
@@ -154,6 +159,13 @@ export class AuthService {
 
             await this.validateForeignKeys(tx, studentInput);
 
+            // Find the class ID using the enum value
+            const classRecord = await tx.class.findFirst({
+              where: {
+                name: studentInput.classId,
+              },
+            });
+
             newUser = await tx.student.create({
               data: {
                 username,
@@ -166,7 +178,8 @@ export class AuthService {
                 // bloodType: studentInput.bloodType,
                 // sex: studentInput.sex,
                 parentId: studentInput.parentId,
-                classId: studentInput.classId,
+                classId: classRecord.id,
+                // classId: studentInput.classId,
                 // gradeId: '0',
               },
             });
@@ -191,11 +204,12 @@ export class AuthService {
 
         // Generate the token (if this fails, it should trigger rollback)
         const token = this.generateAccessToken(newUser.id, role);
+        const refreshToken = await this.generateRefreshToken(newUser.id);
 
         // Build the response object with all fields
         const authResponse: AuthResponse = {
           token,
-
+          refreshToken,
           userId: newUser.id,
           role: effectiveRole,
           username: newUser.username,
@@ -217,6 +231,7 @@ export class AuthService {
       throw new Error(`Signup Error: ${error}`);
     }
   }
+
   async login(input: BaseLoginInput): Promise<AuthResponse> {
     const { username, password } = input;
 

@@ -11,6 +11,8 @@ datasource db {
 model Admin {
   id              String        @id @default(uuid())
   username        String        @unique
+  name            String?  
+  surname         String?  
   role            Role
   email           String?       
   password        String

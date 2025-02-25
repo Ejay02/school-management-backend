@@ -31,16 +31,16 @@ export class Student {
   @Field({ nullable: true })
   phone?: string;
 
-  @Field()
-  address: string;
+  @Field({ nullable: true })
+  address?: string;
 
   @Field({ nullable: true })
   img?: string;
 
-  @Field()
-  bloodType: string;
+  @Field({ nullable: true })
+  bloodType?: string;
 
-  @Field()
+  @Field({ nullable: true })
   sex: string;
 
   @Field()
