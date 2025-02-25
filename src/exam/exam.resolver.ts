@@ -37,8 +37,11 @@ export class ExamResolver {
 
   @Query(() => [Exam])
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  async getAllExams() {
-    return await this.examService.getAllExams();
+  async getAllExams(
+    @Args('params', { nullable: true }) params?: PaginationInput,
+  ) {
+    const result = await this.examService.getAllExams(params || {});
+    return result.data;
   }
 
   @Query(() => [Exam])

@@ -6,11 +6,15 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
-import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
+import {
+  PaginatedResponse,
+  PaginationParams,
+} from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 
 import { UpdateExamInput } from './input/update.exam.input';
 import { CreateExamInput } from './input/create.exam.input';
+import { Exam } from './types/exam.types';
 
 @Injectable()
 export class ExamService {
@@ -105,9 +109,11 @@ export class ExamService {
     return result;
   }
 
-  async getAllExams() {
+  async getAllExams(
+    params: PaginationParams,
+  ): Promise<PaginatedResponse<Exam>> {
     try {
-      return await this.prisma.exam.findMany({
+      const baseQuery = {
         include: {
           subject: true,
           class: true,
@@ -119,7 +125,22 @@ export class ExamService {
             },
           },
         },
-      });
+      };
+
+      // Define searchable fields for exam name, teacher name, subject name, and class name.
+      const searchFields = [
+        'name',
+        'teacher.name',
+        'subject.name',
+        'class.name',
+      ];
+
+      return await PrismaQueryBuilder.paginateResponse(
+        this.prisma.exam,
+        baseQuery,
+        params,
+        searchFields,
+      );
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch exams');
