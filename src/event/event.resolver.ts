@@ -16,7 +16,14 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 export class EventResolver {
   constructor(private eventService: EventService) {}
 
-  @Query(() => Event)
+  @Query(() => [Event])
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
   async getEvents(
     @Args('filter') filter: EventFilter,
     @Context() context,
@@ -29,6 +36,22 @@ export class EventResolver {
       params || {},
     );
     return result.data;
+  }
+
+  @Query(() => Event)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  async getEventById(@Args('id') id: string, @Context() context) {
+    return await this.eventService.getEventById(
+      id,
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 
   @Mutation(() => Event)

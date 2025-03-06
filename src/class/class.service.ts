@@ -158,4 +158,14 @@ export class ClassService {
       });
     });
   }
+
+  async getClassId(className: string): Promise<string> {
+    const classRecord = await this.prisma.class.findUnique({
+      where: { name: className },
+    });
+    if (!classRecord) {
+      throw new NotFoundException(`Class with name "${className}" not found.`);
+    }
+    return classRecord.id;
+  }
 }

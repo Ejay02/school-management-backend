@@ -5,10 +5,11 @@ import { Teacher } from 'src/teacher/types/teacher.types';
 import { Exam } from 'src/exam/types/exam.types';
 import { Assignment } from 'src/assignment/types/assignment.types';
 import { Attendance } from 'src/attendance/types/attendance.types';
+import { Student } from 'src/student/types/student.types';
 
 @ObjectType()
 export class Lesson {
-  @Field(() => String)
+  @Field()
   id: string;
 
   @Field()
@@ -40,6 +41,9 @@ export class Lesson {
 
   @Field(() => Teacher, { nullable: true })
   teacher?: Teacher;
+
+  @Field(() => [Student], { nullable: true })
+  students?: Student[];
 
   @Field(() => [Exam])
   exams: Exam[];

@@ -7,14 +7,15 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Roles } from 'src/shared/enum/role';
 import { Attendance } from './types/attendance.types';
 import { MarkAttendanceInput } from './input/attendance.input';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+// import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { SchoolAttendanceStats } from './types/attendance.stat.types';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AttendanceResolver {
   constructor(private attendanceService: AttendanceService) {}
 
-  @Query(() => Attendance)
+  @Query(() => [Attendance])
   @HasRoles(
     Roles.ADMIN,
     Roles.TEACHER,
@@ -22,17 +23,23 @@ export class AttendanceResolver {
     Roles.STUDENT,
     Roles.PARENT,
   )
-  async getAttendances(
-    @Context() context,
-    @Args('params', { nullable: true }) params?: PaginationInput,
-  ) {
-    const result = await this.attendanceService.getAttendances(
+  async getAttendances(@Context() context) {
+    return await this.attendanceService.getAttendances(
       context.req.user.userId,
       context.req.user.role,
-      params || {},
     );
-    return result.data;
   }
+  // async getAttendances(
+  //   @Context() context,
+  //   @Args('params', { nullable: true }) params?: PaginationInput,
+  // ) {
+  //   const result = await this.attendanceService.getAttendances(
+  //     context.req.user.userId,
+  //     context.req.user.role,
+  //     params || {},
+  //   );
+  //   return result.data;
+  // }
 
   @Query(() => Attendance)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
@@ -79,6 +86,21 @@ export class AttendanceResolver {
   ) {
     return await this.attendanceService.getAttendanceStats(
       studentId,
+      startDate,
+      endDate,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Query(() => SchoolAttendanceStats)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getSchoolAttendanceStats(
+    @Args('startDate') startDate: Date,
+    @Args('endDate') endDate: Date,
+    @Context() context,
+  ) {
+    return await this.attendanceService.getSchoolAttendanceStats(
       startDate,
       endDate,
       context.req.user.userId,

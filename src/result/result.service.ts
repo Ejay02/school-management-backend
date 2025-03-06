@@ -3,12 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { AnnouncementService } from 'src/announcement/announcement.service';
 import { Roles } from 'src/shared/enum/role';
+import { ClassService } from '../class/class.service';
 
 @Injectable()
 export class ResultService {
   constructor(
     private prisma: PrismaService,
     private announcementService: AnnouncementService,
+    private classService: ClassService,
   ) {}
 
   async generateResults(data: {
@@ -96,9 +98,11 @@ export class ResultService {
     });
   }
 
-  async getResultStatistics(classId: string) {
+  async getResultStatistics(className: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Fetch all results related to the specified class, which can be linked to exams or assignments
+      const classId = await this.classService.getClassId(className);
+
+      // Fetch all results related to the specified class (linked to exams or assignments)
       const results = await tx.result.findMany({
         where: {
           OR: [{ exam: { classId } }, { assignment: { classId } }],
@@ -108,13 +112,28 @@ export class ResultService {
       // Extract scores from the fetched results
       const scores = results.map((r) => r.score);
 
+      // Handle case with no results
+      if (scores.length === 0) {
+        return {
+          average: 0,
+          highest: 0,
+          lowest: 0,
+          totalStudents: 0,
+          distribution: {
+            above90: 0,
+            above80: 0,
+            above70: 0,
+            above60: 0,
+            below50: 0,
+          },
+        };
+      }
+
       // Calculate the average score by summing all scores and dividing by the total count
       const average = scores.reduce((a, b) => a + b, 0) / scores.length;
 
-      // Determine the highest score among all results
+      // Determine the highest and lowest scores among all results
       const highest = Math.max(...scores);
-
-      // Determine the lowest score among all results
       const lowest = Math.min(...scores);
 
       return {
@@ -127,7 +146,7 @@ export class ResultService {
           above80: scores.filter((s) => s >= 80 && s < 90).length,
           above70: scores.filter((s) => s >= 70 && s < 80).length,
           above60: scores.filter((s) => s >= 60 && s < 70).length,
-          below60: scores.filter((s) => s < 60).length,
+          below50: scores.filter((s) => s < 50).length,
         },
       };
     });

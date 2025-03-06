@@ -102,13 +102,111 @@ export class EventService {
     }
   }
 
+  async getEventById(eventId: string, userId: string, userRole: Roles) {
+    try {
+      // Base query includes the event by ID and its associated class details
+      const query: any = {
+        where: { id: eventId },
+        include: { class: true },
+      };
+
+      // For non-admin users, add visibility filters
+      if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
+        // Only allow events that are either created by the user or public
+        // and then apply additional role-specific rules.
+        query.where.AND = [
+          {
+            OR: [{ creatorId: userId }, { visibility: EventVisibility.PUBLIC }],
+          },
+        ];
+
+        // Role-specific restrictions
+        switch (userRole) {
+          case Roles.PARENT:
+            query.where.AND.push({
+              OR: [
+                { targetRoles: { has: Roles.PARENT } },
+                { class: { students: { some: { parentId: userId } } } },
+              ],
+            });
+            break;
+          case Roles.TEACHER:
+            query.where.AND.push({
+              OR: [
+                { targetRoles: { has: Roles.TEACHER } },
+                { class: { teachers: { some: { id: userId } } } },
+              ],
+            });
+            break;
+          case Roles.STUDENT:
+            query.where.AND.push({
+              OR: [
+                { targetRoles: { has: Roles.STUDENT } },
+                { class: { students: { some: { id: userId } } } },
+              ],
+            });
+            break;
+        }
+      }
+
+      const event = await this.prisma.event.findFirst(query);
+
+      if (!event) {
+        throw new NotFoundException('Event not found or access denied');
+      }
+
+      return event;
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to fetch event by ID');
+    }
+  }
+
   async createEvent(data: CreateEventInput, role: Roles, creatorId: string) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        // Enforce visibility and target roles based on the creator's role
-        const visibility =
-          role === Roles.ADMIN ? data.visibility : EventVisibility.PRIVATE;
-        const targetRoles = role === Roles.ADMIN ? data.targetRoles : [role];
+      const { event } = await this.prisma.$transaction(async (tx) => {
+        const duplicateEvent = await tx.event.findFirst({
+          where: {
+            title: data.title,
+            startTime: data.startTime,
+            ...(data.classId && { classId: data.classId }),
+          },
+        });
+        if (duplicateEvent) {
+          throw new Error('Event with this title already exists');
+        }
+
+        let visibility = EventVisibility.PRIVATE; // Default to private
+        let targetRoles = [role]; // Default to creator's role
+
+        if (role === Roles.ADMIN || role === Roles.SUPER_ADMIN) {
+          // Admins can create public events with specified target roles
+          visibility = data.visibility;
+          targetRoles = data.targetRoles || [role];
+        } else if (role === Roles.TEACHER && data.classId) {
+          // Check if the teacher has access to the class
+          const teacherAccess = await this.prisma.class.findFirst({
+            where: {
+              id: data.classId,
+              OR: [
+                { supervisorId: creatorId },
+                {
+                  subjects: {
+                    some: { teachers: { some: { id: creatorId } } },
+                  },
+                },
+              ],
+            },
+          });
+
+          if (teacherAccess) {
+            visibility = data.visibility;
+            targetRoles = await this.getClassRoles(data.classId);
+          } else {
+            throw new ForbiddenException(
+              'Teacher does not have access to this class',
+            );
+          }
+        }
 
         // Create event with role-based restrictions
         const event = await tx.event.create({
@@ -127,35 +225,38 @@ export class EventService {
             }),
             status: 'SCHEDULED',
             visibility,
-            // targetRoles,
             targetRoles: {
-              set: data.targetRoles || [], // Ensure this sets the targetRoles correctly
+              set: targetRoles,
             },
           },
         });
 
-        // Handle additional logic for Admin-created events
-        // if (role === Roles.ADMIN && visibility === EventVisibility.PUBLIC) {
+        return { event };
+      });
+
+      // Move Google Calendar API call outside the transaction
+      try {
         const targetUsers = await this.getTargetUsers({
           classId: data.classId,
-          targetRoles,
+          targetRoles: data.targetRoles,
         });
 
         await this.googleCalendarService.createCalendarEvent({
           ...event,
           attendees: targetUsers.map((user) => user.email),
         });
-        // }
+      } catch (googleCalendarError) {
+        throw new Error(`Google Calendar API error: ${googleCalendarError}`);
+      }
 
-        // Emit socket event to notify clients
-        this.server.emit('eventCreated', {
-          message: 'A new event has been created!',
-          event,
-          targetRoles,
-        });
-
-        return event;
+      // Emit socket event to notify clients
+      this.server.emit('eventCreated', {
+        message: 'A new event has been created!',
+        event,
+        targetRoles: data.targetRoles,
       });
+
+      return event;
     } catch (error) {
       if (error.code === 'P2002') {
         throw new Error('Event with this title already exists');
@@ -169,7 +270,8 @@ export class EventService {
       return await this.prisma.$transaction(async (tx) => {
         const event = await tx.event.findUnique({ where: { id: eventId } });
 
-        if (!event) throw new NotFoundException('Event not found');
+        if (!event)
+          throw new NotFoundException(`Event with ID ${eventId} not found`);
         if (event.creatorId !== userId)
           throw new ForbiddenException('Unauthorized');
 
@@ -230,88 +332,145 @@ export class EventService {
     classId?: string | null;
     targetRoles: Roles[];
   }) {
-    const queries = [];
+    try {
+      const queries = [];
 
-    // Only process target users if it's an admin creating the event
-    for (const role of event.targetRoles) {
-      switch (role) {
-        case Roles.STUDENT:
-          if (event.classId) {
-            queries.push(
-              this.prisma.student.findMany({
-                where: { classId: event.classId },
-                select: {
-                  email: true,
-                  name: true,
-                },
-              }),
-            );
-          } else {
-            // If no classId, get all students
-            queries.push(
-              this.prisma.student.findMany({
-                select: {
-                  email: true,
-                  name: true,
-                },
-              }),
-            );
-          }
-          break;
+      // Only process target users if it's an admin creating the event
+      for (const role of event.targetRoles) {
+        switch (role) {
+          case Roles.STUDENT:
+            if (event.classId) {
+              queries.push(
+                this.prisma.student.findMany({
+                  where: { classId: event.classId },
+                  select: {
+                    email: true,
+                    name: true,
+                  },
+                }),
+              );
+            } else {
+              // If no classId, get all students
+              queries.push(
+                this.prisma.student.findMany({
+                  select: {
+                    email: true,
+                    name: true,
+                  },
+                }),
+              );
+            }
+            break;
 
-        case Roles.TEACHER:
-          if (event.classId) {
-            queries.push(
-              this.prisma.teacher.findMany({
-                where: {
-                  classes: { some: { id: event.classId } },
-                },
-                select: {
-                  email: true,
-                  name: true,
-                },
-              }),
-            );
-          } else {
-            queries.push(
-              this.prisma.teacher.findMany({
-                select: {
-                  email: true,
-                  name: true,
-                },
-              }),
-            );
-          }
-          break;
+          case Roles.TEACHER:
+            if (event.classId) {
+              queries.push(
+                this.prisma.teacher.findMany({
+                  where: {
+                    classes: { some: { id: event.classId } },
+                  },
+                  select: {
+                    email: true,
+                    name: true,
+                  },
+                }),
+              );
+            } else {
+              queries.push(
+                this.prisma.teacher.findMany({
+                  select: {
+                    email: true,
+                    name: true,
+                  },
+                }),
+              );
+            }
+            break;
 
-        case Roles.PARENT:
-          if (event.classId) {
-            queries.push(
-              this.prisma.parent.findMany({
-                where: {
-                  students: { some: { classId: event.classId } },
-                },
-                select: {
-                  email: true,
-                  name: true,
-                },
-              }),
-            );
-          } else {
-            queries.push(
-              this.prisma.parent.findMany({
-                select: {
-                  email: true,
-                  name: true,
-                },
-              }),
-            );
-          }
-          break;
+          case Roles.PARENT:
+            if (event.classId) {
+              queries.push(
+                this.prisma.parent.findMany({
+                  where: {
+                    students: { some: { classId: event.classId } },
+                  },
+                  select: {
+                    email: true,
+                    name: true,
+                  },
+                }),
+              );
+            } else {
+              queries.push(
+                this.prisma.parent.findMany({
+                  select: {
+                    email: true,
+                    name: true,
+                  },
+                }),
+              );
+            }
+            break;
+        }
+      }
+      const results = await Promise.all(queries);
+      return results.flat().filter((user) => Boolean(user?.email));
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to fetch target users');
+    }
+  }
+
+  private async getClassRoles(classId: string): Promise<Roles[]> {
+    const roles: Roles[] = [];
+
+    // Get students in the class
+    const students = await this.prisma.student.findMany({
+      where: {
+        classId,
+      },
+      include: {
+        parent: true,
+      },
+    });
+
+    if (students.length > 0) {
+      roles.push(Roles.STUDENT);
+      if (students.some((student) => student.parent)) {
+        roles.push(Roles.PARENT);
       }
     }
-    const results = await Promise.all(queries);
-    return results.flat().filter((user) => Boolean(user?.email));
+
+    // Get teachers associated with the class
+    const classData = await this.prisma.class.findUnique({
+      where: {
+        id: classId,
+      },
+      include: {
+        subjects: {
+          include: {
+            teachers: true,
+          },
+        },
+      },
+    });
+
+    if (classData) {
+      // Check for supervisor
+      if (classData.supervisorId) {
+        roles.push(Roles.TEACHER);
+      }
+
+      // Check for teachers in subjects
+      if (
+        classData.subjects &&
+        classData.subjects.some((subject) => subject.teachers.length > 0)
+      ) {
+        roles.push(Roles.TEACHER);
+      }
+    }
+
+    // Remove duplicate roles
+    return [...new Set(roles)];
   }
 
   private async sendNotifications(

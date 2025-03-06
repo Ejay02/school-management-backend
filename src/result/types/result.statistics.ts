@@ -15,7 +15,7 @@ class ScoreDistribution {
   above60: number;
 
   @Field(() => Int)
-  below60: number;
+  below50: number;
 }
 
 @ObjectType()

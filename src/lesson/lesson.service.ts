@@ -152,7 +152,11 @@ export class LessonService {
           include: {
             teacher: true,
             subject: true,
-            class: true,
+            class: {
+              include: {
+                students: true,
+              },
+            },
             exams: true,
             assignments: {
               include: {
@@ -176,7 +180,11 @@ export class LessonService {
           include: {
             teacher: true,
             subject: true,
-            class: true,
+            class: {
+              include: {
+                students: true,
+              },
+            },
             exams: true,
             assignments: {
               include: {

@@ -1,32 +1,38 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
+import { JWT } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class GoogleCalendarService {
-  private oauth2Client: OAuth2Client;
+  // private oauth2Client: OAuth2Client;
   private calendar;
   private readonly logger = new Logger(GoogleCalendarService.name);
+  private jwtClient: JWT;
 
   constructor(private configService: ConfigService) {
-    // Initialize OAuth2 client with credentials from environment variables
-    this.oauth2Client = new google.auth.OAuth2(
-      this.configService.get('GOOGLE_CLIENT_ID'),
-      this.configService.get('GOOGLE_CLIENT_SECRET'),
-      this.configService.get('GOOGLE_REDIRECT_URL'),
-    );
+    this.initializeCalendar();
+  }
 
-    // Set credentials using refresh token
-    this.oauth2Client.setCredentials({
-      refresh_token: this.configService.get('GOOGLE_REFRESH_TOKEN'),
-    });
+  private async initializeCalendar() {
+    try {
+      this.jwtClient = new google.auth.JWT({
+        email: this.configService.get('GOOGLE_SERVICE_ACCOUNT_EMAIL'),
+        key: this.configService
+          .get('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY')
+          .replace(/\\n/g, '\n'),
+        scopes: ['https://www.googleapis.com/auth/calendar'],
+      });
 
-    // Initialize calendar with authenticated client
-    this.calendar = google.calendar({
-      version: 'v3',
-      auth: this.oauth2Client,
-    });
+      await this.jwtClient.authorize();
+
+      this.calendar = google.calendar({
+        version: 'v3',
+        auth: this.jwtClient,
+      });
+    } catch (error) {
+      this.logger.error('Failed to initialize Google Calendar service:', error);
+    }
   }
 
   async createCalendarEvent(event: {
@@ -56,10 +62,9 @@ export class GoogleCalendarService {
       const response = await this.calendar.events.insert({
         calendarId: 'primary',
         requestBody: calendarEvent,
-        sendUpdates: 'all', // Sends email updates to attendees
+        sendUpdates: 'all',
       });
 
-      this.logger.log(`Calendar event created: ${response.data.id}`);
       return response.data;
     } catch (error) {
       this.logger.error('Failed to create calendar event:', error);

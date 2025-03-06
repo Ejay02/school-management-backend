@@ -70,8 +70,8 @@ export class ResultResolver {
 
   @Query(() => ResultStatistics)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
-  async getResultStatistics(@Args('classId') classId: string) {
-    return await this.resultService.getResultStatistics(classId);
+  async getResultStatistics(@Args('className') className: string) {
+    return await this.resultService.getResultStatistics(className);
   }
 
   @Query(() => [Result])

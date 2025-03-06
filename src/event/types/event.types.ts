@@ -19,7 +19,7 @@ export class Event {
   @Field(() => String, { nullable: true })
   classId?: string;
 
-  @Field(() => String)
+  @Field(() => Class, { nullable: true })
   class?: Class;
 
   @Field(() => String)

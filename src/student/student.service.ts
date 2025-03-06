@@ -27,8 +27,17 @@ export class StudentService {
     try {
       const baseInclude = {
         parent: true,
-        class: true,
+        class: {
+          include: {
+            lessons: {
+              include: {
+                attendances: true,
+              },
+            },
+          },
+        },
         grade: true,
+        attendances: true,
       };
 
       const baseQuery: any = {
@@ -97,11 +106,27 @@ export class StudentService {
     try {
       const student = await this.prisma.student.findUnique({
         where: { id: studentId },
+        // include: {
+        //   attendances: true,
+        //   results: true,
+        //   submissions: true,
+        //   class: true,
+        //   parent: true,
+        //   // lessons:true
+        // },
         include: {
           attendances: true,
           results: true,
           submissions: true,
-          class: true,
+          class: {
+            include: {
+              lessons: {
+                include: {
+                  attendances: true,
+                },
+              },
+            },
+          },
           parent: true,
         },
       });

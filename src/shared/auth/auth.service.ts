@@ -48,6 +48,20 @@ export class AuthService {
       );
     }
 
+    // If linking to an existing student, validate that the student exists
+    if (input.existingStudentId) {
+      const student = await tx.student.findUnique({
+        where: { id: input.existingStudentId },
+      });
+
+      if (!student) {
+        throw new NotFoundException(
+          `Student with ID ${input.existingStudentId} not found. Please verify the student ID.`,
+        );
+      }
+      return;
+    }
+
     // Validate that class exists and has capacity
     const targetClass = await tx.class.findUnique({
       where: { id: input.classId },
@@ -65,6 +79,43 @@ export class AuthService {
       throw new BadRequestException(
         `Class ${targetClass.name} has reached its maximum capacity of ${targetClass.capacity} students.`,
       );
+    }
+  }
+
+  private async linkStudentToParent(
+    tx: any,
+    studentId: string,
+    parentId: string,
+  ): Promise<boolean> {
+    try {
+      // Verify both the student and parent exist
+      const student = await tx.student.findUnique({
+        where: { id: studentId },
+      });
+
+      if (!student) {
+        throw new NotFoundException(`Student with ID ${studentId} not found.`);
+      }
+
+      const parent = await this.prisma.parent.findUnique({
+        where: { id: parentId },
+      });
+
+      if (!parent) {
+        throw new NotFoundException(`Parent with ID ${parentId} not found.`);
+      }
+
+      // Create a record in a new "parentStudentLinks" table
+      await tx.parentStudentLink.create({
+        data: {
+          studentId,
+          parentId,
+        },
+      });
+
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to link student to parent: ${error.message}`);
     }
   }
 
@@ -159,30 +210,68 @@ export class AuthService {
 
             await this.validateForeignKeys(tx, studentInput);
 
-            // Find the class ID using the enum value
-            const classRecord = await tx.class.findFirst({
-              where: {
-                name: studentInput.classId,
-              },
-            });
+            // Check if we're linking to an existing student
 
-            newUser = await tx.student.create({
-              data: {
+            if (studentInput.existingStudentId) {
+              // First create the parent user
+              const parentData = {
                 username,
                 password: hashedPassword,
                 email,
                 role,
                 name: studentInput.name,
                 surname: studentInput.surname,
-                // address: studentInput.address,
-                // bloodType: studentInput.bloodType,
-                // sex: studentInput.sex,
-                parentId: studentInput.parentId,
-                classId: classRecord.id,
-                // classId: studentInput.classId,
-                // gradeId: '0',
-              },
-            });
+                // Any other relevant parent fields
+              };
+
+              newUser = await tx.parent.create({
+                data: parentData,
+              });
+
+              // Then link the parent to the existing student
+              await this.linkStudentToParent(
+                tx,
+                studentInput.existingStudentId,
+                newUser.id,
+              );
+
+              // Get the student details to return
+              const existingStudent = await tx.student.findUnique({
+                where: { id: studentInput.existingStudentId },
+              });
+
+              // Add student details to the response
+              newUser = {
+                ...newUser,
+                studentId: existingStudent.id,
+                name: existingStudent.name,
+                surname: existingStudent.surname,
+                // other student fields...
+              };
+            } else {
+              // new student: Find the class ID using the enum value
+              const classRecord = await tx.class.findFirst({
+                where: {
+                  name: studentInput.classId,
+                },
+              });
+
+              newUser = await tx.student.create({
+                data: {
+                  username,
+                  password: hashedPassword,
+                  email,
+                  role,
+                  name: studentInput.name,
+                  surname: studentInput.surname,
+
+                  parentId: studentInput.parentId,
+                  classId: classRecord.id,
+                  // classId: studentInput.classId,
+                  // gradeId: '0',
+                },
+              });
+            }
             break;
 
           case Roles.PARENT:

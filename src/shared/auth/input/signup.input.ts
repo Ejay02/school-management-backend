@@ -58,6 +58,10 @@ export class StudentSignupInput extends BaseSignupInput {
 
   @Field(() => DefaultClass)
   classId: DefaultClass;
+
+  @Field()
+  @IsString()
+  existingStudentId?: string;
 }
 
 @InputType()
