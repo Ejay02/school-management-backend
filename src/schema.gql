@@ -1,0 +1,781 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AcademicYear {
+  current: String!
+  next: String!
+}
+
+type Admin {
+  createdAt: DateTime!
+  email: String
+  id: String!
+  img: String
+  role: Roles!
+  updatedAt: DateTime!
+  username: String!
+}
+
+input AdminSignupInput {
+  email: String
+  name: String!
+  password: String!
+  role: Roles!
+  surname: String!
+  username: String!
+}
+
+type Announcement {
+  archivedAt: DateTime
+  class: Class
+  classId: String
+  content: String!
+  createdAt: DateTime!
+  creatorId: String!
+  creatorRole: String!
+  id: String!
+  isArchived: Boolean!
+  readAt: DateTime
+  targetRoles: [Roles!]!
+  title: String!
+}
+
+input AnnouncementQueryInput {
+  isArchived: Boolean = false
+  limit: Int
+  page: Int
+  search: String
+  sortBy: String
+  sortOrder: SortOrder
+}
+
+input AssignStudentToClassInput {
+  classId: String!
+  studentId: String!
+}
+
+input AssignSubjectsInput {
+  classId: String!
+  subjectIds: [String!]!
+}
+
+type AssignSubjectsResponse {
+  class: Class!
+  subjects: [Subject!]!
+}
+
+type Assignment {
+  class: Class!
+  classId: Int!
+  createdAt: DateTime!
+  dueDate: DateTime!
+  id: String!
+  lesson: Lesson!
+  lessonId: Int!
+  results: [Result!]!
+  startDate: DateTime!
+  subject: Subject!
+  subjectId: Int!
+  submissions: [Submission!]!
+  teacher: Teacher!
+  teacherId: String!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type Attendance {
+  class: Class!
+  classId: String!
+  createdAt: DateTime!
+  date: DateTime!
+  id: String!
+  lesson: Lesson!
+  lessonId: String!
+  present: Boolean!
+  student: Student!
+  studentId: String!
+  updatedAt: DateTime!
+}
+
+type AuthResponse {
+  address: String
+  bloodType: String
+  classId: String
+  email: String!
+  gradeId: String
+  name: String
+  parentId: String
+  phone: String
+  refreshToken: String!
+  role: String
+  sex: String
+  surname: String
+  token: String!
+  userId: String!
+  username: String
+}
+
+input BaseLoginInput {
+  password: String!
+  username: String!
+}
+
+type Class {
+  announcements: [Announcement!]!
+  assignments: [Assignment!]!
+  capacity: Int!
+  createdAt: DateTime!
+  events: [Event!]!
+  exams: [Exam!]!
+  feeStructure: FeeStructure
+  id: String!
+  lessons: [Lesson!]!
+  name: String!
+  students: [Student!]
+  subjects: [Subject]!
+  supervisor: Teacher
+  supervisorId: String
+  updatedAt: DateTime!
+}
+
+type Counts {
+  admins: Int!
+  parents: Int!
+  students: Int!
+  teachers: Int!
+}
+
+input CreateAssignmentInput {
+  dueDate: DateTime!
+  startDate: DateTime!
+  title: String!
+}
+
+input CreateClassInput {
+  capacity: Float!
+  name: String!
+}
+
+input CreateEventInput {
+  classId: String
+  description: String!
+  endTime: DateTime!
+  location: String
+  startTime: DateTime!
+  status: EventStatus!
+  targetRoles: [Roles!]!
+  title: String!
+  visibility: EventVisibility!
+}
+
+input CreateExamInput {
+  classId: String!
+  endTime: DateTime!
+  lessonId: String!
+  startTime: DateTime!
+  subjectId: String!
+  title: String!
+}
+
+input CreateFeeComponentInput {
+  amount: Float!
+  description: String
+  name: String!
+}
+
+input CreateFeeStructureInput {
+  academicYear: String!
+  classIds: [String!]
+  components: [CreateFeeComponentInput!]!
+  term: Term
+  totalAmount: Float!
+  type: FeeType!
+}
+
+input CreateGradeInput {
+  academicPeriod: String!
+  assignmentId: String
+  comments: String
+  examId: String
+  score: Float!
+  studentId: String!
+  type: GradeType!
+}
+
+input CreateLessonInput {
+  day: String!
+  endTime: String!
+  name: String!
+  startTime: String!
+}
+
+input CreateSubmissionInput {
+  assignmentId: String!
+  content: String
+}
+
+type DashboardSummary {
+  academicYear: AcademicYear!
+  counts: Counts!
+  role: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+enum DefaultClass {
+  JSS_1
+  JSS_2
+  JSS_3
+  PRIMARY_1
+  PRIMARY_2
+  PRIMARY_3
+  PRIMARY_4
+  PRIMARY_5
+  PRIMARY_6
+  SS_1
+  SS_2
+  SS_3
+}
+
+type DeleteResponse {
+  message: String!
+  success: Boolean!
+}
+
+input EditAdminInput {
+  email: String
+  img: String
+  password: String
+  username: String
+}
+
+type EditAdminResponse {
+  admin: Admin
+  message: String!
+  success: Boolean!
+}
+
+input EditAssignmentInput {
+  dueDate: DateTime!
+  startDate: DateTime!
+  title: String!
+}
+
+input EditEventInput {
+  classId: String!
+  description: String!
+  endTime: DateTime!
+  location: String!
+  startTime: DateTime!
+  targetRoles: [Roles!]!
+  title: String!
+  visibility: EventVisibility!
+}
+
+input EditLessonInput {
+  day: String!
+  endTime: String!
+  name: String!
+  startTime: String!
+  teacherId: String
+}
+
+type Event {
+  class: Class
+  classId: String
+  createdAt: DateTime!
+  creatorId: String!
+  description: String!
+  endTime: DateTime!
+  id: String!
+  location: String
+  startTime: DateTime!
+  status: EventStatus!
+  targetRoles: [Roles!]!
+  title: String!
+  type: String!
+  updatedAt: DateTime!
+  visibility: EventVisibility!
+}
+
+input EventFilter {
+  classId: String
+  endDate: DateTime
+  startDate: DateTime
+  type: String
+}
+
+enum EventStatus {
+  CANCELLED
+  COMPLETED
+  SCHEDULED
+}
+
+enum EventVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+type Exam {
+  class: Class!
+  classId: String!
+  createdAt: DateTime!
+  endTime: DateTime!
+  id: String!
+  lesson: Lesson!
+  lessonId: String!
+  results: [Result!]!
+  startTime: DateTime!
+  subject: Subject!
+  subjectId: String!
+  teacher: Teacher!
+  teacherId: String!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type FeeComponent {
+  amount: Float!
+  description: String
+  feeStructureId: String!
+  id: ID!
+  name: String!
+}
+
+type FeeStructure {
+  academicYear: String!
+  components: [FeeComponent!]!
+  createdAt: DateTime!
+  id: ID!
+  term: Term!
+  totalAmount: Float!
+  type: FeeType!
+  updatedAt: DateTime!
+}
+
+enum FeeType {
+  TERM
+  YEARLY
+}
+
+type Grade {
+  academicPeriod: String!
+  assignment: Assignment
+  assignmentId: String
+  comments: String
+  createdAt: DateTime!
+  exam: Exam
+  examId: String
+  id: String!
+  score: Float!
+  student: Student!
+  studentId: String!
+  type: GradeType!
+  updatedAt: DateTime!
+}
+
+enum GradeType {
+  ASSIGNMENT
+  EXAM
+  OVERALL
+}
+
+type Invoice {
+  checkoutSessionId: String
+  createdAt: DateTime!
+  dueDate: DateTime!
+  feeStructureId: String!
+  id: ID!
+  invoiceNumber: String!
+  paidAmount: Float!
+  parentId: String!
+  paymentIntentId: String
+  payments: [Payment!]!
+  status: InvoiceStatus!
+  totalAmount: Float!
+  updatedAt: DateTime!
+}
+
+enum InvoiceStatus {
+  CANCELLED
+  OVERDUE
+  PAID
+  PARTIAL
+  PENDING
+}
+
+type Lesson {
+  assignments: [Assignment!]!
+  attendances: [Attendance!]!
+  class: Class!
+  classId: Int!
+  createdAt: DateTime!
+  day: String!
+  endTime: String!
+  exams: [Exam!]!
+  id: String!
+  name: String!
+  startTime: String!
+  students: [Student!]
+  subject: Subject!
+  subjectId: Int!
+  teacher: Teacher
+  teacherId: String!
+  updatedAt: DateTime!
+}
+
+input MarkAttendanceInput {
+  date: DateTime!
+  present: Boolean!
+  studentId: String!
+}
+
+type MonthlyRevenue {
+  revenue: [Float!]!
+}
+
+type Mutation {
+  adminSignup(input: AdminSignupInput!): AuthResponse!
+  archiveAnnouncement(announcementId: String!): Boolean!
+  assignAdminRole(role: String!, targetId: String!): Admin!
+  assignAssignmentGrade(academicPeriod: String!, assignmentId: String!, comments: String, score: Float!, studentId: String!): Grade!
+  assignClassToTeacher(classId: String!, teacherId: String!): Class!
+  assignExamGrade(academicPeriod: String!, comments: String, examId: String!, score: Float!, studentId: String!): Grade!
+  assignGrade(input: CreateGradeInput!): Grade!
+  assignLessonsToClass(classId: String!, lessons: [String!]!): Lesson!
+  assignLessonsToTeacher(lessons: [String!]!, teacherId: String!): Lesson!
+  assignStudentToClass(input: AssignStudentToClassInput!): Student!
+  assignSubjectsToClass(input: AssignSubjectsInput!): AssignSubjectsResponse!
+  calculateOverallGrade(academicPeriod: String!, studentId: String!): Grade!
+  cancelEvent(id: String!, reason: String!): Event!
+  createAnnouncement(classId: String, content: String!, targetRoles: [String!], title: String!): Announcement!
+  createAssignment(createAssignmentInput: CreateAssignmentInput!): Assignment!
+  createClass(input: CreateClassInput!): Class!
+  createEvent(data: CreateEventInput!): Event!
+  createExam(input: CreateExamInput!): Exam!
+  createFeeStructure(input: CreateFeeStructureInput!): FeeStructure!
+  createLesson(classId: String!, createLessonInput: CreateLessonInput!, subjectId: String!): Lesson!
+  createSubmission(input: CreateSubmissionInput!): Submission!
+  deleteEvent(eventId: String!): Boolean!
+  deleteExam(examId: String!): Boolean!
+  deleteGrade(gradeId: String!): Boolean!
+  deleteLesson(lessonId: String!): DeleteResponse!
+  deleteResult(id: String!): Boolean!
+  deleteSubmission(submissionId: String!): Boolean!
+  deleteUser(targetId: String!): Boolean!
+  editAdmin(input: EditAdminInput!): EditAdminResponse!
+  editAnnouncement(announcementId: String!, content: String!, targetRoles: [String!], title: String!): Announcement!
+  editAssignment(editAssignmentInput: EditAssignmentInput!): Assignment!
+  editLesson(editLessonInput: EditLessonInput!, lessonId: String!): Lesson!
+  editSubmission(input: UpdateSubmissionInput!, submissionId: String!): Submission!
+  generateInvoice(feeStructureId: String!): Invoice!
+  generateResult(assignmentId: String, examId: String, score: Int!, studentId: String!): Result!
+  globalAnnouncementDelete(announcementId: String!): Boolean!
+  initiatePayment(amount: Float!, invoiceId: String!): String!
+  login(input: BaseLoginInput!): AuthResponse!
+  logout(refreshToken: String!): Boolean!
+  markAnnouncementAsRead(announcementId: String!): Boolean!
+  markAttendance(attendanceData: [MarkAttendanceInput!]!, lessonId: String!): [Attendance!]!
+  markEventAsRead(eventId: String!): Boolean!
+  notifyStudentResults(message: String, studentId: String!, term: String!): [Result!]!
+  parentSignup(input: ParentSignupInput!): AuthResponse!
+  personalAnnouncementDelete(announcementId: String!): Boolean!
+  publishResults(classId: String!, message: String, term: String!): [Result!]!
+  refreshTokens(refreshToken: String!): TokenResponse!
+  resetPassword(input: ResetPasswordInput!): AuthResponse!
+  studentSignup(input: StudentSignupInput!): AuthResponse!
+  teacherSignup(input: TeacherSignupInput!): AuthResponse!
+  unarchiveAnnouncement(announcementId: String!): Boolean!
+  updateEvent(eventId: String!, input: EditEventInput!): Event!
+  updateExam(examId: String!, input: UpdateExamInput!): Exam!
+  updateGrade(input: UpdateGradeInput!): Grade!
+  updateResult(assignmentId: String, examId: String, id: String!, score: Int): Result!
+}
+
+input PaginationInput {
+  limit: Int
+  page: Int
+  search: String
+  sortBy: String
+  sortOrder: SortOrder
+}
+
+type Parent {
+  address: String!
+  createdAt: DateTime!
+  email: String
+  id: String!
+  img: String
+  name: String!
+  password: String!
+  phone: String!
+  role: String!
+  students: [Student!]!
+  surname: String!
+  updatedAt: DateTime!
+  username: String!
+}
+
+input ParentSignupInput {
+  email: String
+  name: String!
+  password: String!
+  role: Roles! = PARENT
+  surname: String!
+  username: String!
+}
+
+type Payment {
+  amount: Float!
+  createdAt: DateTime!
+  currency: String!
+  description: String
+  id: ID!
+  invoiceId: String!
+  parentId: String!
+  paymentMethod: String!
+  status: PaymentStatus!
+  stripePaymentId: String!
+  updatedAt: DateTime!
+}
+
+enum PaymentStatus {
+  CANCELLED
+  COMPLETED
+  FAILED
+  PENDING
+  REFUNDED
+}
+
+type Query {
+  attendanceByLesson(lessonId: String!): Attendance!
+  attendanceStats(endDate: DateTime!, startDate: DateTime!, studentId: String!): Attendance!
+  getAllAdmins: [Admin!]!
+  getAllAnnouncements(params: AnnouncementQueryInput): [Announcement!]!
+  getAllAssignments(params: PaginationInput): [Assignment!]!
+  getAllClassSubmissions(classId: String!, params: PaginationInput): [Submission!]!
+  getAllClasses(params: PaginationInput): [Class!]!
+  getAllExams(params: PaginationInput): [Exam!]!
+  getAllLessons(params: PaginationInput): [Lesson!]!
+  getAllParents(params: PaginationInput): [Parent!]!
+  getAllStudents(params: PaginationInput): [Student!]!
+  getAllSubjects(params: PaginationInput): [Subject!]!
+  getAllTeachers(params: PaginationInput): [Teacher!]!
+  getAnnouncementById(announcementId: String!): Announcement!
+  getAssignmentById(assignmentId: String!): [Assignment!]!
+  getAttendances: [Attendance!]!
+  getClassById(id: String!): Class!
+  getClassExams(classId: String!, params: PaginationInput): [Exam!]!
+  getClassGrades(academicPeriod: String, classId: String!, params: PaginationInput): Grade!
+  getClassResults(classId: String!): [Result!]!
+  getDashboardUserCardSummary: DashboardSummary!
+  getEventById(id: String!): Event!
+  getEvents(filter: EventFilter!, params: PaginationInput): [Event!]!
+  getExamDetails(examId: String!): Exam!
+  getFeeStructure(id: String!): FeeStructure!
+  getHello: String!
+  getIncomeGraphData: MonthlyRevenue!
+  getLessonById(id: String!): Lesson!
+  getMyGrades(academicPeriod: String, params: PaginationInput): Grade!
+  getMyInvoices(params: PaginationInput): [Invoice!]!
+  getMySubmissions(params: PaginationInput): [Submission!]!
+  getParentById(parentId: String!): Parent!
+  getResultHistory(academicYear: String, studentId: String!): [Result!]!
+  getResultStatistics(className: String!): ResultStatistics!
+  getSchoolAttendanceStats(endDate: DateTime!, startDate: DateTime!): SchoolAttendanceStats!
+  getStudentById(studentId: String!): Student!
+  getStudentResults(studentId: String!): [Result!]!
+  getStudentsByGender(classId: String, params: PaginationInput): StudentGenderStatistics!
+  getSubjectById(id: String!): Subject!
+  getSubmissionsByAssignment(assignmentId: String!, params: PaginationInput): [Submission!]!
+  getTeacherById(teacherId: String!): Teacher!
+  getUnreadAnnouncementsCount: Int!
+  getUserById(id: String!): UserUnion
+}
+
+input ResetPasswordInput {
+  newPassword: String!
+  role: Roles
+  username: String!
+}
+
+type Result {
+  assignment: Assignment
+  assignmentId: Int
+  createdAt: DateTime!
+  exam: Exam
+  examId: Int
+  id: String!
+  score: Int!
+  student: Student!
+  studentId: String!
+  updatedAt: DateTime!
+}
+
+type ResultStatistics {
+  average: Float!
+  distribution: ScoreDistribution!
+  highest: Float!
+  lowest: Float!
+  totalStudents: Int!
+}
+
+enum Roles {
+  ADMIN
+  PARENT
+  STUDENT
+  SUPER_ADMIN
+  TEACHER
+}
+
+type SchoolAttendanceStats {
+  absent: [Int!]!
+  labels: [String!]!
+  present: [Int!]!
+  studentCount: Int!
+}
+
+type ScoreDistribution {
+  above60: Int!
+  above70: Int!
+  above80: Int!
+  above90: Int!
+  below50: Int!
+}
+
+enum SortOrder {
+  ASC
+  DESC
+}
+
+type Student {
+  address: String
+  attendances: [Attendance!]!
+  bloodType: String
+  class: Class!
+  classId: Int!
+  createdAt: DateTime!
+  email: String
+  grade: Grade!
+  gradeId: Int!
+  id: String!
+  img: String
+  name: String!
+  parent: Parent!
+  parentId: String!
+  password: String!
+  phone: String
+  results: [Result!]!
+  role: String!
+  sex: String
+  surname: String!
+  updatedAt: DateTime!
+  username: String!
+}
+
+type StudentGenderStatistics {
+  femaleCount: Int!
+  femalePercentage: Float!
+  maleCount: Int!
+  malePercentage: Float!
+  totalCapacity: Float!
+  totalStudents: Int!
+}
+
+input StudentSignupInput {
+  classId: DefaultClass!
+  email: String
+  existingStudentId: String!
+  name: String!
+  parentId: String!
+  password: String!
+  role: Roles! = STUDENT
+  surname: String!
+  username: String!
+}
+
+type Subject {
+  class: Class
+  classId: String
+  createdAt: DateTime!
+  gradeId: String
+  id: String!
+  lessons: [Lesson]
+  name: String!
+  teachers: [Teacher]
+  updatedAt: DateTime!
+}
+
+type Submission {
+  assignment: Assignment!
+  assignmentId: String!
+  content: String
+  grade: Grade
+  id: String!
+  status: String!
+  student: Student!
+  studentId: String!
+  submissionDate: DateTime!
+}
+
+type Teacher {
+  address: String!
+  bloodType: String!
+  classes: [Class!]!
+  createdAt: DateTime!
+  email: String
+  id: String!
+  img: String
+  lessons: [Lesson!]!
+  name: String!
+  password: String!
+  phone: String
+  role: String!
+  sex: String!
+  subjects: [Subject!]!
+  surname: String!
+  updatedAt: DateTime!
+  username: String!
+}
+
+input TeacherSignupInput {
+  email: String
+  name: String!
+  password: String!
+  role: Roles! = TEACHER
+  surname: String!
+  username: String!
+}
+
+enum Term {
+  FIRST
+  SECOND
+  THIRD
+}
+
+type TokenResponse {
+  accessToken: String!
+  refreshToken: String!
+}
+
+input UpdateExamInput {
+  endTime: DateTime
+  startTime: DateTime
+  title: String
+}
+
+input UpdateGradeInput {
+  comments: String
+  id: String!
+  score: Float
+}
+
+input UpdateSubmissionInput {
+  content: String
+}
+
+union UserUnion = Admin | Parent | Student | Teacher

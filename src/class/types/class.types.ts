@@ -24,8 +24,8 @@ export class Class {
   @Field(() => [Lesson])
   lessons: Lesson[];
 
-  @Field(() => [Student])
-  students: Student[];
+  @Field(() => [Student], { nullable: true })
+  students?: Student[];
 
   @Field(() => String, { nullable: true })
   supervisorId?: string;

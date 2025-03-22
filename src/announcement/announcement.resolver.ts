@@ -6,12 +6,13 @@ import { UseGuards } from '@nestjs/common';
 import { Roles } from 'src/shared/enum/role';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+
+import { AnnouncementQueryInput } from './types/announcement-query.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AnnouncementResolver {
-  constructor(private announcementService: AnnouncementService) {}
+  constructor(private readonly announcementService: AnnouncementService) {}
 
   @Mutation(() => Announcement)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
@@ -46,13 +47,14 @@ export class AnnouncementResolver {
   )
   async getAllAnnouncements(
     @Context() context,
-    @Args('params', { nullable: true }) params?: PaginationInput,
+    @Args('params', { nullable: true }) params?: AnnouncementQueryInput,
   ) {
     const result = await this.announcementService.getAllAnnouncements(
       context.req.user.userId,
       context.req.user.role,
       params || {},
     );
+
     return result.data;
   }
 
@@ -145,6 +147,7 @@ export class AnnouncementResolver {
     );
   }
 
+  @Mutation(() => Boolean)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async globalAnnouncementDelete(
     @Context() context,
@@ -156,4 +159,44 @@ export class AnnouncementResolver {
       announcementId,
     );
   }
+
+  @Mutation(() => Boolean)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.SUPER_ADMIN,
+    Roles.STUDENT,
+    Roles.PARENT,
+  )
+  async archiveAnnouncement(
+    @Context() context,
+    @Args('announcementId') announcementId: string,
+  ) {
+    return await this.announcementService.archiveAnnouncement(
+      context.req.user.userId,
+      context.req.user.role,
+      announcementId,
+    );
+  }
+
+  @Mutation(() => Boolean)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.SUPER_ADMIN,
+    Roles.STUDENT,
+    Roles.PARENT,
+  )
+  async unarchiveAnnouncement(
+    @Context() context,
+    @Args('announcementId') announcementId: string,
+  ) {
+    return await this.announcementService.unarchiveAnnouncement(
+      context.req.user.userId,
+      context.req.user.role,
+      announcementId,
+    );
+  }
+
+  // Update getAllAnnouncements to accept archived parameter
 }

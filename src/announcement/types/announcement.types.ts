@@ -29,8 +29,11 @@ export class Announcement {
   @Field(() => String, { nullable: false })
   creatorRole: string;
 
-  @Field(() => Boolean)
-  isRead: boolean; // Virtual field, not in database
+  @Field(() => Boolean, { defaultValue: false })
+  isArchived: boolean;
+
+  @Field(() => Date, { nullable: true })
+  archivedAt?: Date;
 
   @Field(() => Date, { nullable: true })
   readAt?: Date;

@@ -29,17 +29,6 @@ export class AttendanceResolver {
       context.req.user.role,
     );
   }
-  // async getAttendances(
-  //   @Context() context,
-  //   @Args('params', { nullable: true }) params?: PaginationInput,
-  // ) {
-  //   const result = await this.attendanceService.getAttendances(
-  //     context.req.user.userId,
-  //     context.req.user.role,
-  //     params || {},
-  //   );
-  //   return result.data;
-  // }
 
   @Query(() => Attendance)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)

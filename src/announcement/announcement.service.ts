@@ -14,8 +14,8 @@ import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.paginatio
 @Injectable()
 export class AnnouncementService {
   constructor(
-    private prisma: PrismaService,
-    private announcementGateway: AnnouncementGateway,
+    private readonly prisma: PrismaService,
+    private readonly announcementGateway: AnnouncementGateway,
   ) {}
 
   async createAnnouncement(data: {
@@ -26,24 +26,47 @@ export class AnnouncementService {
     classId?: string;
     targetRoles?: Roles[];
   }) {
-    // Use a Prisma transaction to ensure atomicity
-    const announcement = await this.prisma.$transaction(async (tx) => {
-      // Create the announcement
-      const announcement = await tx.announcement.create({
-        data: {
-          title: data.title,
-          content: data.content,
-          classId: data.classId,
-          creatorId: data.creatorId,
-          creatorRole: data.creatorRole,
-          targetRoles: {
-            set: data.targetRoles || [], // Ensure this sets the targetRoles correctly
+    try {
+      // Use a Prisma transaction to ensure atomicity
+      const announcement = await this.prisma.$transaction(async (tx) => {
+        const now = new Date();
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(now.getDate() - 1); // 24-hour window
+
+        // Check for a duplicate in the last 24 hours
+        const existingAnnouncement = await this.prisma.announcement.findFirst({
+          where: {
+            title: data.title,
+            content: data.content,
+            createdAt: { gte: oneDayAgo }, // Only check recent announcements
           },
-        },
-        include: {
-          class: true,
-        },
+        });
+
+        if (existingAnnouncement) {
+          throw new Error(
+            'Duplicate announcement detected within the last 24 hours.',
+          );
+        }
+        // Create the announcement
+        const announcement = await tx.announcement.create({
+          data: {
+            title: data.title,
+            content: data.content,
+            classId: data.classId,
+            creatorId: data.creatorId,
+            creatorRole: data.creatorRole,
+            targetRoles: {
+              set: data.targetRoles || [], // Ensure this sets the targetRoles correctly
+            },
+          },
+          include: {
+            class: true,
+          },
+        });
+        return announcement;
       });
+
+      this.announcementGateway.server.emit('newAnnouncement', announcement);
 
       // Emit the announcement after creating it
       if (announcement.classId) {
@@ -55,21 +78,31 @@ export class AnnouncementService {
       } else if (data.targetRoles && data.targetRoles.length > 0) {
         // If it's a role-targeted announcement (from admin)
         this.announcementGateway.emitToRoles(announcement, data.targetRoles);
+      } else {
+        // If no classId and no targetRoles, emit to all users
+        this.announcementGateway.emitToAll(announcement);
       }
 
-      return announcement;
-    });
-
-    return announcement; // The transaction will be committed, and the announcement is returned
+      return announcement; // The transaction will be committed, and the announcement is returned
+    } catch (error) {
+      throw new InternalServerErrorException('Error creating announcement');
+    }
   }
 
   async getAllAnnouncements(
     userId: string,
     role: Roles,
-    params: PaginationParams,
+    params: PaginationParams & { isArchived?: boolean },
   ) {
     try {
+      console.log(
+        `[AnnouncementService] Getting announcements for user ${userId} with role ${role}`,
+      );
+
       const baseQuery: any = {
+        where: {
+          isArchived: params.isArchived ?? false,
+        },
         include: {
           class: true,
           reads: {
@@ -165,6 +198,7 @@ export class AnnouncementService {
       throw new InternalServerErrorException('Failed to fetch announcements');
     }
   }
+
   async getAnnouncementById(
     userId: string,
     role: Roles,
@@ -398,7 +432,7 @@ export class AnnouncementService {
         );
 
         if (!announcement) {
-          return false;
+          throw new Error('Announcement not found');
         }
 
         // Create or update read status
@@ -418,8 +452,17 @@ export class AnnouncementService {
           },
         });
 
+        // After marking as read, get the new unread count
+
+        const newUnreadCount = await this.getUnreadCount(userId, role);
+
         // Emit read status update
-        this.announcementGateway.emitReadStatus(announcementId, userId, true);
+        this.announcementGateway.server.emit('announcementReadStatus', {
+          announcementId,
+          userId,
+          isRead: true,
+          unreadCount: newUnreadCount,
+        });
 
         return true;
       });
@@ -520,7 +563,6 @@ export class AnnouncementService {
     announcementId: string,
   ): Promise<boolean> {
     try {
-      // Logic to record that the user "deleted" the announcement personally
       await this.prisma.announcementRead.create({
         data: {
           userId,
@@ -564,6 +606,9 @@ export class AnnouncementService {
 
       // Delete the announcement
       await this.prisma.announcement.delete({ where: { id: announcementId } });
+
+      this.announcementGateway.emitAnnouncementDeleted(announcementId);
+
       return true;
     } catch (error) {
       if (
@@ -572,6 +617,80 @@ export class AnnouncementService {
       )
         throw error;
       throw new InternalServerErrorException('Failed to delete announcement');
+    }
+  }
+
+  async archiveAnnouncement(
+    userId: string,
+    role: Roles,
+    announcementId: string,
+  ): Promise<boolean> {
+    try {
+      // First verify the announcement exists and user has access
+      const announcement = await this.getAnnouncementById(
+        userId,
+        role,
+        announcementId,
+      );
+
+      if (!announcement) {
+        throw new NotFoundException('Announcement not found');
+      }
+
+      // Update the announcement
+      await this.prisma.announcement.update({
+        where: { id: announcementId },
+        data: {
+          isArchived: true,
+          archivedAt: new Date(),
+        },
+      });
+
+      // Emit archive status update
+      this.announcementGateway.emitArchiveStatus(announcementId, true);
+
+      return true;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to archive announcement');
+    }
+  }
+
+  async unarchiveAnnouncement(
+    userId: string,
+    role: Roles,
+    announcementId: string,
+  ): Promise<boolean> {
+    try {
+      // First verify the announcement exists and user has access
+      const announcement = await this.getAnnouncementById(
+        userId,
+        role,
+        announcementId,
+      );
+
+      if (!announcement) {
+        throw new NotFoundException('Announcement not found');
+      }
+
+      // Update the announcement
+      await this.prisma.announcement.update({
+        where: { id: announcementId },
+        data: {
+          isArchived: false,
+          archivedAt: null,
+        },
+      });
+
+      // Emit archive status update
+      this.announcementGateway.emitArchiveStatus(announcementId, false);
+
+      return true;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        'Failed to unarchive announcement',
+      );
     }
   }
 }

@@ -9,11 +9,7 @@ import { Roles } from 'src/shared/enum/role';
 import { MarkAttendanceInput } from './input/attendance.input';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-// import {
-//   PaginatedResponse,
-//   PaginationParams,
-// } from 'src/shared/pagination/types/pagination.types';
-// import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+
 import { Attendance } from './types/attendance.types';
 
 @Injectable()
@@ -43,6 +39,7 @@ export class AttendanceService {
           },
         },
         where: {},
+        orderBy: { createdAt: 'desc' },
       };
 
       // Apply role-based filters
@@ -154,100 +151,11 @@ export class AttendanceService {
         return attendance as Attendance;
       });
     } catch (error) {
-      console.log('error:', error);
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch attendances');
     }
   }
 
-  // async getAttendances(
-  //   userId: string,
-  //   userRole: Roles,
-  //   params: PaginationParams,
-  // ): Promise<PaginatedResponse<any>> {
-  //   try {
-  //     let baseQuery: any = {
-  //       include: {
-  //         student: true,
-  //         lesson: {
-  //           include: {
-  //             subject: true,
-  //             class: true,
-  //           },
-  //         },
-  //       },
-  //     };
-
-  //     switch (userRole) {
-  //       case Roles.ADMIN:
-  //       case Roles.SUPER_ADMIN:
-  //         // Admin and super admin can see all attendances
-  //         break;
-
-  //       case Roles.TEACHER:
-  //         const teacherClasses = await this.prisma.teacher.findUnique({
-  //           where: { id: userId },
-  //           select: { classes: { select: { id: true } } },
-  //         });
-
-  //         const classIds = teacherClasses.classes.map((c) => c.id);
-
-  //         baseQuery.where = {
-  //           lesson: {
-  //             classId: { in: classIds },
-  //           },
-  //         };
-  //         break;
-
-  //       case Roles.STUDENT:
-  //         baseQuery = {
-  //           where: {
-  //             studentId: userId,
-  //           },
-  //           include: {
-  //             lesson: {
-  //               include: {
-  //                 subject: true,
-  //                 class: true,
-  //               },
-  //             },
-  //           },
-  //         };
-  //         break;
-
-  //       case Roles.PARENT:
-  //         const parent = await this.prisma.parent.findUnique({
-  //           where: { id: userId },
-  //           include: { students: { select: { id: true } } },
-  //         });
-
-  //         const studentIds = parent.students.map((s) => s.id);
-
-  //         baseQuery.where = {
-  //           studentId: { in: studentIds },
-  //         };
-  //         break;
-
-  //       default:
-  //         throw new ForbiddenException('Invalid role');
-  //     }
-
-  //     // Define searchable fields - adjust these based on your needs
-  //     const searchFields = ['student.name', 'lesson.subject.name'];
-
-  //     return await PrismaQueryBuilder.paginateResponse(
-  //       this.prisma.attendance,
-  //       baseQuery,
-  //       params,
-  //       searchFields,
-  //     );
-  //   } catch (error) {
-  //     console.log('error:', error);
-  //     if (error instanceof ForbiddenException) throw error;
-  //     throw new InternalServerErrorException('Failed to fetch attendances');
-  //   }
-  // }
-  // Get attendance by lesson
   async getAttendanceByLesson(
     lessonId: string,
     userId: string,
@@ -414,6 +322,7 @@ export class AttendanceService {
   /**
    * Get aggregated school attendance statistics grouped by weekdays (Mon–Fri)
    */
+
   async getSchoolAttendanceStats(
     startDate: Date,
     endDate: Date,
@@ -424,8 +333,18 @@ export class AttendanceService {
     if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
       throw new ForbiddenException('Unauthorized');
     }
-    // Get the total number of classes
-    const classCount = await this.prisma.class.count();
+
+    // Get the total number of students (more relevant for attendance stats)
+    const studentCount = await this.prisma.student.count();
+
+    // Initialize an object for weekdays Monday to Friday
+    const stats = {
+      Mon: { present: 0, absent: 0, total: 0 },
+      Tue: { present: 0, absent: 0, total: 0 },
+      Wed: { present: 0, absent: 0, total: 0 },
+      Thu: { present: 0, absent: 0, total: 0 },
+      Fri: { present: 0, absent: 0, total: 0 },
+    };
 
     // Fetch all attendance records within the specified date range
     const attendances = await this.prisma.attendance.findMany({
@@ -435,43 +354,69 @@ export class AttendanceService {
           lte: endDate,
         },
       },
+      include: {
+        lesson: {
+          include: {
+            class: {
+              include: {
+                students: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    // Initialize an object for weekdays Monday to Friday
-    const stats = {
-      Mon: { present: 0, absent: 0 },
-      Tue: { present: 0, absent: 0 },
-      Wed: { present: 0, absent: 0 },
-      Thu: { present: 0, absent: 0 },
-      Fri: { present: 0, absent: 0 },
-    };
+    // Create a map to track which lessons/classes we've already counted for each day
+    const processedLessons = new Map();
 
-    // Loop over each attendance record and increment counts based on the day
+    // Loop over each attendance record and properly count by day and class
     for (const attendance of attendances) {
-      // Convert attendance date to a JS Date object (if not already)
       const attendanceDate = new Date(attendance.date);
-      // getDay() returns 0 (Sunday) to 6 (Saturday)
       const dayOfWeek = attendanceDate.getDay();
+
       // Only consider Monday (1) through Friday (5)
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        // Map numeric day to string label
         const weekdayMap = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri' };
         const dayLabel = weekdayMap[dayOfWeek];
 
+        // Create a unique key for this lesson on this day
+        const lessonDayKey = `${attendance.lessonId}-${attendanceDate.toISOString().split('T')[0]}`;
+
+        // If we haven't processed this lesson for this day yet
+        if (!processedLessons.has(lessonDayKey)) {
+          // Get the number of students in this class
+          const studentsInClass =
+            attendance.lesson?.class?.students?.length || 0;
+
+          // Count this class's student total for this day
+          stats[dayLabel].total += studentsInClass;
+
+          // Mark this lesson as processed for this day
+          processedLessons.set(lessonDayKey, {
+            present: 0,
+            absent: 0,
+            total: studentsInClass,
+          });
+        }
+
+        // Update the present/absent counts for this lesson on this day
+        const lessonCounts = processedLessons.get(lessonDayKey);
         if (attendance.present) {
+          lessonCounts.present++;
           stats[dayLabel].present++;
         } else {
+          lessonCounts.absent++;
           stats[dayLabel].absent++;
         }
       }
     }
 
-    //transform the stats to a format that fits frontend needs.
-    // For example, returning arrays for labels, present, and absent counts:
+    // Transform the stats to a format that fits frontend needs
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     const present = labels.map((day) => stats[day].present);
     const absent = labels.map((day) => stats[day].absent);
 
-    return { labels, present, absent, classCount };
+    return { labels, present, absent, studentCount };
   }
 }

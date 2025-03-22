@@ -12,5 +12,5 @@ export class SchoolAttendanceStats {
   absent: number[];
 
   @Field(() => Int)
-  classCount: number;
+  studentCount: number;
 }

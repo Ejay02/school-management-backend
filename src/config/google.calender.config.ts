@@ -35,39 +35,33 @@ export class GoogleCalendarService {
     }
   }
 
-  async createCalendarEvent(event: {
-    title: string;
-    description: string;
-    startTime: Date | string;
-    endTime: Date | string;
-    location?: string;
-    attendees?: string[];
-  }) {
+  async createCalendarEvent(eventData: any) {
     try {
-      const calendarEvent = {
-        summary: event.title,
-        description: event.description,
+      // Remove attendees from the event creation
+      const { ...eventWithoutAttendees } = eventData;
+
+      const event = {
+        summary: eventWithoutAttendees.title,
+        description: eventWithoutAttendees.description,
         start: {
-          dateTime: new Date(event.startTime).toISOString(),
+          dateTime: eventWithoutAttendees.startTime.toISOString(),
           timeZone: 'UTC',
         },
         end: {
-          dateTime: new Date(event.endTime).toISOString(),
+          dateTime: eventWithoutAttendees.endTime.toISOString(),
           timeZone: 'UTC',
         },
-        location: event.location,
-        attendees: event.attendees?.map((email) => ({ email })),
+        location: eventWithoutAttendees.location,
       };
 
-      const response = await this.calendar.events.insert({
+      const result = await this.calendar.events.insert({
         calendarId: 'primary',
-        requestBody: calendarEvent,
-        sendUpdates: 'all',
+        requestBody: event,
       });
 
-      return response.data;
+      // console.log('Calendar event created:', result.data.htmlLink);
+      return result.data;
     } catch (error) {
-      this.logger.error('Failed to create calendar event:', error);
       throw new Error(`Failed to create calendar event: ${error.message}`);
     }
   }

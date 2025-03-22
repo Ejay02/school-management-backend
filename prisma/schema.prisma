@@ -265,6 +265,7 @@ model Event {
   type            String       // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
   location        String?
   targetRoles     Role[]
+  reads           EventRead[]   
   visibility      EventVisibility
   status          EventStatus   @default(SCHEDULED)
   startTime       DateTime      
@@ -272,6 +273,17 @@ model Event {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
+
+model EventRead {
+  id       String   @id @default(uuid())
+  eventId  String
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId   String
+  readAt   DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
 
 model Announcement {
   id              String        @id @default(uuid())
@@ -285,6 +297,8 @@ model Announcement {
   creatorRole     Role 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  isArchived      Boolean       @default(false)
+  archivedAt      DateTime?
 }
 
 model AnnouncementRead {
@@ -368,6 +382,18 @@ model Payment {
   updatedAt       DateTime      @updatedAt
 }
 
+model SecurityLog {
+  id        String   @id @default(uuid())
+  action    String   // FAILED_LOGIN, IP_BLOCKED, etc.
+  username  String?
+  ipAddress String
+  timestamp DateTime @default(now())
+  details   String?
+
+  @@index([ipAddress])
+  @@index([timestamp])
+}
+
 enum Term {
   FIRST
   SECOND
@@ -432,3 +458,6 @@ enum GradeType {
   ASSIGNMENT
   OVERALL
 }
+
+
+

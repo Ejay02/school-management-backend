@@ -24,17 +24,29 @@ import { AuthModule } from './shared/auth/auth.module';
 import { SubmissionModule } from './submission/submission.module';
 import { MailModule } from './mail/mail.module';
 import { PaymentModule } from './payment/payment.module';
+import { UserModule } from './shared/user/user.module';
+import { ScheduleModule } from '@nestjs/schedule';
+
+import { SchedulingModule } from './shared/task/scheduling.module';
+import { SecurityModule } from './shared/security/security.module';
+import { join } from 'path';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: true,
-      playground: true,
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      sortSchema: true,
       context: ({ req }) => ({ req }),
+      playground: {
+        settings: {
+          'request.credentials': 'include',
+        },
+      },
     }),
     AdminModule,
     TeacherModule,
@@ -55,6 +67,9 @@ import { PaymentModule } from './payment/payment.module';
     SubmissionModule,
     MailModule,
     PaymentModule,
+    UserModule,
+    SchedulingModule,
+    SecurityModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],

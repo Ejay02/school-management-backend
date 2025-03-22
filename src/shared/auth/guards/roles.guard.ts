@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
@@ -13,8 +14,8 @@ import { Roles } from 'src/shared/enum/role';
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
-    private reflector: Reflector,
-    private prisma: PrismaService,
+    private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,10 +32,25 @@ export class RolesGuard implements CanActivate {
 
     if (user.role === Roles.SUPER_ADMIN) return true;
 
-    // Check if this is an announcement-related operation
     const operation = ctx.getInfo().operation?.name?.value;
-    if (operation && operation.includes('announcement')) {
+    const fieldName = ctx.getInfo().fieldName;
+
+    // Check if this is an announcement-related operation
+    if (
+      fieldName === 'createAnnouncement' ||
+      operation?.toLowerCase().includes('announcement')
+    ) {
       return this.handleAnnouncementAccess(user, ctx);
+    }
+
+    // Check if this is an event-related operation
+    if (
+      (operation &&
+        (operation.includes('event') || operation.includes('Event'))) ||
+      (fieldName &&
+        (fieldName.includes('event') || fieldName.includes('Event')))
+    ) {
+      return this.handleEventAccess(user, ctx);
     }
 
     if (requiredRoles.includes(user.role)) {
@@ -80,11 +96,13 @@ export class RolesGuard implements CanActivate {
             },
           },
         });
+
         return !!hasStudentWithParent;
       }
       // If accessing student info
       if (args.studentId || args.input?.studentId) {
         const studentId = args.studentId || args.input?.studentId;
+
         // Allow if student is in teacher's classes
         const student = await this.prisma.student.findFirst({
           where: {
@@ -98,6 +116,7 @@ export class RolesGuard implements CanActivate {
             },
           },
         });
+
         return !!student;
       }
 
@@ -281,7 +300,59 @@ export class RolesGuard implements CanActivate {
     ctx: GqlExecutionContext,
   ): Promise<boolean> {
     const args = ctx.getArgs();
-    const operation = ctx.getInfo().operation.name.value;
+    const operation = ctx.getInfo().operation?.name?.value;
+    const fieldName = ctx.getInfo().fieldName;
+
+    // For creating announcements
+    if (fieldName === 'createAnnouncement') {
+      // Allow admin and super admin to create any announcement
+      if ([Roles.ADMIN, Roles.SUPER_ADMIN].includes(user.role)) {
+        return true;
+      }
+
+      if (user.role === Roles.TEACHER) {
+        if (!args.classId) {
+          return false;
+        }
+
+        // Check if teacher teaches in this class
+        const teacherAccess = await this.prisma.lesson.findFirst({
+          where: {
+            classId: args.classId,
+            teacherId: user.userId,
+          },
+        });
+
+        // If not teaching, check if they're a supervisor
+        if (!teacherAccess) {
+          const supervisorAccess = await this.prisma.class.findFirst({
+            where: {
+              id: args.classId,
+              supervisorId: user.userId,
+            },
+          });
+
+          if (!supervisorAccess) {
+            return false;
+          }
+        }
+
+        // Check target roles if specified
+        if (args.targetRoles) {
+          const validRolesForTeacher = [Roles.STUDENT, Roles.PARENT];
+          const areRolesValid = args.targetRoles.every((role: string) =>
+            validRolesForTeacher.includes(role as Roles),
+          );
+
+          if (!areRolesValid) {
+            throw new Error(' Invalid target roles');
+            // return false;
+          }
+        }
+
+        return true;
+      }
+    }
 
     // For getting a specific announcement
     if (args.id) {
@@ -289,7 +360,10 @@ export class RolesGuard implements CanActivate {
         where: { id: args.id },
         // include: { teacher: true },
       });
-      if (!announcement) return false;
+
+      if (!announcement) {
+        throw new Error('Announcement not found. Returning false.');
+      }
 
       switch (user.role) {
         case Roles.TEACHER:
@@ -300,8 +374,10 @@ export class RolesGuard implements CanActivate {
                 teacherId: user.id,
               },
             });
+
             return !!teachesClass;
           }
+
           return [Roles.TEACHER, Roles.ADMIN].includes(
             announcement.creatorRole as Roles,
           );
@@ -314,8 +390,10 @@ export class RolesGuard implements CanActivate {
                 classId: announcement.classId,
               },
             });
+
             return !!hasChildInClass;
           }
+
           return [Roles.PARENT, Roles.ADMIN].includes(
             announcement.creatorRole as Roles,
           );
@@ -326,17 +404,32 @@ export class RolesGuard implements CanActivate {
     }
 
     // For creating announcements
-    if (operation.includes('create')) {
+    if (operation?.includes('createAnnouncement')) {
       if (user.role === Roles.TEACHER) {
         // Teachers can only create announcements for their classes
-        if (!args.classId) return false; // Class ID is required
+        if (!args.classId) {
+          throw new Error(' No classId provided for teacher. Returning false.');
+        } // Class ID is required
+
+        // Check if teacher has lessons in the class
         const teachesClass = await this.prisma.lesson.findFirst({
           where: {
             classId: args.classId,
             teacherId: user.id,
           },
         });
-        if (!teachesClass) return false;
+
+        // If not teaching, check if they're a supervisor
+        if (!teachesClass) {
+          const isSupervisor = await this.prisma.class.findFirst({
+            where: {
+              id: args.classId,
+              supervisorId: user.id,
+            },
+          });
+
+          if (!isSupervisor) return false;
+        }
 
         // Check if target roles are valid
 
@@ -382,5 +475,73 @@ export class RolesGuard implements CanActivate {
     }
 
     return false;
+  }
+
+  private async handleEventAccess(
+    user: any,
+    ctx: GqlExecutionContext,
+  ): Promise<boolean> {
+    try {
+      const args = ctx.getArgs();
+      const fieldName = ctx.getInfo().fieldName;
+
+      // Handle createEvent
+      if (fieldName === 'createEvent') {
+        // For teachers, check class access if classId is provided
+        if (user.role === Roles.TEACHER) {
+          const classId = args.data?.classId;
+
+          if (!classId) {
+            return true; // Allow if no specific class
+          }
+
+          // Check if teacher has access to the class
+          const teacherClass = await this.prisma.class.findFirst({
+            where: {
+              id: classId,
+              OR: [
+                { supervisorId: user.id },
+                {
+                  subjects: {
+                    some: {
+                      teachers: {
+                        some: { id: user.id },
+                      },
+                    },
+                  },
+                },
+                // Also check lessons table
+                {
+                  lessons: {
+                    some: {
+                      teacherId: user.id,
+                    },
+                  },
+                },
+              ],
+            },
+          });
+
+          return !!teacherClass;
+        }
+
+        // Admin and Super Admin can create any event
+        if ([Roles.ADMIN, Roles.SUPER_ADMIN].includes(user.role)) {
+          return true;
+        }
+
+        // Parents and students can create private events
+        if ([Roles.PARENT, Roles.STUDENT].includes(user.role)) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error in handleEventAccess:',
+        error,
+      );
+    }
   }
 }

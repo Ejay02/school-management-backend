@@ -16,6 +16,7 @@ import { Server } from 'socket.io';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { EventGateway } from './gateway/event.gateway';
 
 @Injectable()
 @WebSocketGateway()
@@ -24,9 +25,10 @@ export class EventService {
   private readonly server: Server;
 
   constructor(
-    private prisma: PrismaService,
-    private mailService: MailService,
-    private googleCalendarService: GoogleCalendarService,
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+    private readonly eventGateway: EventGateway,
+    private readonly googleCalendarService: GoogleCalendarService,
   ) {}
 
   async getEvents(
@@ -39,8 +41,14 @@ export class EventService {
       const baseQuery: any = {
         where: {},
         include: {
-          class: true,
+          class: {
+            include: {
+              students: true,
+            },
+          },
         },
+
+        orderBy: { createdAt: 'desc' },
       };
 
       // Apply filters from `filter` object
@@ -107,7 +115,13 @@ export class EventService {
       // Base query includes the event by ID and its associated class details
       const query: any = {
         where: { id: eventId },
-        include: { class: true },
+        include: {
+          class: {
+            include: {
+              students: true,
+            },
+          },
+        },
       };
 
       // For non-admin users, add visibility filters
@@ -200,7 +214,14 @@ export class EventService {
 
           if (teacherAccess) {
             visibility = data.visibility;
-            targetRoles = await this.getClassRoles(data.classId);
+
+            // If teacher specified target roles, use those
+            if (data.targetRoles && data.targetRoles.length > 0) {
+              targetRoles = data.targetRoles;
+            } else {
+              // Otherwise fall back to all roles in the class
+              targetRoles = await this.getClassRoles(data.classId);
+            }
           } else {
             throw new ForbiddenException(
               'Teacher does not have access to this class',
@@ -235,18 +256,46 @@ export class EventService {
       });
 
       // Move Google Calendar API call outside the transaction
-      try {
-        const targetUsers = await this.getTargetUsers({
-          classId: data.classId,
-          targetRoles: data.targetRoles,
-        });
 
-        await this.googleCalendarService.createCalendarEvent({
-          ...event,
-          attendees: targetUsers.map((user) => user.email),
-        });
-      } catch (googleCalendarError) {
-        throw new Error(`Google Calendar API error: ${googleCalendarError}`);
+      const targetUsers = await this.getTargetUsers({
+        classId: data.classId,
+        targetRoles: data.targetRoles,
+      });
+
+      try {
+        await Promise.all([
+          // Google Calendar API call - with error handling
+          this.googleCalendarService
+            .createCalendarEvent({
+              ...event,
+              attendees: targetUsers.map((user) => user.email),
+            })
+            .catch((error) => {
+              console.warn(
+                'Google Calendar integration failed:',
+                error.message,
+              );
+              // Continue execution - don't let calendar failure stop event creation
+            }),
+
+          // Send email notifications
+          this.sendNotifications(
+            event,
+            targetUsers,
+            'event.notification',
+            'New Event',
+            {
+              eventTitle: event.title,
+              eventDescription: event.description,
+              startTime: event.startTime.toLocaleString(),
+              endTime: event.endTime.toLocaleString(),
+              location: event.location || 'N/A',
+              calendarLink: '#',
+            },
+          ),
+        ]);
+      } catch (error) {
+        console.error('Error with notifications:', error);
       }
 
       // Emit socket event to notify clients
@@ -346,6 +395,7 @@ export class EventService {
                   select: {
                     email: true,
                     name: true,
+                    // surname: true,
                   },
                 }),
               );
@@ -356,6 +406,7 @@ export class EventService {
                   select: {
                     email: true,
                     name: true,
+                    // surname: true,
                   },
                 }),
               );
@@ -372,6 +423,7 @@ export class EventService {
                   select: {
                     email: true,
                     name: true,
+                    // surname: true,
                   },
                 }),
               );
@@ -397,6 +449,7 @@ export class EventService {
                   select: {
                     email: true,
                     name: true,
+                    // surname: true,
                   },
                 }),
               );
@@ -420,7 +473,10 @@ export class EventService {
     }
   }
 
-  private async getClassRoles(classId: string): Promise<Roles[]> {
+  private async getClassRoles(
+    classId: string,
+    specifiedRoles?: Roles[],
+  ): Promise<Roles[]> {
     const roles: Roles[] = [];
 
     // Get students in the class
@@ -461,16 +517,22 @@ export class EventService {
       }
 
       // Check for teachers in subjects
-      if (
-        classData.subjects &&
-        classData.subjects.some((subject) => subject.teachers.length > 0)
-      ) {
+      if (classData.subjects?.some((subject) => subject.teachers?.length > 0)) {
         roles.push(Roles.TEACHER);
       }
     }
 
     // Remove duplicate roles
-    return [...new Set(roles)];
+    // return [...new Set(roles)];
+    const availableRoles = [...new Set(roles)];
+
+    // If specific roles were requested, filter to include only those that exist in the class
+    if (specifiedRoles && specifiedRoles.length > 0) {
+      return specifiedRoles.filter((role) => availableRoles.includes(role));
+    }
+
+    // Otherwise return all roles present in the class
+    return availableRoles;
   }
 
   private async sendNotifications(
@@ -484,7 +546,7 @@ export class EventService {
       this.mailService.sendMail({
         to: user.email,
         subject: `${subjectPrefix}: ${event.title}`,
-        template,
+        template: `${template}.hbs`,
         context: {
           userName: user.name,
           eventTitle: event.title,
@@ -591,10 +653,42 @@ export class EventService {
       });
 
       this.server.emit('deleteEvent', {
+        eventId,
         message: 'An event has been deleted!',
       });
 
       return true;
     });
+  }
+
+  async markEventAsRead(eventId: string, userId: string) {
+    try {
+      // Check if the record already exists to avoid duplicates
+      return await this.prisma.$transaction(async (tx) => {
+        // Create or update read status
+        await tx.eventRead.upsert({
+          where: {
+            eventId_userId: {
+              eventId,
+              userId,
+            },
+          },
+          create: {
+            eventId,
+            userId,
+          },
+          update: {
+            readAt: new Date(), // Update if record already exists
+          },
+        });
+
+        // Emit read status update
+        this.eventGateway.emitReadStatus(eventId, userId, true);
+
+        return true;
+      });
+    } catch (error) {
+      return false;
+    }
   }
 }

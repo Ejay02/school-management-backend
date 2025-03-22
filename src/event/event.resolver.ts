@@ -55,7 +55,13 @@ export class EventResolver {
   }
 
   @Mutation(() => Event)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
   async createEvent(@Args('data') data: CreateEventInput, @Context() context) {
     return await this.eventService.createEvent(
       data,
@@ -65,7 +71,13 @@ export class EventResolver {
   }
 
   @Mutation(() => Event)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
   async updateEvent(
     @Args('eventId') eventId: string,
     @Args('input') input: EditEventInput,
@@ -79,7 +91,13 @@ export class EventResolver {
   }
 
   @Mutation(() => Event)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
   async cancelEvent(
     @Args('id') id: string,
     @Args('reason') reason: string,
@@ -93,11 +111,33 @@ export class EventResolver {
   }
 
   @Mutation(() => Boolean)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
   async deleteEvent(@Args('eventId') eventId: string, @Context() context) {
     return await this.eventService.deleteEvent(
       eventId,
       context.req.user.userId,
       context.req.user.role,
+    );
+  }
+
+  @Mutation(() => Boolean)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.PARENT,
+    Roles.TEACHER,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
+  async markEventAsRead(@Args('eventId') eventId: string, @Context() context) {
+    return await this.eventService.markEventAsRead(
+      eventId,
+      context.req.user.userId,
     );
   }
 }
