@@ -95,10 +95,6 @@ export class AnnouncementService {
     params: PaginationParams & { isArchived?: boolean },
   ) {
     try {
-      console.log(
-        `[AnnouncementService] Getting announcements for user ${userId} with role ${role}`,
-      );
-
       const baseQuery: any = {
         where: {
           isArchived: params.isArchived ?? false,

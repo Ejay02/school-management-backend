@@ -10,7 +10,7 @@ export class GoogleCalendarService {
   private readonly logger = new Logger(GoogleCalendarService.name);
   private jwtClient: JWT;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     this.initializeCalendar();
   }
 
