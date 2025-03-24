@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ClassService } from 'src/class/class.service';
 import { SubjectService } from 'src/subject/subject.service';
 import { LessonService } from 'src/lesson/lesson.service';
+import { SecurityService } from '../security/security.service';
 
 type SignupInputType =
   | AdminSignupInput
@@ -30,11 +31,12 @@ type SignupInputType =
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-    private classService: ClassService,
-    private lessonService: LessonService,
-    private subjectService: SubjectService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly classService: ClassService,
+    private readonly lessonService: LessonService,
+    private readonly subjectService: SubjectService,
+    private readonly securityService: SecurityService,
   ) {}
 
   private async validateForeignKeys(tx: any, input: StudentSignupInput) {
@@ -119,8 +121,30 @@ export class AuthService {
     }
   }
 
-  async signup(input: SignupInputType): Promise<AuthResponse> {
+  async signup(
+    input: SignupInputType,
+    ipAddress?: string,
+  ): Promise<AuthResponse> {
+    // Check if IP is blocked (if provided)
+    if (ipAddress && this.securityService.isIPBlocked(ipAddress)) {
+      throw new UnauthorizedException(
+        'Access blocked due to suspicious activity',
+      );
+    }
+
+    // Check if signup limit reached
+    if (ipAddress && this.securityService.hasReachedSignupLimit(ipAddress)) {
+      throw new UnauthorizedException(
+        'Daily account creation limit reached. Please try again tomorrow.',
+      );
+    }
+
     try {
+      // Track this signup attempt
+      if (ipAddress) {
+        this.securityService.trackSignupAttempt(ipAddress);
+      }
+
       const result = await this.prisma.$transaction(async (tx) => {
         const { username, password, email, role } = input;
 
@@ -317,12 +341,29 @@ export class AuthService {
 
       return result;
     } catch (error) {
+      // Log signup failures with IP if available
+      if (ipAddress && error instanceof UnauthorizedException) {
+        await this.securityService.logFailedLoginAttempt(
+          input.username,
+          ipAddress,
+        );
+      }
       throw new Error(`Signup Error: ${error}`);
     }
   }
 
-  async login(input: BaseLoginInput): Promise<AuthResponse> {
+  async login(
+    input: BaseLoginInput,
+    ipAddress?: string,
+  ): Promise<AuthResponse> {
     const { username, password } = input;
+
+    // Only check IP blocking if ipAddress is provided
+    if (ipAddress && this.securityService.isIPBlocked(ipAddress)) {
+      throw new UnauthorizedException(
+        'Access blocked due to suspicious activity',
+      );
+    }
 
     // Find user based on role if provided
     let user = null;
@@ -355,9 +396,14 @@ export class AuthService {
     }
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
+      // Only log failed login attempt if ipAddress is provided
+      if (ipAddress) {
+        await this.securityService.logFailedLoginAttempt(username, ipAddress);
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Rest of the login method remains unchanged
     const token = this.generateAccessToken(user.id, user.role);
     const refreshToken = await this.generateRefreshToken(user.id);
 
@@ -392,7 +438,7 @@ export class AuthService {
 
         {
           secret: process.env.JWT_SECRET,
-          expiresIn: '12h',
+          expiresIn: '48h',
         },
       );
     } catch (error) {

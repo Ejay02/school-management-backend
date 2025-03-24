@@ -4,10 +4,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthResolver } from './auth.resolver';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '../jwt/jwt.strategy';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { ClassService } from 'src/class/class.service';
-import { SubjectService } from 'src/subject/subject.service';
-import { LessonService } from 'src/lesson/lesson.service';
+
+import { SecurityModule } from '../security/security.module';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { ClassModule } from '../../class/class.module';
+import { SubjectModule } from '../../subject/subject.module';
+import { LessonModule } from '../../lesson/lesson.module';
 
 @Module({
   imports: [
@@ -16,21 +18,26 @@ import { LessonService } from 'src/lesson/lesson.service';
       useFactory: () => ({
         secret: process.env.JWT_SECRET,
         signOptions: {
-          expiresIn: '12h',
+          expiresIn: '48h',
         },
       }),
     }),
+    PrismaModule,
+    SecurityModule,
+    ClassModule,
+    SubjectModule,
+    LessonModule,
   ],
 
   providers: [
     AuthService,
     AuthResolver,
     JwtStrategy,
-    PrismaService,
-    ClassService,
-    LessonService,
-    SubjectService,
+    // PrismaService,
+    // ClassService,
+    // LessonService,
+    // SubjectService,
   ],
-  exports: [AuthService, JwtModule],
+  exports: [AuthService],
 })
 export class AuthModule {}

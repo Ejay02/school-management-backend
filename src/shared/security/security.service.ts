@@ -8,6 +8,12 @@ export class SecurityService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly signupAttempts: Map<
+    string,
+    { count: number; timestamp: Date }
+  > = new Map();
+  private readonly MAX_SIGNUPS_PER_DAY = 10; // Define what "mass" means - 10 accounts per day
+
   async logFailedLoginAttempt(username: string, ip: string) {
     try {
       // Log the failed attempt
@@ -54,5 +60,57 @@ export class SecurityService {
 
   isIPBlocked(ip: string): boolean {
     return this.blockedIPs.has(ip);
+  }
+
+  trackSignupAttempt(ipAddress: string): boolean {
+    if (!ipAddress) return true; // If no IP provided, allow the signup
+
+    const now = new Date();
+    const existingRecord = this.signupAttempts.get(ipAddress);
+
+    if (!existingRecord) {
+      // First signup from this IP
+      this.signupAttempts.set(ipAddress, { count: 1, timestamp: now });
+      return true;
+    }
+
+    // Check if we should reset the counter (new day)
+    const oneDayAgo = new Date(now);
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    if (existingRecord.timestamp < oneDayAgo) {
+      // Reset counter if more than a day has passed
+      this.signupAttempts.set(ipAddress, { count: 1, timestamp: now });
+      return true;
+    }
+
+    // Increment counter and check if limit exceeded
+    const newCount = existingRecord.count + 1;
+    this.signupAttempts.set(ipAddress, {
+      count: newCount,
+      timestamp: existingRecord.timestamp,
+    });
+
+    return newCount <= this.MAX_SIGNUPS_PER_DAY;
+  }
+
+  hasReachedSignupLimit(ipAddress: string): boolean {
+    if (!ipAddress) return false;
+
+    const record = this.signupAttempts.get(ipAddress);
+    if (!record) return false;
+
+    // Check if we should reset the counter (new day)
+    const now = new Date();
+    const oneDayAgo = new Date(now);
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    if (record.timestamp < oneDayAgo) {
+      // Reset counter if more than a day has passed
+      this.signupAttempts.set(ipAddress, { count: 0, timestamp: now });
+      return false;
+    }
+
+    return record.count >= this.MAX_SIGNUPS_PER_DAY;
   }
 }
