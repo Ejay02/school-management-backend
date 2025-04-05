@@ -126,6 +126,7 @@ export class SubjectService {
 
       const baseQuery: any = {
         include: baseInclude,
+        orderBy: { createdAt: 'desc' },
       };
 
       const searchFields = ['name', 'class'];
@@ -244,4 +245,6 @@ export class SubjectService {
 
     return subject;
   }
+
+  // TODO  create endpoint for createSubject
 }

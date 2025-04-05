@@ -169,6 +169,7 @@ export class LessonService {
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
         };
       }
       // Teachers get full access but only to their assigned lessons
@@ -197,6 +198,7 @@ export class LessonService {
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
         };
       }
       // Students get access to their class lessons with limited details
@@ -244,6 +246,7 @@ export class LessonService {
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
         };
       }
       // Parents get summary view of their children's lessons
@@ -325,6 +328,7 @@ export class LessonService {
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
         };
       } else {
         throw new ForbiddenException(
@@ -380,6 +384,7 @@ export class LessonService {
     return lesson;
   }
 
+  // TODO : add content for lesson, exam,
   async createLesson(
     createLessonInput: CreateLessonInput,
     subjectId: string,

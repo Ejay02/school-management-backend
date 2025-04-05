@@ -12,7 +12,7 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ClassResolver {
-  constructor(private classService: ClassService) {}
+  constructor(private readonly classService: ClassService) {}
 
   @Query(() => [Class])
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)

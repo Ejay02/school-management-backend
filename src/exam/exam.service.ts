@@ -20,6 +20,7 @@ import { Exam } from './types/exam.types';
 export class ExamService {
   constructor(private prisma: PrismaService) {}
 
+  //    #TODO add day in the BE and take out lesson we dont need it and content ie exams details!
   async createExam(teacherId: string, input: CreateExamInput) {
     // Start a transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -125,6 +126,7 @@ export class ExamService {
             },
           },
         },
+        orderBy: { createdAt: 'desc' },
       };
 
       // Define searchable fields for exam name, teacher name, subject name, and class name.

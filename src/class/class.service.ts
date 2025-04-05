@@ -19,8 +19,8 @@ import { Class } from './types/class.types';
 @Injectable()
 export class ClassService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
 
   private async getDefaultClasses(): Promise<DefaultClass[]> {
@@ -66,23 +66,42 @@ export class ClassService {
             },
           },
         },
+        orderBy: { createdAt: 'desc' },
       };
 
       // Define searchable fields
       const searchFields = ['name'];
 
-      return await PrismaQueryBuilder.paginateResponse(
+      // const totalCount = await this.prisma.class.count();
+
+      // If no limit is specified, set it to a higher value to fetch all classes
+      const enhancedParams = {
+        ...params,
+        limit: params.limit || 100, // Use 100 as default limit instead of 10
+      };
+
+      const result = await PrismaQueryBuilder.paginateResponse<Class>(
         this.prisma.class,
         baseQuery,
-        params,
+        enhancedParams,
         searchFields,
       );
+
+      return result;
+
+      // return await PrismaQueryBuilder.paginateResponse(
+      //   this.prisma.class,
+      //   baseQuery,
+      //   params,
+      //   searchFields,
+      // );
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch classes');
     }
   }
 
+  // TODO add teacher for creating class
   async createClass(data: CreateClassInput) {
     return await this.prisma.$transaction(async (tx) => {
       const existingClass = await tx.class.findUnique({

@@ -412,7 +412,7 @@ type Lesson {
   assignments: [Assignment!]!
   attendances: [Attendance!]!
   class: Class!
-  classId: Int!
+  classId: String!
   createdAt: DateTime!
   day: String!
   endTime: String!
@@ -422,7 +422,7 @@ type Lesson {
   startTime: String!
   students: [Student!]
   subject: Subject!
-  subjectId: Int!
+  subjectId: String!
   teacher: Teacher
   teacherId: String!
   updatedAt: DateTime!

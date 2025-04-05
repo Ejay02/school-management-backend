@@ -106,6 +106,7 @@ export class AnnouncementService {
             select: { readAt: true },
           },
         },
+        orderBy: { createdAt: 'desc' },
       };
 
       // Build the where clause based on role

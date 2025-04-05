@@ -33,6 +33,7 @@ export class TeacherService {
 
       const baseQuery: any = {
         include: baseInclude,
+        orderBy: { createdAt: 'desc' },
       };
 
       // Handle pagination and search

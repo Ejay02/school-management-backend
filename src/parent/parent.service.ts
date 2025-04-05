@@ -34,6 +34,7 @@ export class ParentService {
 
       const baseQuery: any = {
         include: baseInclude,
+        orderBy: { createdAt: 'desc' },
       };
 
       const searchFields = ['name', 'email', 'phone'];

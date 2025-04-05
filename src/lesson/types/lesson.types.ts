@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 import { Class } from 'src/class/types/class.types';
 import { Subject } from 'src/subject/types/subject.types';
 import { Teacher } from 'src/teacher/types/teacher.types';
@@ -24,13 +24,13 @@ export class Lesson {
   @Field()
   endTime: string;
 
-  @Field(() => Int)
+  @Field(() => String)
   subjectId: string;
 
   @Field(() => Subject)
   subject: Subject;
 
-  @Field(() => Int)
+  @Field(() => String)
   classId: string;
 
   @Field(() => Class)

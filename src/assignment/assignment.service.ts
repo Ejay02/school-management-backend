@@ -41,6 +41,7 @@ export class AssignmentService {
             class: true,
             submissions: true,
           },
+          orderBy: { createdAt: 'desc' },
         };
       }
 
@@ -56,6 +57,7 @@ export class AssignmentService {
             class: true,
             submissions: true,
           },
+          orderBy: { createdAt: 'desc' },
         };
       }
 
@@ -84,6 +86,7 @@ export class AssignmentService {
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
         };
       }
 
@@ -140,6 +143,7 @@ export class AssignmentService {
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
         };
       } else {
         throw new ForbiddenException(
@@ -302,4 +306,6 @@ export class AssignmentService {
       throw new InternalServerErrorException('Failed to edit assignment');
     }
   }
+
+  // TODO add markdown content for
 }
