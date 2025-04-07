@@ -18,7 +18,7 @@ import { Exam } from './types/exam.types';
 
 @Injectable()
 export class ExamService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   //    #TODO add day in the BE and take out lesson we dont need it and content ie exams details!
   async createExam(teacherId: string, input: CreateExamInput) {
@@ -43,35 +43,28 @@ export class ExamService {
         );
       }
 
-      // Verify lesson belongs to the class and subject
-      const lesson = await tx.lesson.findFirst({
-        where: {
-          id: input.lessonId,
-          classId: input.classId,
-          subjectId: input.subjectId,
-        },
-      });
-
-      if (!lesson) {
-        throw new NotFoundException('Invalid lesson for this class/subject');
-      }
-
       // Create the exam within the transaction
       return tx.exam.create({
         data: {
           title: input.title,
           startTime: input.startTime,
           endTime: input.endTime,
-          lessonId: input.lessonId,
-          classId: input.classId,
-          subjectId: input.subjectId,
-          teacherId,
+          date: input.date,
+          class: {
+            connect: { id: input.classId },
+          },
+          subject: {
+            connect: { id: input.subjectId },
+          },
+          teacher: {
+            connect: { id: teacherId },
+          },
         },
         include: {
           teacher: true,
           subject: true,
           class: true,
-          lesson: true,
+          // lesson: true,
         },
       });
     });
@@ -102,7 +95,7 @@ export class ExamService {
           teacher: true,
           subject: true,
           class: true,
-          lesson: true,
+          // lesson: true,
         },
       });
     });
@@ -119,7 +112,7 @@ export class ExamService {
           subject: true,
           class: true,
           teacher: true,
-          lesson: true,
+          // lesson: true,
           results: {
             include: {
               student: true,
@@ -207,7 +200,7 @@ export class ExamService {
       include: {
         teacher: true,
         subject: true,
-        lesson: true,
+        // lesson: true,
       },
       orderBy: {
         startTime: 'asc',
@@ -234,7 +227,7 @@ export class ExamService {
         teacher: true,
         subject: true,
         class: true,
-        lesson: true,
+        // lesson: true,
       },
     });
 

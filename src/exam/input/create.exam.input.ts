@@ -16,8 +16,11 @@ export class CreateExamInput {
   endTime: Date;
 
   @Field()
-  @IsString()
-  lessonId: string;
+  date: Date;
+
+  // @Field()
+  // @IsString()
+  // lessonId: string;
 
   @Field()
   @IsString()

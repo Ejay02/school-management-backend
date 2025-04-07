@@ -164,7 +164,7 @@ model Lesson {
   class           Class         @relation(fields: [classId], references: [id])
   teacherId       String?
   teacher         Teacher?      @relation(fields: [teacherId], references: [id])
-  exams           Exam[]
+
   assignments     Assignment[]
   attendances     Attendance[]
   createdAt       DateTime      @default(now())
@@ -176,8 +176,7 @@ model Exam {
   title           String
   startTime       DateTime
   endTime         DateTime
-  lessonId        String
-  lesson          Lesson        @relation(fields: [lessonId], references: [id])
+  date            DateTime  
   classId         String          
   class           Class         @relation(fields: [classId], references: [id])
   subjectId       String          

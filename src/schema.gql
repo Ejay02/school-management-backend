@@ -172,8 +172,8 @@ input CreateEventInput {
 
 input CreateExamInput {
   classId: String!
+  date: DateTime!
   endTime: DateTime!
-  lessonId: String!
   startTime: DateTime!
   subjectId: String!
   title: String!

@@ -157,7 +157,7 @@ export class LessonService {
                 students: true,
               },
             },
-            exams: true,
+            // exams: true,
             assignments: {
               include: {
                 submissions: true,
@@ -186,7 +186,7 @@ export class LessonService {
                 students: true,
               },
             },
-            exams: true,
+            // exams: true,
             assignments: {
               include: {
                 submissions: true,
@@ -356,11 +356,11 @@ export class LessonService {
         subject: true,
         class: true,
         teacher: true,
-        exams: {
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
+        // exams: {
+        //   orderBy: {
+        //     createdAt: 'desc',
+        //   },
+        // },
         assignments: {
           orderBy: {
             dueDate: 'desc',
@@ -456,7 +456,7 @@ export class LessonService {
             subject: true,
             class: true,
             teacher: true,
-            exams: true,
+            // exams: true,
             assignments: true,
             attendances: true,
           },
@@ -470,7 +470,7 @@ export class LessonService {
           subject: true,
           class: true,
           teacher: true,
-          exams: true,
+          // exams: true,
           assignments: true,
           attendances: true,
         },
@@ -538,7 +538,7 @@ export class LessonService {
           subject: true,
           class: true,
           teacher: true,
-          exams: true,
+          // exams: true,
           assignments: true,
           attendances: true,
         },
@@ -626,7 +626,7 @@ export class LessonService {
           const existingLesson = await tx.lesson.findUnique({
             where: { id: lessonId },
             include: {
-              exams: true,
+              // exams: true,
               assignments: true,
               attendances: true,
             },
@@ -638,13 +638,13 @@ export class LessonService {
 
           // Check if lesson has associated data
           const hasAssociatedData =
-            existingLesson.exams.length > 0 ||
+            // existingLesson.exams.length > 0 ||
             existingLesson.assignments.length > 0 ||
             existingLesson.attendances.length > 0;
 
           if (hasAssociatedData) {
             throw new ForbiddenException(
-              'Cannot delete lesson with existing exams, assignments, or attendance records. ' +
+              'Cannot delete lesson with existing assignments, or attendance records. ' +
                 'Please archive the lesson instead or contact system administrator for data cleanup.',
             );
           }
