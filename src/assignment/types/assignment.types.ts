@@ -5,6 +5,8 @@ import { Teacher } from 'src/teacher/types/teacher.types';
 import { Subject } from 'src/subject/types/subject.types';
 import { Class } from 'src/class/types/class.types';
 import { Submission } from 'src/submission/types/submission.types';
+import GraphQLJSON from 'graphql-type-json';
+import { Question } from 'src/shared/question/types/question.types';
 
 @ObjectType()
 export class Assignment {
@@ -19,6 +21,18 @@ export class Assignment {
 
   @Field()
   dueDate: Date;
+
+  @Field(() => String, { nullable: true })
+  description?: string;
+
+  @Field(() => String, { nullable: true })
+  instructions?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  content?: any;
+
+  @Field(() => [Question], { nullable: true })
+  questions?: Question[];
 
   @Field(() => Int)
   lessonId: string;
