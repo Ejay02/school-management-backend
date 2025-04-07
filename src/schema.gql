@@ -68,11 +68,15 @@ type AssignSubjectsResponse {
 type Assignment {
   class: Class!
   classId: Int!
+  content: JSON
   createdAt: DateTime!
+  description: String
   dueDate: DateTime!
   id: String!
+  instructions: String
   lesson: Lesson!
   lessonId: Int!
+  questions: [Question!]
   results: [Result!]!
   startDate: DateTime!
   subject: Subject!
