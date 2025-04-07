@@ -1,4 +1,5 @@
 import { Field, InputType } from '@nestjs/graphql';
+import GraphQLJSON from 'graphql-type-json';
 
 @InputType()
 export class EditLessonInput {
@@ -16,4 +17,10 @@ export class EditLessonInput {
 
   @Field(() => String, { nullable: true })
   teacherId?: string;
+
+  @Field(() => String, { nullable: true })
+  description?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  content?: any;
 }

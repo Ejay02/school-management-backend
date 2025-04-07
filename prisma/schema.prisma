@@ -164,7 +164,8 @@ model Lesson {
   class           Class         @relation(fields: [classId], references: [id])
   teacherId       String?
   teacher         Teacher?      @relation(fields: [teacherId], references: [id])
-
+  description     String?       // General lesson description
+  content         Json?         // Store lesson content/materials as JSON
   assignments     Assignment[]
   attendances     Attendance[]
   createdAt       DateTime      @default(now())
@@ -186,6 +187,10 @@ model Exam {
   results         Result[]
   gradeId         String?
   grade           Grade[] //?
+  description     String?       // General exam description
+  instructions    String?       // Markdown instructions for students
+  content         Json?         // Store MCQs and other question types as JSON
+  questions       Question[]    // Relation to structured questions
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -194,7 +199,11 @@ model Assignment {
   id              String        @id @default(uuid())
   title           String    
   startDate       DateTime    
-  dueDate         DateTime    
+  dueDate         DateTime
+  description     String?       // General assignment description
+  instructions    String?       // Markdown instructions for students
+  content         Json?         // Store structured content as JSON  
+  questions       Question[]    // Relation to structured questions  
   lessonId        String   
   lesson          Lesson        @relation(fields: [lessonId], references: [id])
   teacherId       String        
@@ -391,6 +400,30 @@ model SecurityLog {
 
   @@index([ipAddress])
   @@index([timestamp])
+}
+
+model Question {
+  id              String        @id @default(uuid())
+  examId          String?
+  exam            Exam?         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  assignmentId    String?
+  assignment      Assignment?   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  type            QuestionType
+  content         String        // Markdown content for the question
+  options         Json?         // For MCQs, store options as JSON
+  correctAnswer   String?       // For MCQs, store the correct answer
+  points          Float         @default(1.0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+
+enum QuestionType {
+  MCQ
+  ESSAY
+  SHORT_ANSWER
+  TRUE_FALSE
+  MATCHING
 }
 
 enum Term {

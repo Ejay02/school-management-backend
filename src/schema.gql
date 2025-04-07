@@ -147,7 +147,11 @@ type Counts {
 }
 
 input CreateAssignmentInput {
+  content: JSON
+  description: String
   dueDate: DateTime!
+  instructions: String
+  questions: [CreateQuestionInput!]
   startDate: DateTime!
   title: String!
 }
@@ -172,8 +176,12 @@ input CreateEventInput {
 
 input CreateExamInput {
   classId: String!
+  content: JSON
   date: DateTime!
+  description: String
   endTime: DateTime!
+  instructions: String
+  questions: [CreateQuestionInput!]
   startTime: DateTime!
   subjectId: String!
   title: String!
@@ -205,10 +213,20 @@ input CreateGradeInput {
 }
 
 input CreateLessonInput {
+  content: JSON
   day: String!
+  description: String
   endTime: String!
   name: String!
   startTime: String!
+}
+
+input CreateQuestionInput {
+  content: String!
+  correctAnswer: String
+  options: JSON
+  points: Float! = 1
+  questionType: QuestionType!
 }
 
 input CreateSubjectInput {
@@ -284,7 +302,9 @@ input EditEventInput {
 }
 
 input EditLessonInput {
+  content: JSON
   day: String!
+  description: String
   endTime: String!
   name: String!
   startTime: String!
@@ -414,6 +434,11 @@ enum InvoiceStatus {
   PARTIAL
   PENDING
 }
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
 
 type Lesson {
   assignments: [Assignment!]!
@@ -605,6 +630,15 @@ type Query {
   getUserById(id: String!): UserUnion
 }
 
+"""The type of question (MCQ, ESSAY, etc.)"""
+enum QuestionType {
+  ESSAY
+  MATCHING
+  MCQ
+  SHORT_ANSWER
+  TRUE_FALSE
+}
+
 input ResetPasswordInput {
   newPassword: String!
   role: Roles
@@ -771,7 +805,12 @@ type TokenResponse {
 }
 
 input UpdateExamInput {
+  content: JSON
+  date: DateTime
+  description: String
   endTime: DateTime
+  instructions: String
+  questions: [CreateQuestionInput!]
   startTime: DateTime
   title: String
 }

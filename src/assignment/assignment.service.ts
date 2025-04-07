@@ -20,7 +20,7 @@ import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.paginatio
 @Injectable()
 @WebSocketGateway()
 export class AssignmentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
   @WebSocketServer()
   private readonly server: Server;
 
@@ -220,12 +220,42 @@ export class AssignmentService {
         return await tx.assignment.create({
           data: {
             title: input.title,
-            startDate: new Date(input.startDate),
-            dueDate: new Date(input.dueDate),
-            lessonId: input.lessonId,
-            teacherId,
-            subjectId: input.subjectId,
-            classId: input.classId,
+            startDate: input.startDate,
+            dueDate: input.dueDate,
+            description: input.description,
+            instructions: input.instructions,
+            content: input.content,
+            lesson: {
+              connect: { id: input.lessonId },
+            },
+            teacher: {
+              connect: { id: teacherId },
+            },
+            subject: {
+              connect: { id: input.subjectId },
+            },
+            class: {
+              connect: { id: input.classId },
+            },
+            // Create questions if provided
+            questions: input.questions
+              ? {
+                  create: input.questions.map((q) => ({
+                    type: q.questionType,
+                    content: q.content,
+                    options: q.options,
+                    correctAnswer: q.correctAnswer,
+                    points: q.points,
+                  })),
+                }
+              : undefined,
+          },
+          include: {
+            lesson: true,
+            teacher: true,
+            subject: true,
+            class: true,
+            questions: true,
           },
         });
       });
@@ -306,6 +336,4 @@ export class AssignmentService {
       throw new InternalServerErrorException('Failed to edit assignment');
     }
   }
-
-  // TODO add markdown content for
 }

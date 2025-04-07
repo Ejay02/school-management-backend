@@ -30,6 +30,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulingModule } from './shared/task/scheduling.module';
 import { SecurityModule } from './shared/security/security.module';
 import { join } from 'path';
+import { QuestionModule } from './shared/question/question.module';
+import GraphQLJSON from 'graphql-type-json';
 
 @Module({
   imports: [
@@ -47,6 +49,7 @@ import { join } from 'path';
           'request.credentials': 'include',
         },
       },
+      resolvers: { JSON: GraphQLJSON },
     }),
     AdminModule,
     TeacherModule,
@@ -70,6 +73,7 @@ import { join } from 'path';
     UserModule,
     SchedulingModule,
     SecurityModule,
+    QuestionModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],

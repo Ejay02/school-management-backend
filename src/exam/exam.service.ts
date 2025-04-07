@@ -50,6 +50,9 @@ export class ExamService {
           startTime: input.startTime,
           endTime: input.endTime,
           date: input.date,
+          description: input.description,
+          instructions: input.instructions,
+          content: input.content,
           class: {
             connect: { id: input.classId },
           },
@@ -59,6 +62,18 @@ export class ExamService {
           teacher: {
             connect: { id: teacherId },
           },
+          // Create questions if provided
+          questions: input.questions
+            ? {
+                create: input.questions.map((q) => ({
+                  type: q.questionType,
+                  content: q.content,
+                  options: q.options,
+                  correctAnswer: q.correctAnswer,
+                  points: q.points,
+                })),
+              }
+            : undefined,
         },
         include: {
           teacher: true,
@@ -90,7 +105,28 @@ export class ExamService {
       // Update the exam within the transaction
       return tx.exam.update({
         where: { id: examId },
-        data: input,
+        data: {
+          title: input.title,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          date: input.date,
+          description: input.description,
+          instructions: input.instructions,
+          content: input.content,
+          // Handle questions update if provided
+          questions: input.questions
+            ? {
+                deleteMany: {}, // Remove existing questions
+                create: input.questions.map((q) => ({
+                  type: q.questionType,
+                  content: q.content,
+                  options: q.options,
+                  correctAnswer: q.correctAnswer,
+                  points: q.points,
+                })),
+              }
+            : undefined,
+        },
         include: {
           teacher: true,
           subject: true,
@@ -227,6 +263,7 @@ export class ExamService {
         teacher: true,
         subject: true,
         class: true,
+        questions: true,
         // lesson: true,
       },
     });

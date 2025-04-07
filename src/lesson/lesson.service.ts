@@ -143,7 +143,7 @@ export class LessonService {
 
   async getAllLessons(userId: string, role: Roles, params?: PaginationParams) {
     try {
-      const searchFields = ['name'];
+      const searchFields = ['name', 'description'];
       let baseQuery: any = {};
 
       // Admin and super admin get full access to all lessons
@@ -157,7 +157,7 @@ export class LessonService {
                 students: true,
               },
             },
-            // exams: true,
+
             assignments: {
               include: {
                 submissions: true,
@@ -356,11 +356,6 @@ export class LessonService {
         subject: true,
         class: true,
         teacher: true,
-        // exams: {
-        //   orderBy: {
-        //     createdAt: 'desc',
-        //   },
-        // },
         assignments: {
           orderBy: {
             dueDate: 'desc',
@@ -384,7 +379,6 @@ export class LessonService {
     return lesson;
   }
 
-  // TODO : add content for lesson, exam,
   async createLesson(
     createLessonInput: CreateLessonInput,
     subjectId: string,
@@ -456,7 +450,6 @@ export class LessonService {
             subject: true,
             class: true,
             teacher: true,
-            // exams: true,
             assignments: true,
             attendances: true,
           },
@@ -464,17 +457,23 @@ export class LessonService {
       }
 
       // If admin, create lesson without teacher assignment
-      return tx.lesson.create({
-        data: lessonData,
+      const lesson = await tx.lesson.create({
+        data: {
+          ...lessonData,
+          // Only connect teacher if admin provides a teacherId in the input
+          // This is undefined by default
+          teacher: undefined,
+        },
         include: {
           subject: true,
           class: true,
           teacher: true,
-          // exams: true,
           assignments: true,
           attendances: true,
         },
       });
+
+      return lesson;
     });
   }
 
@@ -521,6 +520,8 @@ export class LessonService {
         day: editLessonInput.day,
         startTime: editLessonInput.startTime,
         endTime: editLessonInput.endTime,
+        description: editLessonInput.description,
+        content: editLessonInput.content,
       };
 
       // If admin is updating and provides a new teacher
@@ -538,7 +539,6 @@ export class LessonService {
           subject: true,
           class: true,
           teacher: true,
-          // exams: true,
           assignments: true,
           attendances: true,
         },
@@ -626,7 +626,6 @@ export class LessonService {
           const existingLesson = await tx.lesson.findUnique({
             where: { id: lessonId },
             include: {
-              // exams: true,
               assignments: true,
               attendances: true,
             },
@@ -638,7 +637,6 @@ export class LessonService {
 
           // Check if lesson has associated data
           const hasAssociatedData =
-            // existingLesson.exams.length > 0 ||
             existingLesson.assignments.length > 0 ||
             existingLesson.attendances.length > 0;
 
