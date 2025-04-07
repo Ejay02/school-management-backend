@@ -15,6 +15,7 @@ export class CreateClassInput {
   @IsOptional()
   subjectId?: string;
 
+  @Field()
   @IsOptional()
   supervisorId?: string;
 }

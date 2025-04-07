@@ -12,6 +12,7 @@ import { SubjectsForClasses } from './enum/subject';
 import { Roles } from 'src/shared/enum/role';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
+import { CreateSubjectInput } from './input/create.subject.input';
 
 @Injectable()
 export class SubjectService {
@@ -246,5 +247,40 @@ export class SubjectService {
     return subject;
   }
 
-  // TODO  create endpoint for createSubject
+  async createSubject(input: CreateSubjectInput) {
+    return await this.prisma.$transaction(async (tx) => {
+      // Check if class exists
+      const classExists = await tx.class.findUnique({
+        where: { id: input.classId },
+      });
+      if (!classExists) {
+        throw new NotFoundException(`Class with ID ${input.classId} not found`);
+      }
+
+      // Check if teacher exists
+      const teacherExists = await tx.teacher.findUnique({
+        where: { id: input.teacherId },
+      });
+      if (!teacherExists) {
+        throw new NotFoundException(
+          `Teacher with ID ${input.teacherId} not found`,
+        );
+      }
+
+      // Create the subject
+      return await tx.subject.create({
+        data: {
+          name: input.name,
+          classId: input.classId,
+          teachers: {
+            connect: { id: input.teacherId },
+          },
+        },
+        include: {
+          class: true,
+          teachers: true,
+        },
+      });
+    });
+  }
 }

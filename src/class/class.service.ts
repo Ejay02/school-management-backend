@@ -101,7 +101,6 @@ export class ClassService {
     }
   }
 
-  // TODO add teacher for creating class
   async createClass(data: CreateClassInput) {
     return await this.prisma.$transaction(async (tx) => {
       const existingClass = await tx.class.findUnique({

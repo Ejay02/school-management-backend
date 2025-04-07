@@ -155,6 +155,7 @@ input CreateAssignmentInput {
 input CreateClassInput {
   capacity: Float!
   name: String!
+  supervisorId: String!
 }
 
 input CreateEventInput {
@@ -208,6 +209,12 @@ input CreateLessonInput {
   endTime: String!
   name: String!
   startTime: String!
+}
+
+input CreateSubjectInput {
+  classId: String!
+  name: String!
+  teacherId: String!
 }
 
 input CreateSubmissionInput {
@@ -459,6 +466,7 @@ type Mutation {
   createExam(input: CreateExamInput!): Exam!
   createFeeStructure(input: CreateFeeStructureInput!): FeeStructure!
   createLesson(classId: String!, createLessonInput: CreateLessonInput!, subjectId: String!): Lesson!
+  createSubject(input: CreateSubjectInput!): Subject!
   createSubmission(input: CreateSubmissionInput!): Submission!
   deleteEvent(eventId: String!): Boolean!
   deleteExam(examId: String!): Boolean!

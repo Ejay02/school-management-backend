@@ -9,11 +9,12 @@ import { AssignSubjectsInput } from './input/assign.subject.input';
 import { AssignSubjectsResponse } from './response/assign.subject.response';
 import { Subject } from './types/subject.types';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { CreateSubjectInput } from './input/create.subject.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SubjectResolver {
-  constructor(private subjectService: SubjectService) {}
+  constructor(private readonly subjectService: SubjectService) {}
 
   @Mutation(() => AssignSubjectsResponse)
   @HasRoles(Roles.ADMIN)
@@ -26,6 +27,12 @@ export class SubjectResolver {
       input.subjectIds,
       context.req.user.role,
     );
+  }
+
+  @Mutation(() => Subject)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async createSubject(@Args('input') input: CreateSubjectInput) {
+    return await this.subjectService.createSubject(input);
   }
 
   @Query(() => [Subject])
