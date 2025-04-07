@@ -6,6 +6,7 @@ import { Exam } from 'src/exam/types/exam.types';
 import { Assignment } from 'src/assignment/types/assignment.types';
 import { Attendance } from 'src/attendance/types/attendance.types';
 import { Student } from 'src/student/types/student.types';
+import GraphQLJSON from 'graphql-type-json';
 
 @ObjectType()
 export class Lesson {
@@ -23,6 +24,12 @@ export class Lesson {
 
   @Field()
   endTime: string;
+
+  @Field(() => String, { nullable: true })
+  description?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  content?: any;
 
   @Field(() => String)
   subjectId: string;

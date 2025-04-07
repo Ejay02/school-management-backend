@@ -452,8 +452,10 @@ type Lesson {
   attendances: [Attendance!]!
   class: Class!
   classId: String!
+  content: JSON
   createdAt: DateTime!
   day: String!
+  description: String
   endTime: String!
   exams: [Exam!]!
   id: String!
