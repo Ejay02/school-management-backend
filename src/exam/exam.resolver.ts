@@ -73,8 +73,8 @@ export class ExamResolver {
     Roles.ADMIN,
     Roles.SUPER_ADMIN,
   )
-  async getExamDetails(@Context() context, @Args('examId') examId: string) {
-    return await this.examService.getExamDetails(
+  async getExamById(@Context() context, @Args('examId') examId: string) {
+    return await this.examService.getExamById(
       examId,
       context.req.user.userId,
       context.req.user.role,

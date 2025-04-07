@@ -256,7 +256,7 @@ export class ExamService {
   }
 
   // Retrieve detailed information about a specific exam.
-  async getExamDetails(examId: string, userId: string, userRole: Roles) {
+  async getExamById(examId: string, userId: string, userRole: Roles) {
     const exam = await this.prisma.exam.findUnique({
       where: { id: examId },
       include: {

@@ -1,9 +1,10 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { Lesson } from 'src/lesson/types/lesson.types';
 import { Class } from 'src/class/types/class.types';
 import { Subject } from 'src/subject/types/subject.types';
 import { Teacher } from 'src/teacher/types/teacher.types';
 import { Result } from 'src/result/types/result.types';
+import GraphQLJSON from 'graphql-type-json';
+import { Question } from 'src/shared/question/types/question.types';
 
 @ObjectType()
 export class Exam {
@@ -19,11 +20,20 @@ export class Exam {
   @Field()
   endTime: Date;
 
-  @Field(() => String)
-  lessonId: string;
+  @Field()
+  date: Date;
 
-  @Field(() => Lesson)
-  lesson: Lesson;
+  @Field(() => String, { nullable: true })
+  description?: string;
+
+  @Field(() => String, { nullable: true })
+  instructions?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  content?: any;
+
+  @Field(() => [Question], { nullable: true })
+  questions?: Question[];
 
   @Field(() => String)
   classId: string;

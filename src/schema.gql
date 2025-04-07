@@ -350,11 +350,14 @@ enum EventVisibility {
 type Exam {
   class: Class!
   classId: String!
+  content: JSON
   createdAt: DateTime!
+  date: DateTime!
+  description: String
   endTime: DateTime!
   id: String!
-  lesson: Lesson!
-  lessonId: String!
+  instructions: String
+  questions: [Question!]
   results: [Result!]!
   startTime: DateTime!
   subject: Subject!
@@ -608,7 +611,7 @@ type Query {
   getDashboardUserCardSummary: DashboardSummary!
   getEventById(id: String!): Event!
   getEvents(filter: EventFilter!, params: PaginationInput): [Event!]!
-  getExamDetails(examId: String!): Exam!
+  getExamById(examId: String!): Exam!
   getFeeStructure(id: String!): FeeStructure!
   getHello: String!
   getIncomeGraphData: MonthlyRevenue!
@@ -628,6 +631,17 @@ type Query {
   getTeacherById(teacherId: String!): Teacher!
   getUnreadAnnouncementsCount: Int!
   getUserById(id: String!): UserUnion
+}
+
+type Question {
+  content: String!
+  correctAnswer: String
+  createdAt: DateTime!
+  id: String!
+  options: JSON
+  points: Float!
+  type: QuestionType!
+  updatedAt: DateTime!
 }
 
 """The type of question (MCQ, ESSAY, etc.)"""
