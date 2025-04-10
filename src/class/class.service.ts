@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -15,6 +16,7 @@ import {
   PaginationParams,
 } from 'src/shared/pagination/types/pagination.types';
 import { Class } from './types/class.types';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Injectable()
 export class ClassService {
@@ -51,6 +53,7 @@ export class ClassService {
           announcements: true,
           students: true,
           feeStructure: true,
+          supervisor: true,
           subjects: {
             include: {
               teachers: true,
@@ -88,13 +91,6 @@ export class ClassService {
       );
 
       return result;
-
-      // return await PrismaQueryBuilder.paginateResponse(
-      //   this.prisma.class,
-      //   baseQuery,
-      //   params,
-      //   searchFields,
-      // );
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch classes');
@@ -185,5 +181,97 @@ export class ClassService {
       throw new NotFoundException(`Class with name "${className}" not found.`);
     }
     return classRecord.id;
+  }
+
+  async updateClass(classId: string, data: Partial<CreateClassInput>) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const existingClass = await tx.class.findUnique({
+          where: { id: classId },
+        });
+
+        if (!existingClass) {
+          throw new NotFoundException(`Class with ID ${classId} not found`);
+        }
+
+        // Check if name is being updated and if it already exists
+        if (data.name && data.name !== existingClass.name) {
+          const nameExists = await tx.class.findFirst({
+            where: { name: data.name },
+          });
+          if (nameExists) {
+            throw new ConflictException(
+              `Class with name ${data.name} already exists`,
+            );
+          }
+        }
+
+        return await tx.class.update({
+          where: { id: classId },
+          data: {
+            name: data.name,
+            capacity: data.capacity,
+            supervisorId: data.supervisorId,
+          },
+        });
+      });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to update class: ${error.message}`,
+      );
+    }
+  }
+
+  async deleteClass(classId: string): Promise<DeleteResponse> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // First check if class exists
+        const existingClass = await tx.class.findUnique({
+          where: { id: classId },
+        });
+
+        if (!existingClass) {
+          throw new NotFoundException(`Class with ID ${classId} not found`);
+        }
+
+        // Delete related records first
+        await tx.announcement.deleteMany({ where: { classId } });
+        await tx.assignment.deleteMany({ where: { classId } });
+        await tx.exam.deleteMany({ where: { classId } });
+        await tx.lesson.deleteMany({ where: { classId } });
+        await tx.subject.deleteMany({ where: { classId } });
+
+        // Find all students in this class
+        const students = await tx.student.findMany({
+          where: { classId },
+          select: { id: true },
+        });
+
+        // Update each student individually to remove class association
+        for (const student of students) {
+          await tx.student.update({
+            where: { id: student.id },
+            data: { classId: null },
+          });
+        }
+
+        // Finally delete the class
+        await tx.class.delete({
+          where: { id: classId },
+        });
+      });
+
+      return {
+        success: true,
+        message: `Class with ID ${classId} has been successfully deleted`,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to delete class: ${error.message}`,
+      );
+    }
   }
 }

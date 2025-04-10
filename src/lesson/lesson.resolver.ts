@@ -14,7 +14,7 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class LessonResolver {
-  constructor(private lessonService: LessonService) {}
+  constructor(private readonly lessonService: LessonService) {}
 
   @Query(() => [Lesson])
   @HasRoles(
@@ -37,7 +37,13 @@ export class LessonResolver {
   }
 
   @Query(() => Lesson)
-  @UseGuards(JwtAuthGuard)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+    Roles.SUPER_ADMIN,
+  )
   async getLessonById(@Args('id', { type: () => String }) id: string) {
     return await this.lessonService.getLessonById(id);
   }

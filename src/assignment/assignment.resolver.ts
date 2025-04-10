@@ -64,10 +64,13 @@ export class AssignmentResolver {
   @HasRoles(Roles.TEACHER)
   async editAssignment(
     @Context() context,
+    @Args('assignmentId') assignmentId: string,
     @Args('editAssignmentInput') editAssignmentInput: EditAssignmentInput,
   ) {
-    return this.assignmentService.createAssignment(
+    return this.assignmentService.editAssignment(
+      assignmentId,
       context.req.user.userId,
+      context.req.user.role,
       editAssignmentInput,
     );
   }

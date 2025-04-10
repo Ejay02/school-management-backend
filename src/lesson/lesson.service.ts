@@ -419,6 +419,8 @@ export class LessonService {
         day: createLessonInput.day,
         startTime: createLessonInput.startTime,
         endTime: createLessonInput.endTime,
+        description: createLessonInput.description,
+        content: createLessonInput.content,
         subject: {
           connect: { id: subjectId },
         },

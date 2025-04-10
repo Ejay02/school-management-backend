@@ -151,12 +151,15 @@ type Counts {
 }
 
 input CreateAssignmentInput {
+  classId: String!
   content: JSON
   description: String
   dueDate: DateTime!
   instructions: String
+  lessonId: String!
   questions: [CreateQuestionInput!]
   startDate: DateTime!
+  subjectId: String!
   title: String!
 }
 
@@ -502,6 +505,7 @@ type Mutation {
   createLesson(classId: String!, createLessonInput: CreateLessonInput!, subjectId: String!): Lesson!
   createSubject(input: CreateSubjectInput!): Subject!
   createSubmission(input: CreateSubmissionInput!): Submission!
+  deleteClass(classId: String!): DeleteResponse!
   deleteEvent(eventId: String!): Boolean!
   deleteExam(examId: String!): Boolean!
   deleteGrade(gradeId: String!): Boolean!
@@ -511,7 +515,7 @@ type Mutation {
   deleteUser(targetId: String!): Boolean!
   editAdmin(input: EditAdminInput!): EditAdminResponse!
   editAnnouncement(announcementId: String!, content: String!, targetRoles: [String!], title: String!): Announcement!
-  editAssignment(editAssignmentInput: EditAssignmentInput!): Assignment!
+  editAssignment(assignmentId: String!, editAssignmentInput: EditAssignmentInput!): Assignment!
   editLesson(editLessonInput: EditLessonInput!, lessonId: String!): Lesson!
   editSubmission(input: UpdateSubmissionInput!, submissionId: String!): Submission!
   generateInvoice(feeStructureId: String!): Invoice!
@@ -532,6 +536,7 @@ type Mutation {
   studentSignup(input: StudentSignupInput!): AuthResponse!
   teacherSignup(input: TeacherSignupInput!): AuthResponse!
   unarchiveAnnouncement(announcementId: String!): Boolean!
+  updateClass(classId: String!, input: UpdateClassInput!): Class!
   updateEvent(eventId: String!, input: EditEventInput!): Event!
   updateExam(examId: String!, input: UpdateExamInput!): Exam!
   updateGrade(input: UpdateGradeInput!): Grade!
@@ -822,6 +827,12 @@ enum Term {
 type TokenResponse {
   accessToken: String!
   refreshToken: String!
+}
+
+input UpdateClassInput {
+  capacity: Float
+  name: String
+  supervisorId: String
 }
 
 input UpdateExamInput {

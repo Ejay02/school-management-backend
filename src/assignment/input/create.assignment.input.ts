@@ -14,12 +14,15 @@ export class CreateAssignmentInput {
   @Field()
   dueDate: Date;
 
+  @Field()
   @IsOptional()
   lessonId?: string;
 
+  @Field()
   @IsOptional()
   subjectId?: string;
 
+  @Field()
   @IsOptional()
   classId?: string;
 

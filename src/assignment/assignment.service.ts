@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -188,6 +189,22 @@ export class AssignmentService {
   async createAssignment(teacherId: string, input: CreateAssignmentInput) {
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // Validate teacher is assigned to the class
+        const teacherClass = await tx.teacher.findFirst({
+          where: {
+            id: teacherId,
+            classes: {
+              some: {
+                id: input.classId,
+              },
+            },
+          },
+        });
+
+        if (!teacherClass) {
+          throw new ForbiddenException('You are not assigned to this class');
+        }
+
         const subject = await tx.subject.findFirst({
           where: {
             id: input.subjectId,
@@ -199,57 +216,69 @@ export class AssignmentService {
           throw new NotFoundException('Subject not found in this class');
         }
 
+        // Validate lesson exists
+        const lesson = await tx.lesson.findUnique({
+          where: { id: input.lessonId },
+          include: { subject: true },
+        });
+
+        if (!lesson) {
+          throw new NotFoundException('Lesson not found');
+        }
+
+        if (lesson.subject.id !== input.subjectId) {
+          throw new BadRequestException('Lesson and subject do not match');
+        }
+
         // check for dupe
-        const existintAssignment = await tx.assignment.findFirst({
+        const existingAssignment = await tx.assignment.findFirst({
           where: {
             title: input.title,
           },
         });
 
-        if (existintAssignment) {
+        if (existingAssignment) {
           throw new ConflictException(
             `Assignment with this title: ${input.title} already exists`,
           );
         }
 
-        this.server.emit('createAssignment', {
-          message: 'A new assignment has been created!',
-          // assignment: newAssignment,
-        });
-
-        return await tx.assignment.create({
-          data: {
-            title: input.title,
-            startDate: input.startDate,
-            dueDate: input.dueDate,
-            description: input.description,
-            instructions: input.instructions,
-            content: input.content,
-            lesson: {
-              connect: { id: input.lessonId },
-            },
-            teacher: {
-              connect: { id: teacherId },
-            },
-            subject: {
-              connect: { id: input.subjectId },
-            },
-            class: {
-              connect: { id: input.classId },
-            },
-            // Create questions if provided
-            questions: input.questions
-              ? {
-                  create: input.questions.map((q) => ({
-                    type: q.questionType,
-                    content: q.content,
-                    options: q.options,
-                    correctAnswer: q.correctAnswer,
-                    points: q.points,
-                  })),
-                }
-              : undefined,
+        const createData = {
+          title: input.title,
+          startDate: new Date(input.startDate),
+          dueDate: new Date(input.dueDate),
+          description: input.description,
+          instructions: input.instructions,
+          content: input.content,
+          lesson: {
+            connect: { id: input.lessonId },
           },
+          teacher: {
+            connect: { id: teacherId },
+          },
+          subject: {
+            connect: { id: input.subjectId },
+          },
+          class: {
+            connect: { id: input.classId },
+          },
+        };
+
+        // Add questions if provided
+        if (input.questions && input.questions.length > 0) {
+          createData['questions'] = {
+            create: input.questions.map((q) => ({
+              type: q.questionType,
+              content: q.content,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              points: q.points,
+            })),
+          };
+        }
+
+        const newAssignment = await tx.assignment.create({
+          data: createData,
           include: {
             lesson: true,
             teacher: true,
@@ -258,9 +287,20 @@ export class AssignmentService {
             questions: true,
           },
         });
+
+        this.server.emit('createAssignment', {
+          message: 'A new assignment has been created!',
+          assignment: newAssignment,
+        });
+
+        return newAssignment;
       });
     } catch (error) {
+      if (error instanceof BadRequestException) throw error;
       if (error instanceof ForbiddenException) throw error;
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof ConflictException) throw error;
+      console.log('error:', error);
       throw new InternalServerErrorException('Failed to create assignment');
     }
   }
