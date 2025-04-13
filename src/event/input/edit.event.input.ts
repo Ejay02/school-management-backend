@@ -25,6 +25,6 @@ export class EditEventInput {
   @Field(() => [Roles])
   targetRoles: Roles[];
 
-  @Field(() => String)
-  classId: string;
+  @Field(() => String, { nullable: true })
+  classId?: string;
 }

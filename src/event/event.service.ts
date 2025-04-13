@@ -348,18 +348,38 @@ export class EventService {
           targetRoles: updatedEvent.targetRoles as Roles[],
         });
 
-        await Promise.all([
-          this.googleCalendarService.updateCalendarEvent(eventId, {
-            ...updatedEvent,
-            attendees: targetUsers.map((user) => user.email),
-          }),
-          this.sendNotifications(
-            updatedEvent,
-            targetUsers,
-            'event-update',
-            'Event Updated',
-          ),
-        ]);
+        try {
+          await Promise.all([
+            this.googleCalendarService
+              .updateCalendarEvent(eventId, {
+                ...updatedEvent,
+                attendees: targetUsers.map((user) => user.email),
+              })
+              .catch((error) => {
+                console.warn('Google Calendar update failed:', error.message);
+                // Continue execution even if calendar update fails
+              }),
+            this.sendNotifications(
+              updatedEvent,
+              targetUsers,
+              'event.update',
+              'Event Updated',
+              {
+                eventTitle: updatedEvent.title,
+                eventDescription: updatedEvent.description,
+                startTime: updatedEvent.startTime.toLocaleString(),
+                endTime: updatedEvent.endTime.toLocaleString(),
+                location: updatedEvent.location || 'N/A',
+                calendarLink: '#',
+              },
+            ).catch((error) => {
+              console.warn('Email notification failed:', error.message);
+            }),
+          ]);
+        } catch (error) {
+          console.error('Error with notifications or calendar update:', error);
+          // Don't throw the error, just log it
+        }
 
         // Emit socket event to notify clients
         this.server.emit('eventUpdated', {
@@ -650,6 +670,11 @@ export class EventService {
 
       await prisma.event.delete({
         where: { id: eventId },
+      });
+
+      this.server.emit('deleteEvent', {
+        eventId,
+        message: 'An event has been deleted!',
       });
 
       this.server.emit('deleteEvent', {

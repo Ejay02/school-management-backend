@@ -15,12 +15,12 @@ import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.paginatio
 import { UpdateExamInput } from './input/update.exam.input';
 import { CreateExamInput } from './input/create.exam.input';
 import { Exam } from './types/exam.types';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Injectable()
 export class ExamService {
   constructor(private readonly prisma: PrismaService) {}
 
-  //    #TODO add day in the BE and take out lesson we dont need it and content ie exams details!
   async createExam(teacherId: string, input: CreateExamInput) {
     // Start a transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -321,28 +321,51 @@ export class ExamService {
     return exam;
   }
 
-  async deleteExam(examId: string) {
-    const exam = await this.prisma.exam.findUnique({
-      where: { id: examId },
-    });
+  async deleteExam(examId: string): Promise<DeleteResponse> {
+    try {
+      const exam = await this.prisma.exam.findUnique({
+        where: { id: examId },
+      });
 
-    if (!exam) {
-      throw new NotFoundException('Exam not found');
+      if (!exam) {
+        throw new NotFoundException('Exam not found');
+      }
+
+      // Check if exam has any results
+      const hasResults = await this.prisma.result.findFirst({
+        where: { examId },
+      });
+
+      if (hasResults) {
+        throw new ForbiddenException(
+          'Cannot delete exam with existing results',
+        );
+      }
+
+      // Delete questions first
+      await this.prisma.question.deleteMany({
+        where: { examId },
+      });
+
+      // Then delete the exam
+      await this.prisma.exam.delete({
+        where: { id: examId },
+      });
+
+      return {
+        success: true,
+        message: `Exam with ID ${examId} has been successfully deleted`,
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to delete exam: ${error.message}`,
+      );
     }
-
-    // Check if exam has any results
-    const hasResults = await this.prisma.result.findFirst({
-      where: { examId },
-    });
-
-    if (hasResults) {
-      throw new ForbiddenException('Cannot delete exam with existing results');
-    }
-
-    await this.prisma.exam.delete({
-      where: { id: examId },
-    });
-
-    return true;
   }
 }

@@ -10,6 +10,8 @@ import { AssignSubjectsResponse } from './response/assign.subject.response';
 import { Subject } from './types/subject.types';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { CreateSubjectInput } from './input/create.subject.input';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { UpdateSubjectInput } from './input/update.subject.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,7 +59,29 @@ export class SubjectResolver {
 
   @Query(() => Subject)
   @UseGuards(JwtAuthGuard)
+  @HasRoles(
+    Roles.SUPER_ADMIN,
+    Roles.ADMIN,
+    Roles.TEACHER,
+    Roles.PARENT,
+    Roles.STUDENT,
+  )
   async getSubjectById(@Args('id', { type: () => String }) id: string) {
     return await this.subjectService.getSubjectById(id);
+  }
+
+  @Mutation(() => Subject)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  async updateSubject(
+    @Args('subjectId') subjectId: string,
+    @Args('input') input: UpdateSubjectInput,
+  ) {
+    return await this.subjectService.updateSubject(subjectId, input);
+  }
+
+  @Mutation(() => DeleteResponse)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  async deleteSubject(@Args('subjectId') subjectId: string) {
+    return await this.subjectService.deleteSubject(subjectId);
   }
 }

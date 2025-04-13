@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -13,6 +14,8 @@ import { Roles } from 'src/shared/enum/role';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { CreateSubjectInput } from './input/create.subject.input';
+import { UpdateSubjectInput } from './input/update.subject.input';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Injectable()
 export class SubjectService {
@@ -282,5 +285,163 @@ export class SubjectService {
         },
       });
     });
+  }
+
+  async updateSubject(subjectId: string, input: UpdateSubjectInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Check if subject exists
+        const existingSubject = await tx.subject.findUnique({
+          where: { id: subjectId },
+          include: { teachers: true },
+        });
+
+        if (!existingSubject) {
+          throw new NotFoundException(`Subject with ID ${subjectId} not found`);
+        }
+
+        // Check if class exists if provided
+        if (input.classId) {
+          const classExists = await tx.class.findUnique({
+            where: { id: input.classId },
+          });
+          if (!classExists) {
+            throw new NotFoundException(
+              `Class with ID ${input.classId} not found`,
+            );
+          }
+        }
+
+        // Check if teacher exists if provided
+        if (input.teacherId) {
+          const teacherExists = await tx.teacher.findUnique({
+            where: { id: input.teacherId },
+          });
+          if (!teacherExists) {
+            throw new NotFoundException(
+              `Teacher with ID ${input.teacherId} not found`,
+            );
+          }
+        }
+
+        // Check if name is being updated and if it already exists in the same class
+        if (input.name && input.name !== existingSubject.name) {
+          const nameExists = await tx.subject.findFirst({
+            where: {
+              name: input.name,
+              classId: input.classId || existingSubject.classId,
+              id: { not: subjectId }, // Exclude current subject
+            },
+          });
+          if (nameExists) {
+            throw new ConflictException(
+              `Subject with name ${input.name} already exists in this class`,
+            );
+          }
+        }
+
+        // Build update data object with explicit properties
+        const updateData: any = {
+          ...(input.name && { name: input.name }),
+          ...(input.classId && { classId: input.classId }),
+        };
+
+        // Handle teacher connection if provided
+        if (input.teacherId) {
+          // First disconnect existing teachers if needed
+          if (existingSubject.teachers.length > 0) {
+            await tx.subject.update({
+              where: { id: subjectId },
+              data: {
+                teachers: {
+                  disconnect: existingSubject.teachers.map((teacher) => ({
+                    id: teacher.id,
+                  })),
+                },
+              },
+            });
+          }
+
+          // Then connect the new teacher
+          updateData.teachers = {
+            connect: { id: input.teacherId },
+          };
+        }
+
+        // Log the update operation for debugging
+        console.log('Updating subject with data:', updateData);
+
+        // Perform the update
+        const updatedSubject = await tx.subject.update({
+          where: { id: subjectId },
+          data: updateData,
+          include: {
+            class: true,
+            teachers: true,
+          },
+        });
+
+        console.log('Updated subject:', updatedSubject);
+        return updatedSubject;
+      });
+    } catch (error) {
+      console.error('Error updating subject:', error);
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to update subject: ${error.message}`,
+      );
+    }
+  }
+
+  async deleteSubject(subjectId: string): Promise<DeleteResponse> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Check if subject exists
+        const existingSubject = await tx.subject.findUnique({
+          where: { id: subjectId },
+        });
+
+        if (!existingSubject) {
+          throw new NotFoundException(`Subject with ID ${subjectId} not found`);
+        }
+
+        // Delete related records first
+        await tx.lesson.deleteMany({ where: { subjectId } });
+        await tx.exam.deleteMany({ where: { subjectId } });
+        await tx.assignment.deleteMany({ where: { subjectId } });
+
+        // Remove teacher connections
+        await tx.subject.update({
+          where: { id: subjectId },
+          data: {
+            teachers: {
+              set: [], // Remove all teacher connections
+            },
+          },
+        });
+
+        // Finally delete the subject
+        await tx.subject.delete({
+          where: { id: subjectId },
+        });
+      });
+
+      return {
+        success: true,
+        message: `Subject with ID ${subjectId} has been successfully deleted`,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to delete subject: ${error.message}`,
+      );
+    }
   }
 }

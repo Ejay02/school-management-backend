@@ -298,7 +298,7 @@ input EditAssignmentInput {
 }
 
 input EditEventInput {
-  classId: String!
+  classId: String
   description: String!
   endTime: DateTime!
   location: String!
@@ -507,10 +507,11 @@ type Mutation {
   createSubmission(input: CreateSubmissionInput!): Submission!
   deleteClass(classId: String!): DeleteResponse!
   deleteEvent(eventId: String!): Boolean!
-  deleteExam(examId: String!): Boolean!
+  deleteExam(examId: String!): DeleteResponse!
   deleteGrade(gradeId: String!): Boolean!
   deleteLesson(lessonId: String!): DeleteResponse!
   deleteResult(id: String!): Boolean!
+  deleteSubject(subjectId: String!): DeleteResponse!
   deleteSubmission(submissionId: String!): Boolean!
   deleteUser(targetId: String!): Boolean!
   editAdmin(input: EditAdminInput!): EditAdminResponse!
@@ -541,6 +542,7 @@ type Mutation {
   updateExam(examId: String!, input: UpdateExamInput!): Exam!
   updateGrade(input: UpdateGradeInput!): Grade!
   updateResult(assignmentId: String, examId: String, id: String!, score: Int): Result!
+  updateSubject(input: UpdateSubjectInput!, subjectId: String!): Subject!
 }
 
 input PaginationInput {
@@ -850,6 +852,12 @@ input UpdateGradeInput {
   comments: String
   id: String!
   score: Float
+}
+
+input UpdateSubjectInput {
+  classId: String
+  name: String
+  teacherId: String
 }
 
 input UpdateSubmissionInput {

@@ -9,6 +9,7 @@ import { Roles } from 'src/shared/enum/role';
 import { UpdateExamInput } from './input/update.exam.input';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { CreateExamInput } from './input/create.exam.input';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -81,9 +82,9 @@ export class ExamResolver {
     );
   }
 
-  @Mutation(() => Boolean)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  async deleteExam(@Args('examId') examId: string) {
+  @Mutation(() => DeleteResponse)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  async deleteExam(@Args('examId') examId: string): Promise<DeleteResponse> {
     return await this.examService.deleteExam(examId);
   }
 }
