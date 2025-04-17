@@ -26,6 +26,12 @@ input AdminSignupInput {
   username: String!
 }
 
+type AdminUsersResponse {
+  admins: [Admin!]!
+  parents: [Parent!]!
+  teachers: [Teacher!]!
+}
+
 type Announcement {
   archivedAt: DateTime
   class: Class
@@ -108,6 +114,7 @@ type AuthResponse {
   classId: String
   email: String!
   gradeId: String
+  id: String
   name: String
   parentId: String
   phone: String
@@ -603,6 +610,7 @@ enum PaymentStatus {
 type Query {
   attendanceByLesson(lessonId: String!): Attendance!
   attendanceStats(endDate: DateTime!, startDate: DateTime!, studentId: String!): Attendance!
+  getAllAdminUsers: AdminUsersResponse!
   getAllAdmins: [Admin!]!
   getAllAnnouncements(params: AnnouncementQueryInput): [Announcement!]!
   getAllAssignments(params: PaginationInput): [Assignment!]!
@@ -792,7 +800,7 @@ type Submission {
 }
 
 type Teacher {
-  address: String!
+  address: String
   bloodType: String!
   classes: [Class!]!
   createdAt: DateTime!

@@ -10,6 +10,7 @@ import { EditAdminInput } from './input/edit.admin.input';
 import { EditAdminResponse } from './response/edit.admin.response';
 import { DashboardSummary } from './types/dashboard.summary.type';
 import { MonthlyRevenue } from './types/income.graph.type';
+import { AdminUsersResponse } from './response/admin.users.response';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -70,5 +71,11 @@ export class AdminResolver {
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async getIncomeGraphData() {
     return await this.adminService.getIncomeGraphData();
+  }
+
+  @Query(() => AdminUsersResponse)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getAllAdminUsers(@Context() context) {
+    return await this.adminService.getAllAdminUsers(context.req.user.userId);
   }
 }

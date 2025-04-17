@@ -6,6 +6,18 @@ import { EventEmitter } from 'events';
 import rateLimit from 'express-rate-limit';
 
 async function bootstrap() {
+  console.log(`
+    _____  _     
+   | ____|(_)    
+   |  _|  | |    
+   | |___ | |    
+   |_____|/ |    
+        |__/      
+  
+   🔧 Crafted with 🖤 by Ej  
+   🔗 github.com/Ejay02
+  `);
+
   // Increase default max listeners globally
   EventEmitter.defaultMaxListeners = 20;
 

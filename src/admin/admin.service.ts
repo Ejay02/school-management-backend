@@ -21,7 +21,7 @@ import { PaymentStatus } from 'src/payment/enum/payment.status';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async verifyAdmin(userId: string) {
     try {
@@ -59,13 +59,25 @@ export class AdminService {
   async assignAdminRole(adminId: string, targetId: string, newRole: Roles) {
     await this.verifyAdmin(adminId);
 
+    // Prevent assigning SUPER_ADMIN role
+    if (newRole === Roles.SUPER_ADMIN) {
+      throw new ForbiddenException('Cannot assign SUPER_ADMIN role');
+    }
+
     // Find which model the target exists in
-    const [teacher, student, parent] = await Promise.all([
+    const [teacher, student, parent, admin] = await Promise.all([
       this.prisma.teacher.findUnique({ where: { id: targetId } }),
       this.prisma.student.findUnique({ where: { id: targetId } }),
       this.prisma.parent.findUnique({ where: { id: targetId } }),
+      this.prisma.admin.findUnique({ where: { id: targetId } }),
     ]);
 
+    // Prevent modifying the SUPER_ADMIN
+    if (admin?.role === Roles.SUPER_ADMIN) {
+      throw new ForbiddenException('Cannot modify SUPER_ADMIN');
+    }
+
+    // Handle assigning to ADMIN role
     if (newRole === Roles.ADMIN) {
       const target = teacher || student || parent;
       if (!target) {
@@ -74,15 +86,59 @@ export class AdminService {
 
       // Create new admin record
       return this.prisma.$transaction(async (tx) => {
-        await tx.admin.create({
+        // Delete from original table
+        if (teacher) await tx.teacher.delete({ where: { id: targetId } });
+        if (student) await tx.student.delete({ where: { id: targetId } });
+        if (parent) await tx.parent.delete({ where: { id: targetId } });
+
+        // Create admin record
+        return tx.admin.create({
           data: {
             id: targetId,
             username: target.username,
             email: target.email,
             password: target.password,
-            role: Roles.ADMIN as Roles,
+            role: Roles.ADMIN,
           },
         });
+      });
+    }
+
+    // Handle converting from ADMIN to other roles
+    if (admin) {
+      return this.prisma.$transaction(async (tx) => {
+        // Delete admin record
+        await tx.admin.delete({ where: { id: targetId } });
+
+        // Create in new role table
+        switch (newRole) {
+          case Roles.TEACHER:
+            return tx.teacher.create({
+              data: {
+                id: targetId,
+                username: admin.username,
+                email: admin.email,
+                password: admin.password,
+                role: Roles.TEACHER,
+                name: '',
+                surname: '',
+              },
+            });
+          case Roles.PARENT:
+            return tx.parent.create({
+              data: {
+                id: targetId,
+                username: admin.username,
+                email: admin.email,
+                password: admin.password,
+                role: Roles.PARENT,
+                name: '',
+                surname: '',
+              },
+            });
+          default:
+            throw new BadRequestException('Invalid role');
+        }
       });
     }
 
@@ -103,7 +159,6 @@ export class AdminService {
         return this.prisma.student.findUnique({ where: { id } });
       case Roles.PARENT:
         return this.prisma.parent.findUnique({ where: { id } });
-
       default:
         throw new BadRequestException('Invalid role');
     }
@@ -126,7 +181,6 @@ export class AdminService {
           where: { id },
           data: { role },
         });
-
       default:
         throw new BadRequestException('Invalid role');
     }
@@ -345,6 +399,27 @@ export class AdminService {
         return [9, 10, 11, 12];
       default:
         return [];
+    }
+  }
+
+  async getAllAdminUsers(userId: string) {
+    try {
+      await this.verifyAdmin(userId);
+
+      const [admins, teachers, parents] = await Promise.all([
+        this.prisma.admin.findMany(),
+        this.prisma.teacher.findMany(),
+        this.prisma.parent.findMany(),
+      ]);
+
+      return {
+        admins,
+        teachers,
+        parents,
+      };
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      throw new UnauthorizedException('User is not authorized as admin');
     }
   }
 }

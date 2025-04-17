@@ -29,8 +29,8 @@ export class Teacher {
   @Field({ nullable: true })
   phone?: string;
 
-  @Field()
-  address: string;
+  @Field({ nullable: true })
+  address?: string;
 
   @Field({ nullable: true })
   img?: string;
