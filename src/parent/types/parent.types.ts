@@ -27,8 +27,8 @@ export class Parent {
   @Field()
   phone: string;
 
-  @Field()
-  address: string;
+  @Field({ nullable: true })
+  address?: string;
 
   @Field({ nullable: true })
   img?: string;

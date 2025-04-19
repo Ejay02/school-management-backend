@@ -9,11 +9,12 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { StudentGenderStatistics } from './types/student.statistic.types';
+import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StudentResolver {
-  constructor(private studentService: StudentService) {}
+  constructor(private readonly studentService: StudentService) {}
 
   @Query(() => [Student])
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.TEACHER, Roles.PARENT)
@@ -55,5 +56,14 @@ export class StudentResolver {
       classId,
     );
     return result.statistics;
+  }
+
+  @Mutation(() => Student)
+  @HasRoles(Roles.STUDENT)
+  async updateStudentProfile(
+    @Context() context: any,
+    @Args('input') input: UpdateProfileInput,
+  ) {
+    return this.studentService.updateStudentProfile(context.req.user.id, input);
   }
 }

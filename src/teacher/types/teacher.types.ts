@@ -35,11 +35,11 @@ export class Teacher {
   @Field({ nullable: true })
   img?: string;
 
-  @Field()
-  bloodType: string;
+  @Field({ nullable: true })
+  bloodType?: string;
 
-  @Field()
-  sex: string;
+  @Field({ nullable: true })
+  sex?: string;
 
   @Field(() => [Subject])
   subjects: Subject[];

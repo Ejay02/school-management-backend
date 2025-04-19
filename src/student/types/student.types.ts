@@ -41,7 +41,7 @@ export class Student {
   bloodType?: string;
 
   @Field({ nullable: true })
-  sex: string;
+  sex?: string;
 
   @Field()
   parentId: string;

@@ -1,4 +1,4 @@
-import { Args, Context, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ParentService } from './parent.service';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
@@ -7,11 +7,12 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Parent } from './types/parent.types';
 import { Roles } from 'src/shared/enum/role';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ParentResolver {
-  constructor(private parentService: ParentService) {}
+  constructor(private readonly parentService: ParentService) {}
 
   @Query(() => [Parent])
   @HasRoles(
@@ -43,5 +44,15 @@ export class ParentResolver {
   )
   async getParentById(@Args('parentId') parentId: string) {
     return await this.parentService.getParentById(parentId);
+  }
+
+  @Mutation(() => Parent)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.PARENT)
+  async updateParentProfile(
+    @Args('input') input: UpdateProfileInput,
+    @Context() context: any,
+  ) {
+    return this.parentService.updateParentProfile(context.req.user.id, input);
   }
 }

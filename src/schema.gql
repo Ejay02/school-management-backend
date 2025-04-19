@@ -12,7 +12,9 @@ type Admin {
   email: String
   id: String!
   img: String
+  name: String
   role: Roles!
+  surname: String
   updatedAt: DateTime!
   username: String!
 }
@@ -285,19 +287,6 @@ type DeleteResponse {
   success: Boolean!
 }
 
-input EditAdminInput {
-  email: String
-  img: String
-  password: String
-  username: String
-}
-
-type EditAdminResponse {
-  admin: Admin
-  message: String!
-  success: Boolean!
-}
-
 input EditAssignmentInput {
   dueDate: DateTime!
   startDate: DateTime!
@@ -521,7 +510,6 @@ type Mutation {
   deleteSubject(subjectId: String!): DeleteResponse!
   deleteSubmission(submissionId: String!): Boolean!
   deleteUser(targetId: String!): Boolean!
-  editAdmin(input: EditAdminInput!): EditAdminResponse!
   editAnnouncement(announcementId: String!, content: String!, targetRoles: [String!], title: String!): Announcement!
   editAssignment(assignmentId: String!, editAssignmentInput: EditAssignmentInput!): Assignment!
   editLesson(editLessonInput: EditLessonInput!, lessonId: String!): Lesson!
@@ -544,12 +532,16 @@ type Mutation {
   studentSignup(input: StudentSignupInput!): AuthResponse!
   teacherSignup(input: TeacherSignupInput!): AuthResponse!
   unarchiveAnnouncement(announcementId: String!): Boolean!
+  updateAdminProfile(input: UpdateProfileInput!): Admin!
   updateClass(classId: String!, input: UpdateClassInput!): Class!
   updateEvent(eventId: String!, input: EditEventInput!): Event!
   updateExam(examId: String!, input: UpdateExamInput!): Exam!
   updateGrade(input: UpdateGradeInput!): Grade!
+  updateParentProfile(input: UpdateProfileInput!): Parent!
   updateResult(assignmentId: String, examId: String, id: String!, score: Int): Result!
+  updateStudentProfile(input: UpdateProfileInput!): Student!
   updateSubject(input: UpdateSubjectInput!, subjectId: String!): Subject!
+  updateTeacherProfile(input: UpdateProfileInput!): Teacher!
 }
 
 input PaginationInput {
@@ -561,7 +553,7 @@ input PaginationInput {
 }
 
 type Parent {
-  address: String!
+  address: String
   createdAt: DateTime!
   email: String
   id: String!
@@ -724,6 +716,11 @@ type ScoreDistribution {
   below50: Int!
 }
 
+enum Sex {
+  FEMALE
+  MALE
+}
+
 enum SortOrder {
   ASC
   DESC
@@ -801,7 +798,7 @@ type Submission {
 
 type Teacher {
   address: String
-  bloodType: String!
+  bloodType: String
   classes: [Class!]!
   createdAt: DateTime!
   email: String
@@ -812,7 +809,7 @@ type Teacher {
   password: String!
   phone: String
   role: String!
-  sex: String!
+  sex: String
   subjects: [Subject!]!
   surname: String!
   updatedAt: DateTime!
@@ -860,6 +857,19 @@ input UpdateGradeInput {
   comments: String
   id: String!
   score: Float
+}
+
+input UpdateProfileInput {
+  address: String
+  bloodType: String
+  email: String
+  img: String
+  name: String
+  password: String
+  phone: String
+  sex: Sex
+  surname: String
+  username: String
 }
 
 input UpdateSubjectInput {

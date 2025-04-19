@@ -6,6 +6,12 @@ export class Admin {
   @Field()
   id: string;
 
+  @Field({ nullable: true })
+  name?: string;
+
+  @Field({ nullable: true })
+  surname?: string;
+
   @Field()
   username: string;
 

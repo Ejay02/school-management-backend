@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -8,14 +9,16 @@ import { JwtService } from '@nestjs/jwt';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
+import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class TeacherService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async getAllTeachers(
@@ -188,6 +191,52 @@ export class TeacherService {
         throw error;
       }
       throw new Error(`Failed to get teacher: ${error.message}`);
+    }
+  }
+
+  async updateTeacherProfile(id: string, input: UpdateProfileInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Check for username uniqueness if username is being updated
+        if (input.username) {
+          const usernameExists = await tx.teacher.findUnique({
+            where: { username: input.username },
+          });
+
+          if (usernameExists && usernameExists.id !== id) {
+            throw new ConflictException(`Username already taken`);
+          }
+        }
+
+        // Check for email uniqueness if email is being updated
+        if (input.email) {
+          const emailExists = await tx.teacher.findFirst({
+            where: { email: input.email },
+          });
+
+          if (emailExists && emailExists.id !== id) {
+            throw new ConflictException(`Email already taken`);
+          }
+        }
+
+        // If password is provided, hash it
+        if (input.password) {
+          const salt = await bcrypt.genSalt();
+          input.password = await bcrypt.hash(input.password, salt);
+        }
+
+        return tx.teacher.update({
+          where: { id },
+          data: input,
+        });
+      });
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to update profile: ${error.message}`,
+      );
     }
   }
 }

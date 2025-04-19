@@ -11,13 +11,13 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
 import * as bcrypt from 'bcrypt';
-import { EditAdminInput } from './input/edit.admin.input';
-import { EditAdminResponse } from './response/edit.admin.response';
+
 import { MonthlyRevenue } from './types/income.graph.type';
 import { Prisma } from '@prisma/client';
 import { Term } from 'src/payment/enum/term';
 import { FeeType } from 'src/payment/enum/fee.type';
 import { PaymentStatus } from 'src/payment/enum/payment.status';
+import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 
 @Injectable()
 export class AdminService {
@@ -186,46 +186,49 @@ export class AdminService {
     }
   }
 
-  async editAdmin(
-    currentUserId: string,
-    input: EditAdminInput,
-  ): Promise<EditAdminResponse> {
+  async updateAdminProfile(id: string, input: UpdateProfileInput) {
     try {
-      const { username, email, img, password } = input;
-
-      const transaction = await this.prisma.$transaction(async (tx) => {
-        if (username) {
+      return await this.prisma.$transaction(async (tx) => {
+        // Check for username uniqueness if username is being updated
+        if (input.username) {
           const usernameExists = await tx.admin.findUnique({
-            where: { username },
+            where: { username: input.username },
           });
 
-          if (usernameExists) {
+          if (usernameExists && usernameExists.id !== id) {
             throw new ConflictException(`Username already taken`);
           }
         }
 
-        const updatedAdmin = await tx.admin.update({
-          where: { id: currentUserId },
-          data: {
-            ...(username && { username }),
-            ...(email && { email }),
-            ...(img && { img }),
-            ...(password && { password: await bcrypt.hash(password, 10) }),
-          },
-        });
+        // Check for email uniqueness if email is being updated
+        if (input.email) {
+          const emailExists = await tx.admin.findFirst({
+            where: { email: input.email },
+          });
 
-        return updatedAdmin;
+          if (emailExists && emailExists.id !== id) {
+            throw new ConflictException(`Email already taken`);
+          }
+        }
+
+        // If password is provided, hash it
+        if (input.password) {
+          const salt = await bcrypt.genSalt();
+          input.password = await bcrypt.hash(input.password, salt);
+        }
+
+        return tx.admin.update({
+          where: { id },
+          data: input,
+        });
       });
-      return {
-        success: true,
-        message: 'Profile updated successfully',
-        admin: {
-          ...transaction,
-          role: transaction.role as Roles,
-        },
-      };
     } catch (error) {
-      throw error;
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to update profile: ${error.message}`,
+      );
     }
   }
 

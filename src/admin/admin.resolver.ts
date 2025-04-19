@@ -6,16 +6,16 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { Admin } from './types/admin.types';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { EditAdminInput } from './input/edit.admin.input';
-import { EditAdminResponse } from './response/edit.admin.response';
+
 import { DashboardSummary } from './types/dashboard.summary.type';
 import { MonthlyRevenue } from './types/income.graph.type';
 import { AdminUsersResponse } from './response/admin.users.response';
+import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminResolver {
-  constructor(private adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) {}
 
   @Query(() => [Admin])
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
@@ -38,11 +38,13 @@ export class AdminResolver {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Mutation(() => Admin)
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
-  @Mutation(() => EditAdminResponse)
-  async editAdmin(@Context() context, @Args('input') input: EditAdminInput) {
-    return await this.adminService.editAdmin(context.req.user.userId, input);
+  async updateAdminProfile(
+    @Context() context,
+    @Args('input') input: UpdateProfileInput,
+  ) {
+    return this.adminService.updateAdminProfile(context.req.user.id, input);
   }
 
   @UseGuards(JwtAuthGuard)
