@@ -44,7 +44,7 @@ export class AdminResolver {
     @Context() context,
     @Args('input') input: UpdateProfileInput,
   ) {
-    return this.adminService.updateAdminProfile(context.req.user.id, input);
+    return this.adminService.updateAdminProfile(context.req.user.userId, input);
   }
 
   @UseGuards(JwtAuthGuard)

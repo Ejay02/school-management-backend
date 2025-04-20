@@ -64,6 +64,9 @@ export class StudentResolver {
     @Context() context: any,
     @Args('input') input: UpdateProfileInput,
   ) {
-    return this.studentService.updateStudentProfile(context.req.user.id, input);
+    return this.studentService.updateStudentProfile(
+      context.req.user.userId,
+      input,
+    );
   }
 }

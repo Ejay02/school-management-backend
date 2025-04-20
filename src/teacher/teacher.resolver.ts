@@ -51,6 +51,9 @@ export class TeacherResolver {
     @Context() context: any,
     @Args('input') input: UpdateProfileInput,
   ) {
-    return this.teacherService.updateTeacherProfile(context.req.user.id, input);
+    return this.teacherService.updateTeacherProfile(
+      context.req.user.userId,
+      input,
+    );
   }
 }

@@ -53,6 +53,9 @@ export class ParentResolver {
     @Args('input') input: UpdateProfileInput,
     @Context() context: any,
   ) {
-    return this.parentService.updateParentProfile(context.req.user.id, input);
+    return this.parentService.updateParentProfile(
+      context.req.user.userId,
+      input,
+    );
   }
 }

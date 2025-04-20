@@ -60,4 +60,8 @@ export class UpdateProfileInput {
   @IsOptional()
   @IsEnum(Sex)
   sex?: Sex;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  dateOfBirth?: Date;
 }

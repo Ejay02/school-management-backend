@@ -44,6 +44,9 @@ export class Student {
   sex?: string;
 
   @Field()
+  dateOfBirth?: Date;
+
+  @Field()
   parentId: string;
 
   @Field(() => Parent)

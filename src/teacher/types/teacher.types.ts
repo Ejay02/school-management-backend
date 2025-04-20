@@ -41,6 +41,9 @@ export class Teacher {
   @Field({ nullable: true })
   sex?: string;
 
+  @Field()
+  dateOfBirth?: Date;
+
   @Field(() => [Subject])
   subjects: Subject[];
 

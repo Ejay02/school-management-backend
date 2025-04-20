@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { AdminResolver } from './admin.resolver';
 import { AdminService } from './admin.service';
 import { JwtService } from '@nestjs/jwt';
+import { CloudinaryModule } from 'src/shared/cloudinary/cloudinary.module';
 
 @Module({
-  imports: [],
+  imports: [CloudinaryModule],
   providers: [AdminService, JwtService, AdminResolver],
   exports: [AdminService],
 })

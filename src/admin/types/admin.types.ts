@@ -25,6 +25,9 @@ export class Admin {
   img?: string;
 
   @Field()
+  dateOfBirth?: Date;
+
+  @Field()
   createdAt: Date;
 
   @Field()

@@ -32,6 +32,7 @@ import { SecurityModule } from './shared/security/security.module';
 import { join } from 'path';
 import { QuestionModule } from './shared/question/question.module';
 import GraphQLJSON from 'graphql-type-json';
+import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import GraphQLJSON from 'graphql-type-json';
     SchedulingModule,
     SecurityModule,
     QuestionModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],

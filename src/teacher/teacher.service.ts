@@ -1,5 +1,4 @@
 import {
-  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -13,12 +12,14 @@ import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import * as bcrypt from 'bcrypt';
+import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
 
 @Injectable()
 export class TeacherService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async getAllTeachers(
@@ -194,48 +195,60 @@ export class TeacherService {
     }
   }
 
-  async updateTeacherProfile(id: string, input: UpdateProfileInput) {
+  async updateTeacherProfile(
+    id: string,
+    input: UpdateProfileInput,
+    file?: Express.Multer.File,
+  ) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        // Check for username uniqueness if username is being updated
-        if (input.username) {
-          const usernameExists = await tx.teacher.findUnique({
-            where: { username: input.username },
-          });
-
-          if (usernameExists && usernameExists.id !== id) {
-            throw new ConflictException(`Username already taken`);
-          }
-        }
-
-        // Check for email uniqueness if email is being updated
-        if (input.email) {
-          const emailExists = await tx.teacher.findFirst({
-            where: { email: input.email },
-          });
-
-          if (emailExists && emailExists.id !== id) {
-            throw new ConflictException(`Email already taken`);
-          }
-        }
-
-        // If password is provided, hash it
-        if (input.password) {
-          const salt = await bcrypt.genSalt();
-          input.password = await bcrypt.hash(input.password, salt);
-        }
-
-        return tx.teacher.update({
+      // Upload image if provided
+      let imageUrl = input.img;
+      if (file) {
+        // Get the current teacher to check if they have an existing image
+        const teacher = await this.prisma.teacher.findUnique({
           where: { id },
-          data: input,
+          select: { img: true },
         });
+
+        // Delete old image if exists
+        if (teacher?.img) {
+          try {
+            const publicId = this.cloudinaryService.getPublicIdFromUrl(
+              teacher.img,
+            );
+            await this.cloudinaryService.deleteImage(publicId);
+          } catch (error) {
+            console.error('Failed to delete old image:', error);
+            // Continue with upload even if delete fails
+          }
+        }
+
+        // Upload new image
+        imageUrl = await this.cloudinaryService.uploadImage(
+          file,
+          'teacher-profiles',
+        );
+      }
+
+      // Hash password if provided
+      let passwordData = {};
+      if (input.password) {
+        const hashedPassword = await bcrypt.hash(input.password, 10);
+        passwordData = { password: hashedPassword };
+      }
+
+      // Update teacher profile
+      return this.prisma.teacher.update({
+        where: { id },
+        data: {
+          ...input,
+          ...passwordData,
+          img: imageUrl,
+        },
       });
     } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
       throw new InternalServerErrorException(
-        `Failed to update profile: ${error.message}`,
+        `Failed to update teacher profile: ${error.message}`,
       );
     }
   }

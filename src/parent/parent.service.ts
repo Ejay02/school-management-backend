@@ -12,12 +12,14 @@ import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import * as bcrypt from 'bcrypt';
+import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
 
 @Injectable()
 export class ParentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async getAllParents(
@@ -128,7 +130,11 @@ export class ParentService {
     }
   }
 
-  async updateParentProfile(id: string, input: UpdateProfileInput) {
+  async updateParentProfile(
+    id: string,
+    input: UpdateProfileInput,
+    file?: Express.Multer.File,
+  ) {
     try {
       return await this.prisma.$transaction(async (tx) => {
         // Check for username uniqueness if username is being updated
@@ -142,34 +148,56 @@ export class ParentService {
           }
         }
 
-        // Check for email uniqueness if email is being updated
-        if (input.email) {
-          const emailExists = await tx.parent.findFirst({
-            where: { email: input.email },
+        // Upload image if provided
+        let imageUrl = input.img;
+        if (file) {
+          // Get the current parent to check if they have an existing image
+          const parent = await tx.parent.findUnique({
+            where: { id },
+            select: { img: true },
           });
 
-          if (emailExists && emailExists.id !== id) {
-            throw new ConflictException(`Email already taken`);
+          // Delete old image if exists
+          if (parent?.img) {
+            try {
+              const publicId = this.cloudinaryService.getPublicIdFromUrl(
+                parent.img,
+              );
+              await this.cloudinaryService.deleteImage(publicId);
+            } catch (error) {
+              console.error('Failed to delete old image:', error);
+              // Continue with upload even if delete fails
+            }
           }
+
+          // Upload new image
+          imageUrl = await this.cloudinaryService.uploadImage(
+            file,
+            'parent-profiles',
+          );
         }
 
-        // If password is provided, hash it
+        // Hash password if provided
+        let passwordData = {};
         if (input.password) {
-          const salt = await bcrypt.genSalt();
-          input.password = await bcrypt.hash(input.password, salt);
+          const hashedPassword = await bcrypt.hash(input.password, 10);
+          passwordData = { password: hashedPassword };
         }
 
+        // Update parent profile
         return tx.parent.update({
           where: { id },
-          data: input,
+          data: {
+            ...input,
+            ...passwordData,
+            img: imageUrl,
+          },
         });
       });
     } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
+      if (error instanceof ConflictException) throw error;
       throw new InternalServerErrorException(
-        `Failed to update profile: ${error.message}`,
+        `Failed to update parent profile: ${error.message}`,
       );
     }
   }

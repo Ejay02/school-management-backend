@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -11,6 +10,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
 import * as bcrypt from 'bcrypt';
+import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
 
 import { MonthlyRevenue } from './types/income.graph.type';
 import { Prisma } from '@prisma/client';
@@ -21,7 +21,10 @@ import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   async verifyAdmin(userId: string) {
     try {
@@ -186,48 +189,60 @@ export class AdminService {
     }
   }
 
-  async updateAdminProfile(id: string, input: UpdateProfileInput) {
+  async updateAdminProfile(
+    id: string,
+    input: UpdateProfileInput,
+    file?: Express.Multer.File,
+  ) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        // Check for username uniqueness if username is being updated
-        if (input.username) {
-          const usernameExists = await tx.admin.findUnique({
-            where: { username: input.username },
-          });
-
-          if (usernameExists && usernameExists.id !== id) {
-            throw new ConflictException(`Username already taken`);
-          }
-        }
-
-        // Check for email uniqueness if email is being updated
-        if (input.email) {
-          const emailExists = await tx.admin.findFirst({
-            where: { email: input.email },
-          });
-
-          if (emailExists && emailExists.id !== id) {
-            throw new ConflictException(`Email already taken`);
-          }
-        }
-
-        // If password is provided, hash it
-        if (input.password) {
-          const salt = await bcrypt.genSalt();
-          input.password = await bcrypt.hash(input.password, salt);
-        }
-
-        return tx.admin.update({
+      // Upload image if provided
+      let imageUrl = input.img;
+      if (file) {
+        // Get the current admin to check if they have an existing image
+        const admin = await this.prisma.admin.findUnique({
           where: { id },
-          data: input,
+          select: { img: true },
         });
+
+        // Delete old image if exists
+        if (admin?.img) {
+          try {
+            const publicId = this.cloudinaryService.getPublicIdFromUrl(
+              admin.img,
+            );
+            await this.cloudinaryService.deleteImage(publicId);
+          } catch (error) {
+            console.error('Failed to delete old image:', error);
+            // Continue with upload even if delete fails
+          }
+        }
+
+        // Upload new image
+        imageUrl = await this.cloudinaryService.uploadImage(
+          file,
+          'admin-profiles',
+        );
+      }
+
+      // Hash password if provided
+      let passwordData = {};
+      if (input.password) {
+        const hashedPassword = await bcrypt.hash(input.password, 10);
+        passwordData = { password: hashedPassword };
+      }
+
+      // Update admin profile
+      return this.prisma.admin.update({
+        where: { id },
+        data: {
+          ...input,
+          ...passwordData,
+          img: imageUrl,
+        },
       });
     } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
       throw new InternalServerErrorException(
-        `Failed to update profile: ${error.message}`,
+        `Failed to update admin profile: ${error.message}`,
       );
     }
   }

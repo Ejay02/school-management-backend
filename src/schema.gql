@@ -9,6 +9,7 @@ type AcademicYear {
 
 type Admin {
   createdAt: DateTime!
+  dateOfBirth: DateTime!
   email: String
   id: String!
   img: String
@@ -555,6 +556,7 @@ input PaginationInput {
 type Parent {
   address: String
   createdAt: DateTime!
+  dateOfBirth: DateTime!
   email: String
   id: String!
   img: String
@@ -733,6 +735,7 @@ type Student {
   class: Class!
   classId: Int!
   createdAt: DateTime!
+  dateOfBirth: DateTime!
   email: String
   grade: Grade!
   gradeId: Int!
@@ -801,6 +804,7 @@ type Teacher {
   bloodType: String
   classes: [Class!]!
   createdAt: DateTime!
+  dateOfBirth: DateTime!
   email: String
   id: String!
   img: String
@@ -862,6 +866,7 @@ input UpdateGradeInput {
 input UpdateProfileInput {
   address: String
   bloodType: String
+  dateOfBirth: DateTime
   email: String
   img: String
   name: String
