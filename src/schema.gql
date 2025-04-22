@@ -9,9 +9,9 @@ type AcademicYear {
 
 type Admin {
   createdAt: DateTime!
-  dateOfBirth: DateTime!
+  dateOfBirth: DateTime
   email: String
-  id: String!
+  id: ID!
   img: String
   name: String
   role: Roles!
@@ -556,12 +556,12 @@ input PaginationInput {
 type Parent {
   address: String
   createdAt: DateTime!
-  dateOfBirth: DateTime!
+  dateOfBirth: DateTime
   email: String
-  id: String!
+  id: ID!
   img: String
   name: String!
-  password: String!
+  password: String
   phone: String!
   role: String!
   students: [Student!]!
@@ -730,23 +730,23 @@ enum SortOrder {
 
 type Student {
   address: String
-  attendances: [Attendance!]!
+  attendances: [Attendance]
   bloodType: String
-  class: Class!
-  classId: Int!
+  class: Class
+  classId: String!
   createdAt: DateTime!
-  dateOfBirth: DateTime!
+  dateOfBirth: DateTime
   email: String
-  grade: Grade!
-  gradeId: Int!
-  id: String!
+  grade: Grade
+  gradeId: String!
+  id: ID!
   img: String
   name: String!
-  parent: Parent!
+  parent: Parent
   parentId: String!
-  password: String!
+  password: String
   phone: String
-  results: [Result!]!
+  results: [Result]
   role: String!
   sex: String
   surname: String!
@@ -804,13 +804,13 @@ type Teacher {
   bloodType: String
   classes: [Class!]!
   createdAt: DateTime!
-  dateOfBirth: DateTime!
+  dateOfBirth: DateTime
   email: String
-  id: String!
+  id: ID!
   img: String
   lessons: [Lesson!]!
   name: String!
-  password: String!
+  password: String
   phone: String
   role: String!
   sex: String

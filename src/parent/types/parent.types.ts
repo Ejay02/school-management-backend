@@ -1,9 +1,9 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { Student } from 'src/student/types/student.types';
 
 @ObjectType()
 export class Parent {
-  @Field()
+  @Field(() => ID)
   id: string;
 
   @Field()
@@ -21,7 +21,7 @@ export class Parent {
   @Field({ nullable: true })
   email?: string;
 
-  @Field()
+  @Field({ nullable: true })
   password: string;
 
   @Field()
@@ -33,7 +33,7 @@ export class Parent {
   @Field({ nullable: true })
   img?: string;
 
-  @Field()
+  @Field({ nullable: true })
   dateOfBirth?: Date;
 
   @Field(() => [Student])

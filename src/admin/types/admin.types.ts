@@ -1,9 +1,9 @@
-import { ObjectType, Field } from '@nestjs/graphql';
+import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { Roles } from 'src/shared/enum/role';
 
 @ObjectType()
 export class Admin {
-  @Field()
+  @Field(() => ID)
   id: string;
 
   @Field({ nullable: true })
@@ -24,7 +24,7 @@ export class Admin {
   @Field({ nullable: true })
   img?: string;
 
-  @Field()
+  @Field({ nullable: true })
   dateOfBirth?: Date;
 
   @Field()

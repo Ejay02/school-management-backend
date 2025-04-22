@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { Parent } from 'src/parent/types/parent.types';
 import { Class } from 'src/class/types/class.types';
 import { Grade } from 'src/grade/types/grade.types';
@@ -7,7 +7,7 @@ import { Result } from 'src/result/types/result.types';
 
 @ObjectType()
 export class Student {
-  @Field()
+  @Field(() => ID)
   id: string;
 
   @Field()
@@ -25,8 +25,8 @@ export class Student {
   @Field({ nullable: true })
   email?: string;
 
-  @Field()
-  password: string;
+  @Field({ nullable: true }) // Don't expose password in GraphQL responses
+  password?: string;
 
   @Field({ nullable: true })
   phone?: string;
@@ -43,32 +43,32 @@ export class Student {
   @Field({ nullable: true })
   sex?: string;
 
-  @Field()
+  @Field({ nullable: true })
   dateOfBirth?: Date;
 
   @Field()
   parentId: string;
 
-  @Field(() => Parent)
-  parent: Parent;
+  @Field(() => Parent, { nullable: true })
+  parent?: Parent;
 
-  @Field(() => Int)
+  @Field()
   classId: string;
 
-  @Field(() => Class)
-  class: Class;
+  @Field(() => Class, { nullable: true })
+  class?: Class;
 
-  @Field(() => Int)
+  @Field()
   gradeId: string;
 
-  @Field(() => Grade)
-  grade: Grade;
+  @Field(() => Grade, { nullable: true })
+  grade?: Grade;
 
-  @Field(() => [Attendance])
-  attendances: Attendance[];
+  @Field(() => [Attendance], { nullable: 'itemsAndList' })
+  attendances?: Attendance[];
 
-  @Field(() => [Result])
-  results: Result[];
+  @Field(() => [Result], { nullable: 'itemsAndList' })
+  results?: Result[];
 
   @Field()
   createdAt: Date;

@@ -47,6 +47,10 @@ model Student {
   submissions     Submission[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([parentId])
+  @@index([classId])
+  @@index([gradeId])
 }
 
 model Teacher{
@@ -117,8 +121,10 @@ model Grade {
   updatedAt       DateTime      @updatedAt
 
   @@unique([studentId, examId, assignmentId, academicPeriod])
-  
 
+  @@index([studentId])
+  @@index([examId])
+  @@index([assignmentId])
 }
 
 model Class {
@@ -236,6 +242,10 @@ model Submission {
   content         String?       // Optional field to store submission content (e.g., file URL or text)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([gradeId])
 }
 
 model Result {
@@ -249,6 +259,10 @@ model Result {
   student         Student       @relation(fields: [studentId], references: [id] )    
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([examId])
+  @@index([assignmentId])
+  @@index([studentId])
 }
 
 model Attendance{
@@ -265,6 +279,10 @@ model Attendance{
   updatedAt       DateTime      @updatedAt
 
   @@unique([lessonId, studentId, date])
+
+  @@index([studentId])
+  @@index([lessonId])
+  @@index([classId])
 }
 
 model Event {
