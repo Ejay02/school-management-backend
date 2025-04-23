@@ -304,19 +304,19 @@ export class StudentService {
   ) {
     try {
       // Upload image if provided
-      let imageUrl = input.img;
+      let imageUrl = input.image;
       if (file) {
         // Get the current student to check if they have an existing image
         const student = await this.prisma.student.findUnique({
           where: { id },
-          select: { img: true },
+          select: { image: true },
         });
 
         // Delete old image if exists
-        if (student?.img) {
+        if (student?.image) {
           try {
             const publicId = this.cloudinaryService.getPublicIdFromUrl(
-              student.img,
+              student.image,
             );
             await this.cloudinaryService.deleteImage(publicId);
           } catch (error) {
@@ -345,7 +345,7 @@ export class StudentService {
         data: {
           ...input,
           ...passwordData,
-          img: imageUrl,
+          image: imageUrl,
         },
       });
     } catch (error) {

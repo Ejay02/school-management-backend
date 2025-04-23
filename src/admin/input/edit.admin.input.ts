@@ -15,7 +15,7 @@ export class EditAdminInput {
 
   @Field({ nullable: true })
   @IsOptional()
-  img?: string;
+  image?: string;
 
   @Field({ nullable: true })
   @IsOptional()

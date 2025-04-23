@@ -33,7 +33,7 @@ export class Teacher {
   address?: string;
 
   @Field({ nullable: true })
-  img?: string;
+  image?: string;
 
   @Field({ nullable: true })
   bloodType?: string;

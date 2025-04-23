@@ -149,19 +149,19 @@ export class ParentService {
         }
 
         // Upload image if provided
-        let imageUrl = input.img;
+        let imageUrl = input.image;
         if (file) {
           // Get the current parent to check if they have an existing image
           const parent = await tx.parent.findUnique({
             where: { id },
-            select: { img: true },
+            select: { image: true },
           });
 
           // Delete old image if exists
-          if (parent?.img) {
+          if (parent?.image) {
             try {
               const publicId = this.cloudinaryService.getPublicIdFromUrl(
-                parent.img,
+                parent.image,
               );
               await this.cloudinaryService.deleteImage(publicId);
             } catch (error) {
@@ -190,7 +190,7 @@ export class ParentService {
           data: {
             ...input,
             ...passwordData,
-            img: imageUrl,
+            image: imageUrl,
           },
         });
       });

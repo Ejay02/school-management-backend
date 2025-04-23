@@ -31,7 +31,7 @@ export class Parent {
   address?: string;
 
   @Field({ nullable: true })
-  img?: string;
+  image?: string;
 
   @Field({ nullable: true })
   dateOfBirth?: Date;

@@ -16,7 +16,7 @@ model Admin {
   role            Role
   email           String?   
   password        String
-  img             String?
+  image             String?
   dateOfBirth     DateTime? 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -32,7 +32,7 @@ model Student {
   password        String
   phone           String?       @unique
   address         String?
-  img             String?
+  image             String?
   bloodType       String?
   sex             Sex?
   dateOfBirth     DateTime? 
@@ -63,7 +63,7 @@ model Teacher{
   password        String
   phone           String?       @unique
   address         String?
-  img             String?
+  image             String?
   bloodType       String?
   sex             Sex?
   dateOfBirth     DateTime? 
@@ -86,7 +86,7 @@ model Parent {
   password        String
   phone           String ?       @unique
   address         String?
-  img             String?
+  image             String?
   dateOfBirth     DateTime? 
   students        Student[]
   invoices        Invoice[]

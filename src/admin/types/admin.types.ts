@@ -22,7 +22,7 @@ export class Admin {
   role: Roles;
 
   @Field({ nullable: true })
-  img?: string;
+  image?: string;
 
   @Field({ nullable: true })
   dateOfBirth?: Date;

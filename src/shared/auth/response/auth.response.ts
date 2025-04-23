@@ -21,6 +21,12 @@ export class AuthResponse {
   username: string;
 
   @Field({ nullable: true })
+  dateOfBirth?: string;
+
+  @Field({ nullable: true })
+  image?: string;
+
+  @Field({ nullable: true })
   name?: string;
 
   @Field({ nullable: true })

@@ -12,7 +12,7 @@ type Admin {
   dateOfBirth: DateTime
   email: String
   id: ID!
-  img: String
+  image: String
   name: String
   role: Roles!
   surname: String
@@ -115,9 +115,11 @@ type AuthResponse {
   address: String
   bloodType: String
   classId: String
+  dateOfBirth: String
   email: String!
   gradeId: String
   id: String
+  image: String
   name: String
   parentId: String
   phone: String
@@ -559,7 +561,7 @@ type Parent {
   dateOfBirth: DateTime
   email: String
   id: ID!
-  img: String
+  image: String
   name: String!
   password: String
   phone: String!
@@ -740,7 +742,7 @@ type Student {
   grade: Grade
   gradeId: String!
   id: ID!
-  img: String
+  image: String
   name: String!
   parent: Parent
   parentId: String!
@@ -807,7 +809,7 @@ type Teacher {
   dateOfBirth: DateTime
   email: String
   id: ID!
-  img: String
+  image: String
   lessons: [Lesson!]!
   name: String!
   password: String
@@ -868,7 +870,7 @@ input UpdateProfileInput {
   bloodType: String
   dateOfBirth: DateTime
   email: String
-  img: String
+  image: String
   name: String
   password: String
   phone: String

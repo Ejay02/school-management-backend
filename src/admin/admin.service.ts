@@ -196,19 +196,19 @@ export class AdminService {
   ) {
     try {
       // Upload image if provided
-      let imageUrl = input.img;
+      let imageUrl = input.image;
       if (file) {
         // Get the current admin to check if they have an existing image
         const admin = await this.prisma.admin.findUnique({
           where: { id },
-          select: { img: true },
+          select: { image: true },
         });
 
         // Delete old image if exists
-        if (admin?.img) {
+        if (admin?.image) {
           try {
             const publicId = this.cloudinaryService.getPublicIdFromUrl(
-              admin.img,
+              admin.image,
             );
             await this.cloudinaryService.deleteImage(publicId);
           } catch (error) {
@@ -237,7 +237,7 @@ export class AdminService {
         data: {
           ...input,
           ...passwordData,
-          img: imageUrl,
+          image: imageUrl,
         },
       });
     } catch (error) {
