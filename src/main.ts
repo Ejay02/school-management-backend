@@ -4,6 +4,8 @@ import * as express from 'express';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { EventEmitter } from 'events';
 import rateLimit from 'express-rate-limit';
+import * as fs from 'fs';
+import * as path from 'path';
 
 async function bootstrap() {
   console.log(`
@@ -21,13 +23,42 @@ async function bootstrap() {
   // Increase default max listeners globally
   EventEmitter.defaultMaxListeners = 20;
 
-  const app = await NestFactory.create(AppModule);
+  // SSL/TLS Configuration
+  let httpsOptions = undefined;
+
+  // Check if we're in production mode
+  if (process.env.NODE_ENV === 'production') {
+    // Use production certificates
+    httpsOptions = {
+      key: fs.readFileSync(
+        process.env.SSL_KEY_PATH ||
+          path.resolve(__dirname, '../ssl/private-key.pem'),
+      ),
+      cert: fs.readFileSync(
+        process.env.SSL_CERT_PATH ||
+          path.resolve(__dirname, '../ssl/certificate.pem'),
+      ),
+    };
+  } else if (process.env.USE_HTTPS_DEV === 'true') {
+    // Use development self-signed certificates if specified
+    httpsOptions = {
+      key: fs.readFileSync(path.resolve(__dirname, '../ssl/dev-key.pem')),
+      cert: fs.readFileSync(path.resolve(__dirname, '../ssl/dev-cert.pem')),
+    };
+  }
+
+  // Create the app with HTTPS options if available
+  const app = await NestFactory.create(AppModule, { httpsOptions });
 
   app.useWebSocketAdapter(new IoAdapter(app));
 
   // Configure CORS
   app.enableCors({
-    origin: '*',
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? ['https://yourdomain.com', 'https://www.yourdomain.com']
+        : '*',
+    credentials: true,
   });
 
   // Apply rate limiting with generous limits
@@ -61,6 +92,17 @@ async function bootstrap() {
     express.raw({ type: 'application/json' }), // Stripe requires raw body for webhooks
   );
 
-  await app.listen(3000);
+  // Set up HSTS for production
+  if (process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+      res.setHeader(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains',
+      );
+      next();
+    });
+  }
+
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

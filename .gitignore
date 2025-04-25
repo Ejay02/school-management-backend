@@ -35,3 +35,10 @@ lerna-debug.log*
 !.vscode/extensions.json
 .env
 note
+# SSL certificates
+/ssl/*.pem
+/ssl/*.key
+/ssl/*.crt
+/ssl/*.pfx
+/ssl/*.p12
+ssl
