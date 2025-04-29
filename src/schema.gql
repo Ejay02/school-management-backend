@@ -524,6 +524,7 @@ type Mutation {
   deleteUser(targetId: String!): Boolean!
   editAnnouncement(announcementId: String!, content: String!, targetRoles: [String!], title: String!): Announcement!
   editAssignment(assignmentId: String!, editAssignmentInput: EditAssignmentInput!): Assignment!
+  editFeeStructure(id: String!, input: UpdateFeeStructureInput!): FeeStructure!
   editLesson(editLessonInput: EditLessonInput!, lessonId: String!): Lesson!
   editSubmission(input: UpdateSubmissionInput!, submissionId: String!): Submission!
   generateInvoice(feeStructureId: String!): Invoice!
@@ -866,6 +867,23 @@ input UpdateExamInput {
   questions: [CreateQuestionInput!]
   startTime: DateTime
   title: String
+}
+
+input UpdateFeeComponentInput {
+  amount: Float!
+  description: String
+  id: String
+  name: String!
+}
+
+input UpdateFeeStructureInput {
+  academicYear: String
+  classIds: [String!]
+  components: [UpdateFeeComponentInput!]
+  description: FeeDescription
+  term: Term
+  totalAmount: Float
+  type: FeeType
 }
 
 input UpdateGradeInput {

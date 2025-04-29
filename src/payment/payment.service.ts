@@ -12,6 +12,7 @@ import { CreateFeeStructureInput } from './input/create.fee.structure.input';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import { FeeType } from './enum/fee.type';
+import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 
 @Injectable()
 export class PaymentService {
@@ -159,6 +160,153 @@ export class PaymentService {
       }
       throw new InternalServerErrorException(
         `Failed to create fee structure: ${error.message}`,
+      );
+    }
+  }
+
+  async editFeeStructure(id: string, input: UpdateFeeStructureInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const existingStructure = await tx.feeStructure.findUnique({
+          where: { id },
+          include: { components: true },
+        });
+
+        if (!existingStructure) {
+          throw new NotFoundException('Fee structure not found');
+        }
+
+        if (input.classIds?.length) {
+          const existingFeeStructures = await tx.class.findMany({
+            where: {
+              id: { in: input.classIds },
+              feeStructure: {
+                academicYear:
+                  input.academicYear || existingStructure.academicYear,
+              },
+            },
+            include: { feeStructure: true },
+          });
+
+          // For YEARLY type, check if any class already has a yearly fee structure
+          if (input.type === FeeType.YEARLY) {
+            const classWithYearlyFee = existingFeeStructures.find(
+              (cls) => cls.feeStructure?.type === FeeType.YEARLY,
+            );
+
+            if (classWithYearlyFee) {
+              throw new BadRequestException(
+                `Class ${classWithYearlyFee.name} already has a yearly fee structure for academic year ${input.academicYear}`,
+              );
+            }
+          }
+
+          // For TERM type, check if any class already has this specific term
+          if (input.type === FeeType.TERM && input.term) {
+            const classWithTermFee = existingFeeStructures.find(
+              (cls) => cls.feeStructure?.term === input.term,
+            );
+
+            if (classWithTermFee) {
+              throw new BadRequestException(
+                `Class ${classWithTermFee.name} already has a fee structure for ${input.term} term in academic year ${input.academicYear}`,
+              );
+            }
+
+            // Check if any class already has all three terms
+            const classTermCounts = await tx.class.findMany({
+              where: {
+                id: { in: input.classIds },
+              },
+              select: {
+                id: true,
+                name: true,
+                feeStructure: {
+                  where: {
+                    academicYear: input.academicYear,
+                    type: FeeType.TERM,
+                  },
+                  select: {
+                    term: true,
+                  },
+                },
+              },
+            });
+
+            // Check if any class has all three terms
+            const classWithAllTerms = classTermCounts.find(
+              (cls) =>
+                Array.isArray(cls.feeStructure) && cls.feeStructure.length >= 3,
+            );
+
+            if (classWithAllTerms) {
+              throw new BadRequestException(
+                `Class ${classWithAllTerms.name} already has all three terms defined for academic year ${input.academicYear}`,
+              );
+            }
+          }
+        }
+
+        // Validate components if updated
+        if (input.components) {
+          const componentSum = input.components.reduce(
+            (sum, comp) => sum + comp.amount,
+            0,
+          );
+          if (
+            Math.abs(
+              componentSum -
+                (input.totalAmount || existingStructure.totalAmount),
+            ) > 0.01
+          ) {
+            throw new BadRequestException(
+              'Total amount must equal sum of components',
+            );
+          }
+        }
+
+        const updatedStructure = await tx.feeStructure.update({
+          where: { id },
+          data: {
+            academicYear: input.academicYear,
+            term: input.type === FeeType.YEARLY ? null : input.term,
+            type: input.type,
+            description: input.description,
+            totalAmount: input.totalAmount,
+            components: input.components
+              ? {
+                  deleteMany: {},
+                  create: input.components.map((component) => ({
+                    name: component.name,
+                    description: component.description,
+                    amount: component.amount,
+                  })),
+                }
+              : undefined,
+          },
+          include: { components: true },
+        });
+
+        if (input.classIds) {
+          await tx.class.updateMany({
+            where: { feeStructureId: id },
+            data: { feeStructureId: null },
+          });
+
+          if (input.classIds.length) {
+            await tx.class.updateMany({
+              where: { id: { in: input.classIds } },
+              data: { feeStructureId: id },
+            });
+          }
+        }
+
+        return updatedStructure;
+      });
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        `Failed to update fee structure: ${error.message}`,
       );
     }
   }

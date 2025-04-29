@@ -9,6 +9,7 @@ import { FeeStructure } from './types/fee.structure.type';
 import { CreateFeeStructureInput } from './input/create.fee.structure.input';
 import { Invoice } from './types/invoice.type';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,6 +25,15 @@ export class PaymentResolver {
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async createFeeStructure(@Args('input') input: CreateFeeStructureInput) {
     return await this.paymentService.createFeeStructure(input);
+  }
+
+  @Mutation(() => FeeStructure)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  async editFeeStructure(
+    @Args('id') id: string,
+    @Args('input') input: UpdateFeeStructureInput,
+  ) {
+    return await this.paymentService.editFeeStructure(id, input);
   }
 
   @Mutation(() => Invoice)
