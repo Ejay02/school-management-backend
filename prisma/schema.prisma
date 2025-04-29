@@ -358,6 +358,7 @@ model FeeStructure {
   academicYear    String
   term            Term?
   type            FeeType      // YEARLY or TERM
+  description     FeeDescription?
   components      FeeComponent[]
   totalAmount     Float
   createdAt       DateTime      @default(now())
@@ -457,6 +458,14 @@ enum Term {
 enum FeeType {
   YEARLY
   TERM
+}
+
+enum FeeDescription {
+  TUITION
+  DEVELOPMENT_LEVY
+  UNIFORM
+  BOOKS
+  OTHER
 }
 
 enum InvoiceStatus {

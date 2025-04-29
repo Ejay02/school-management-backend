@@ -3,6 +3,7 @@ import { CreateFeeComponentInput } from './fee.structure.input';
 import { Term } from '../enum/term';
 import { FeeType } from '../enum/fee.type';
 import { ValidateIf } from 'class-validator';
+import { FeeDescription } from '../enum/fee.description';
 
 @InputType()
 export class CreateFeeStructureInput {
@@ -15,6 +16,9 @@ export class CreateFeeStructureInput {
 
   @Field(() => FeeType)
   type: FeeType;
+
+  @Field(() => FeeDescription, { nullable: true })
+  description?: FeeDescription;
 
   @Field(() => Float)
   totalAmount: number;

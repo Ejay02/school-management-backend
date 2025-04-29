@@ -23,9 +23,9 @@ export class PaymentService {
     });
   }
 
-  async getFeeStructure(id: string) {
+  async getFeeStructure(feeStructureId: string) {
     const feeStructure = await this.prisma.feeStructure.findUnique({
-      where: { id },
+      where: { id: feeStructureId },
       include: { components: true },
     });
 
@@ -129,6 +129,7 @@ export class PaymentService {
             academicYear: input.academicYear,
             term: input.type === FeeType.YEARLY ? null : input.term,
             type: input.type,
+            description: input.description,
             totalAmount: input.totalAmount,
             components: {
               create: input.components.map((component) => ({

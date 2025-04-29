@@ -216,6 +216,7 @@ input CreateFeeStructureInput {
   academicYear: String!
   classIds: [String!]
   components: [CreateFeeComponentInput!]!
+  description: FeeDescription
   term: Term
   totalAmount: Float!
   type: FeeType!
@@ -380,6 +381,14 @@ type FeeComponent {
   feeStructureId: String!
   id: ID!
   name: String!
+}
+
+enum FeeDescription {
+  BOOKS
+  DEVELOPMENT_LEVY
+  OTHER
+  TUITION
+  UNIFORM
 }
 
 type FeeStructure {
@@ -629,7 +638,7 @@ type Query {
   getEventById(id: String!): Event!
   getEvents(filter: EventFilter!, params: PaginationInput): [Event!]!
   getExamById(examId: String!): Exam!
-  getFeeStructure(id: String!): FeeStructure!
+  getFeeStructure(feeStructureId: String!): FeeStructure!
   getHello: String!
   getIncomeGraphData: MonthlyRevenue!
   getLessonById(id: String!): Lesson!

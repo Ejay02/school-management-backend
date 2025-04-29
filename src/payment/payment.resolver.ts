@@ -13,11 +13,11 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PaymentResolver {
-  constructor(private paymentService: PaymentService) {}
+  constructor(private readonly paymentService: PaymentService) {}
 
   @Query(() => FeeStructure)
-  async getFeeStructure(@Args('id') id: string) {
-    return await this.paymentService.getFeeStructure(id);
+  async getFeeStructure(@Args('feeStructureId') feeStructureId: string) {
+    return await this.paymentService.getFeeStructure(feeStructureId);
   }
 
   @Mutation(() => FeeStructure)
