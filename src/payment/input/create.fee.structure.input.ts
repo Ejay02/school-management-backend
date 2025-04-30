@@ -28,4 +28,7 @@ export class CreateFeeStructureInput {
 
   @Field(() => [String], { nullable: true })
   classIds?: string[];
+
+  @Field(() => String, { nullable: true })
+  classId?: string;
 }

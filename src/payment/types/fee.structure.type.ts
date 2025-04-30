@@ -8,6 +8,7 @@ import {
 import { Term } from '../enum/term';
 import { FeeType } from '../enum/fee.type';
 import { FeeComponent } from './fee.component.type';
+import { FeeDescription } from '../enum/fee.description';
 
 registerEnumType(Term, { name: 'Term' });
 registerEnumType(FeeType, { name: 'FeeType' });
@@ -20,8 +21,11 @@ export class FeeStructure {
   @Field()
   academicYear: string;
 
-  @Field(() => Term)
+  @Field(() => Term, { nullable: true })
   term?: Term;
+
+  @Field(() => FeeDescription, { nullable: true })
+  description?: FeeDescription;
 
   @Field(() => FeeType)
   type: FeeType;

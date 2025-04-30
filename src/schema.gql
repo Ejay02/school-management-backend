@@ -214,6 +214,7 @@ input CreateFeeComponentInput {
 
 input CreateFeeStructureInput {
   academicYear: String!
+  classId: String
   classIds: [String!]
   components: [CreateFeeComponentInput!]!
   description: FeeDescription
@@ -395,8 +396,9 @@ type FeeStructure {
   academicYear: String!
   components: [FeeComponent!]!
   createdAt: DateTime!
+  description: FeeDescription
   id: ID!
-  term: Term!
+  term: Term
   totalAmount: Float!
   type: FeeType!
   updatedAt: DateTime!
@@ -524,7 +526,6 @@ type Mutation {
   deleteUser(targetId: String!): Boolean!
   editAnnouncement(announcementId: String!, content: String!, targetRoles: [String!], title: String!): Announcement!
   editAssignment(assignmentId: String!, editAssignmentInput: EditAssignmentInput!): Assignment!
-  editFeeStructure(id: String!, input: UpdateFeeStructureInput!): FeeStructure!
   editLesson(editLessonInput: EditLessonInput!, lessonId: String!): Lesson!
   editSubmission(input: UpdateSubmissionInput!, submissionId: String!): Submission!
   generateInvoice(feeStructureId: String!): Invoice!
@@ -549,6 +550,7 @@ type Mutation {
   updateClass(classId: String!, input: UpdateClassInput!): Class!
   updateEvent(eventId: String!, input: EditEventInput!): Event!
   updateExam(examId: String!, input: UpdateExamInput!): Exam!
+  updateFeeStructure(id: String!, input: UpdateFeeStructureInput!): FeeStructure!
   updateGrade(input: UpdateGradeInput!): Grade!
   updateParentProfile(input: UpdateProfileInput!): Parent!
   updateResult(assignmentId: String, examId: String, id: String!, score: Int): Result!
@@ -623,6 +625,7 @@ type Query {
   getAllClassSubmissions(classId: String!, params: PaginationInput): [Submission!]!
   getAllClasses(params: PaginationInput): [Class!]!
   getAllExams(params: PaginationInput): [Exam!]!
+  getAllFeeStructures(params: PaginationInput): [FeeStructure!]!
   getAllLessons(params: PaginationInput): [Lesson!]!
   getAllParents(params: PaginationInput): [Parent!]!
   getAllStudents(params: PaginationInput): [Student!]!
@@ -639,7 +642,7 @@ type Query {
   getEventById(id: String!): Event!
   getEvents(filter: EventFilter!, params: PaginationInput): [Event!]!
   getExamById(examId: String!): Exam!
-  getFeeStructure(feeStructureId: String!): FeeStructure!
+  getFeeStructureById(feeStructureId: String!): FeeStructure!
   getHello: String!
   getIncomeGraphData: MonthlyRevenue!
   getLessonById(id: String!): Lesson!

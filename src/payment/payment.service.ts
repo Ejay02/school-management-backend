@@ -4,6 +4,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import Stripe from 'stripe';
@@ -24,7 +25,40 @@ export class PaymentService {
     });
   }
 
-  async getFeeStructure(feeStructureId: string) {
+  async getAllFeeStructures(params: PaginationParams) {
+    try {
+      const baseQuery = {
+        include: {
+          components: true,
+          classes: true,
+        },
+        orderBy: { academicYear: 'desc' },
+      };
+
+      // Define searchable fields
+      const searchFields = ['academicYear', 'term', 'type', 'description'];
+
+      // If no limit is specified, set it to a higher value to fetch all fee structures
+      const enhancedParams = {
+        ...params,
+        limit: params.limit || 100, // Use 100 as default limit instead of 10
+      };
+
+      const result = await PrismaQueryBuilder.paginateResponse(
+        this.prisma.feeStructure,
+        baseQuery,
+        enhancedParams,
+        searchFields,
+      );
+
+      return result;
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      throw new InternalServerErrorException('Failed to fetch fee structures');
+    }
+  }
+
+  async getFeeStructureById(feeStructureId: string) {
     const feeStructure = await this.prisma.feeStructure.findUnique({
       where: { id: feeStructureId },
       include: { components: true },
@@ -40,11 +74,22 @@ export class PaymentService {
   async createFeeStructure(input: CreateFeeStructureInput) {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        if (input.classIds?.length) {
+        // Handle both single classId and array of classIds
+        let classIdsToUse: string[] = [];
+
+        if (input.classId) {
+          // If a single classId is provided, use it
+          classIdsToUse = [input.classId];
+        } else if (input.classIds?.length) {
+          // If an array of classIds is provided, use them
+          classIdsToUse = input.classIds;
+        }
+
+        if (classIdsToUse.length) {
           // Check existing fee structures for these classes
           const existingFeeStructures = await tx.class.findMany({
             where: {
-              id: { in: input.classIds },
+              id: { in: classIdsToUse },
               feeStructure: {
                 academicYear: input.academicYear,
               },
@@ -82,7 +127,7 @@ export class PaymentService {
             // Check if any class already has all three terms
             const classTermCounts = await tx.class.findMany({
               where: {
-                id: { in: input.classIds },
+                id: { in: classIdsToUse },
               },
               select: {
                 id: true,
@@ -145,9 +190,9 @@ export class PaymentService {
           },
         });
 
-        if (input.classIds?.length) {
+        if (classIdsToUse.length) {
           await tx.class.updateMany({
-            where: { id: { in: input.classIds } },
+            where: { id: { in: classIdsToUse } },
             data: { feeStructureId: feeStructure.id },
           });
         }
@@ -164,7 +209,7 @@ export class PaymentService {
     }
   }
 
-  async editFeeStructure(id: string, input: UpdateFeeStructureInput) {
+  async updateFeeStructure(id: string, input: UpdateFeeStructureInput) {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const existingStructure = await tx.feeStructure.findUnique({

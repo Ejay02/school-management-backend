@@ -16,9 +16,19 @@ import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 export class PaymentResolver {
   constructor(private readonly paymentService: PaymentService) {}
 
+  @Query(() => [FeeStructure])
+  @HasRoles(Roles.SUPER_ADMIN)
+  async getAllFeeStructures(
+    @Args('params', { nullable: true }) params?: PaginationInput,
+  ) {
+    const result = await this.paymentService.getAllFeeStructures(params || {});
+    return result.data;
+  }
+
   @Query(() => FeeStructure)
-  async getFeeStructure(@Args('feeStructureId') feeStructureId: string) {
-    return await this.paymentService.getFeeStructure(feeStructureId);
+  @HasRoles(Roles.SUPER_ADMIN)
+  async getFeeStructureById(@Args('feeStructureId') feeStructureId: string) {
+    return await this.paymentService.getFeeStructureById(feeStructureId);
   }
 
   @Mutation(() => FeeStructure)
@@ -29,11 +39,11 @@ export class PaymentResolver {
 
   @Mutation(() => FeeStructure)
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
-  async editFeeStructure(
+  async updateFeeStructure(
     @Args('id') id: string,
     @Args('input') input: UpdateFeeStructureInput,
   ) {
-    return await this.paymentService.editFeeStructure(id, input);
+    return await this.paymentService.updateFeeStructure(id, input);
   }
 
   @Mutation(() => Invoice)
