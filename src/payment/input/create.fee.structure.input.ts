@@ -26,7 +26,7 @@ export class CreateFeeStructureInput {
   @Field(() => [CreateFeeComponentInput])
   components: CreateFeeComponentInput[];
 
-  @Field(() => [String], { nullable: true })
+  @Field(() => [String], { nullable: 'itemsAndList' })
   classIds?: string[];
 
   @Field(() => String, { nullable: true })

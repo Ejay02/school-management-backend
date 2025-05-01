@@ -14,6 +14,8 @@ import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import { FeeType } from './enum/fee.type';
 import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
+import { Term } from './enum/term';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Injectable()
 export class PaymentService {
@@ -61,7 +63,7 @@ export class PaymentService {
   async getFeeStructureById(feeStructureId: string) {
     const feeStructure = await this.prisma.feeStructure.findUnique({
       where: { id: feeStructureId },
-      include: { components: true },
+      include: { components: true, classes: true },
     });
 
     if (!feeStructure) {
@@ -86,115 +88,36 @@ export class PaymentService {
         }
 
         if (classIdsToUse.length) {
-          // Check existing fee structures for these classes
-          const existingFeeStructures = await tx.class.findMany({
-            where: {
-              id: { in: classIdsToUse },
-              feeStructure: {
-                academicYear: input.academicYear,
-              },
-            },
-            include: {
-              feeStructure: true,
-            },
-          });
-
-          // For YEARLY type, check if any class already has a yearly fee structure
-          if (input.type === FeeType.YEARLY) {
-            const classWithYearlyFee = existingFeeStructures.find(
-              (cls) => cls.feeStructure?.type === FeeType.YEARLY,
-            );
-
-            if (classWithYearlyFee) {
-              throw new BadRequestException(
-                `Class ${classWithYearlyFee.name} already has a yearly fee structure for academic year ${input.academicYear}`,
-              );
-            }
-          }
-
-          // For TERM type, check if any class already has this specific term
-          if (input.type === FeeType.TERM && input.term) {
-            const classWithTermFee = existingFeeStructures.find(
-              (cls) => cls.feeStructure?.term === input.term,
-            );
-
-            if (classWithTermFee) {
-              throw new BadRequestException(
-                `Class ${classWithTermFee.name} already has a fee structure for ${input.term} term in academic year ${input.academicYear}`,
-              );
-            }
-
-            // Check if any class already has all three terms
-            const classTermCounts = await tx.class.findMany({
-              where: {
-                id: { in: classIdsToUse },
-              },
-              select: {
-                id: true,
-                name: true,
-                feeStructure: {
-                  where: {
-                    academicYear: input.academicYear,
-                    type: FeeType.TERM,
-                  },
-                  select: {
-                    term: true,
-                  },
-                },
-              },
-            });
-
-            // Check if any class has all three terms
-            const classWithAllTerms = classTermCounts.find(
-              (cls) =>
-                Array.isArray(cls.feeStructure) && cls.feeStructure.length >= 3,
-            );
-
-            if (classWithAllTerms) {
-              throw new BadRequestException(
-                `Class ${classWithAllTerms.name} already has all three terms defined for academic year ${input.academicYear}`,
-              );
-            }
-          }
-        }
-
-        // Validate components sum
-        const componentSum = input.components.reduce(
-          (sum, comp) => sum + comp.amount,
-          0,
-        );
-        if (Math.abs(componentSum - input.totalAmount) > 0.01) {
-          throw new BadRequestException(
-            'Total amount must equal sum of components',
+          // Validate class fee structures
+          await this.validateClassFeeStructures(
+            tx,
+            classIdsToUse,
+            input.academicYear,
+            input.type,
+            input.term,
           );
         }
 
+        // Validate components sum
+        this.validateComponentSum(input.components, input.totalAmount);
+
         // Create fee structure
-        const feeStructure = await tx.feeStructure.create({
-          data: {
-            academicYear: input.academicYear,
-            term: input.type === FeeType.YEARLY ? null : input.term,
-            type: input.type,
-            description: input.description,
-            totalAmount: input.totalAmount,
-            components: {
-              create: input.components.map((component) => ({
-                name: component.name,
-                description: component.description,
-                amount: component.amount,
-              })),
-            },
-          },
-          include: {
-            components: true,
-          },
-        });
+        const feeStructure = await this.createFeeStructureRecord(
+          tx,
+          input.academicYear,
+          input.type,
+          input.term,
+          input.description,
+          input.totalAmount,
+          input.components,
+        );
 
         if (classIdsToUse.length) {
-          await tx.class.updateMany({
-            where: { id: { in: classIdsToUse } },
-            data: { feeStructureId: feeStructure.id },
-          });
+          await this.updateClassFeeStructures(
+            tx,
+            classIdsToUse,
+            feeStructure.id,
+          );
         }
 
         return feeStructure;
@@ -222,92 +145,24 @@ export class PaymentService {
         }
 
         if (input.classIds?.length) {
-          const existingFeeStructures = await tx.class.findMany({
-            where: {
-              id: { in: input.classIds },
-              feeStructure: {
-                academicYear:
-                  input.academicYear || existingStructure.academicYear,
-              },
-            },
-            include: { feeStructure: true },
-          });
-
-          // For YEARLY type, check if any class already has a yearly fee structure
-          if (input.type === FeeType.YEARLY) {
-            const classWithYearlyFee = existingFeeStructures.find(
-              (cls) => cls.feeStructure?.type === FeeType.YEARLY,
-            );
-
-            if (classWithYearlyFee) {
-              throw new BadRequestException(
-                `Class ${classWithYearlyFee.name} already has a yearly fee structure for academic year ${input.academicYear}`,
-              );
-            }
-          }
-
-          // For TERM type, check if any class already has this specific term
-          if (input.type === FeeType.TERM && input.term) {
-            const classWithTermFee = existingFeeStructures.find(
-              (cls) => cls.feeStructure?.term === input.term,
-            );
-
-            if (classWithTermFee) {
-              throw new BadRequestException(
-                `Class ${classWithTermFee.name} already has a fee structure for ${input.term} term in academic year ${input.academicYear}`,
-              );
-            }
-
-            // Check if any class already has all three terms
-            const classTermCounts = await tx.class.findMany({
-              where: {
-                id: { in: input.classIds },
-              },
-              select: {
-                id: true,
-                name: true,
-                feeStructure: {
-                  where: {
-                    academicYear: input.academicYear,
-                    type: FeeType.TERM,
-                  },
-                  select: {
-                    term: true,
-                  },
-                },
-              },
-            });
-
-            // Check if any class has all three terms
-            const classWithAllTerms = classTermCounts.find(
-              (cls) =>
-                Array.isArray(cls.feeStructure) && cls.feeStructure.length >= 3,
-            );
-
-            if (classWithAllTerms) {
-              throw new BadRequestException(
-                `Class ${classWithAllTerms.name} already has all three terms defined for academic year ${input.academicYear}`,
-              );
-            }
-          }
+          // Validate class fee structures
+          await this.validateClassFeeStructures(
+            tx,
+            input.classIds,
+            input.academicYear || existingStructure.academicYear,
+            (input.type || existingStructure.type) as FeeType,
+            input.type === FeeType.YEARLY
+              ? null
+              : ((input.term || existingStructure.term) as Term),
+          );
         }
 
         // Validate components if updated
         if (input.components) {
-          const componentSum = input.components.reduce(
-            (sum, comp) => sum + comp.amount,
-            0,
+          this.validateComponentSum(
+            input.components,
+            input.totalAmount || existingStructure.totalAmount,
           );
-          if (
-            Math.abs(
-              componentSum -
-                (input.totalAmount || existingStructure.totalAmount),
-            ) > 0.01
-          ) {
-            throw new BadRequestException(
-              'Total amount must equal sum of components',
-            );
-          }
         }
 
         const updatedStructure = await tx.feeStructure.update({
@@ -333,16 +188,15 @@ export class PaymentService {
         });
 
         if (input.classIds) {
+          // Reset existing class associations
           await tx.class.updateMany({
             where: { feeStructureId: id },
             data: { feeStructureId: null },
           });
 
+          // Set new class associations if provided
           if (input.classIds.length) {
-            await tx.class.updateMany({
-              where: { id: { in: input.classIds } },
-              data: { feeStructureId: id },
-            });
+            await this.updateClassFeeStructures(tx, input.classIds, id);
           }
         }
 
@@ -352,6 +206,236 @@ export class PaymentService {
       if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(
         `Failed to update fee structure: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Validates that classes don't have conflicting fee structures
+   */
+  private async validateClassFeeStructures(
+    tx: any,
+    classIds: string[],
+    academicYear: string,
+    type: FeeType,
+    term?: Term | null,
+  ) {
+    // Check existing fee structures for these classes
+    const existingFeeStructures = await tx.class.findMany({
+      where: {
+        id: { in: classIds },
+        feeStructure: {
+          academicYear: academicYear,
+        },
+      },
+      include: {
+        feeStructure: true,
+      },
+    });
+
+    // For YEARLY type, check if any class already has a yearly fee structure
+    if (type === FeeType.YEARLY) {
+      const classWithYearlyFee = existingFeeStructures.find(
+        (cls) => cls.feeStructure?.type === FeeType.YEARLY,
+      );
+
+      if (classWithYearlyFee) {
+        throw new BadRequestException(
+          `Class ${classWithYearlyFee.name} already has a yearly fee structure for academic year ${academicYear}`,
+        );
+      }
+    }
+
+    // For TERM type, check if any class already has this specific term
+    if (type === FeeType.TERM && term) {
+      const classWithTermFee = existingFeeStructures.find(
+        (cls) => cls.feeStructure?.term === term,
+      );
+
+      if (classWithTermFee) {
+        throw new BadRequestException(
+          `Class ${classWithTermFee.name} already has a fee structure for ${term} term in academic year ${academicYear}`,
+        );
+      }
+
+      // Check if any class already has all three terms
+      const classTermCounts = await tx.class.findMany({
+        where: {
+          id: { in: classIds },
+        },
+        select: {
+          id: true,
+          name: true,
+          feeStructure: {
+            where: {
+              academicYear: academicYear,
+              type: FeeType.TERM,
+            },
+            select: {
+              term: true,
+            },
+          },
+        },
+      });
+
+      // Check if any class has all three terms
+      const classWithAllTerms = classTermCounts.find(
+        (cls) =>
+          Array.isArray(cls.feeStructure) && cls.feeStructure.length >= 3,
+      );
+
+      if (classWithAllTerms) {
+        throw new BadRequestException(
+          `Class ${classWithAllTerms.name} already has all three terms defined for academic year ${academicYear}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Validates that component amounts sum up to the total amount
+   */
+  private validateComponentSum(
+    components: Array<{ amount: number }>,
+    totalAmount: number,
+  ) {
+    const componentSum = components.reduce((sum, comp) => sum + comp.amount, 0);
+
+    if (Math.abs(componentSum - totalAmount) > 0.01) {
+      throw new BadRequestException(
+        'Total amount must equal sum of components',
+      );
+    }
+  }
+
+  /**
+   * Creates a fee structure record in the database
+   */
+  private async createFeeStructureRecord(
+    tx: any,
+    academicYear: string,
+    type: FeeType,
+    term: Term | null | undefined,
+    description: any,
+    totalAmount: number,
+    components: Array<{ name: string; description?: string; amount: number }>,
+  ) {
+    return await tx.feeStructure.create({
+      data: {
+        academicYear: academicYear,
+        term: type === FeeType.YEARLY ? null : term,
+        type: type,
+        description: description,
+        totalAmount: totalAmount,
+        components: {
+          create: components.map((component) => ({
+            name: component.name,
+            description: component.description,
+            amount: component.amount,
+          })),
+        },
+      },
+      include: {
+        components: true,
+      },
+    });
+  }
+
+  /**
+   * Updates class records to associate them with a fee structure
+   */
+  private async updateClassFeeStructures(
+    tx: any,
+    classIds: string[],
+    feeStructureId: string,
+  ) {
+    await tx.class.updateMany({
+      where: { id: { in: classIds } },
+      data: { feeStructureId: feeStructureId },
+    });
+  }
+
+  async deleteFeeStructure(feeStructureId: string): Promise<DeleteResponse> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Check if fee structure exists
+        const feeStructure = await tx.feeStructure.findUnique({
+          where: { id: feeStructureId },
+          include: {
+            components: true,
+            invoices: true,
+            classes: true,
+          },
+        });
+
+        if (!feeStructure) {
+          throw new NotFoundException(
+            `Fee structure with ID ${feeStructureId} not found`,
+          );
+        }
+
+        // Check if there are any paid invoices associated with this fee structure
+        const paidInvoices = feeStructure.invoices.filter(
+          (invoice) =>
+            invoice.status === InvoiceStatus.PAID ||
+            invoice.status === InvoiceStatus.PARTIAL,
+        );
+
+        if (paidInvoices.length > 0) {
+          throw new ForbiddenException(
+            'Cannot delete fee structure with paid invoices. Please archive it instead.',
+          );
+        }
+
+        // Update classes to remove the association with this fee structure
+        if (feeStructure.classes.length > 0) {
+          await tx.class.updateMany({
+            where: { feeStructureId },
+            data: { feeStructureId: null },
+          });
+        }
+
+        // Delete associated invoices
+        if (feeStructure.invoices.length > 0) {
+          // First delete payments associated with these invoices
+          await tx.payment.deleteMany({
+            where: {
+              invoiceId: {
+                in: feeStructure.invoices.map((invoice) => invoice.id),
+              },
+            },
+          });
+
+          // Then delete the invoices
+          await tx.invoice.deleteMany({
+            where: { feeStructureId },
+          });
+        }
+
+        // Delete fee components
+        await tx.feeComponent.deleteMany({
+          where: { feeStructureId },
+        });
+
+        // Finally delete the fee structure
+        await tx.feeStructure.delete({
+          where: { id: feeStructureId },
+        });
+
+        return {
+          success: true,
+          message: `Fee structure with ID ${feeStructureId} has been successfully deleted`,
+        };
+      });
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to delete fee structure: ${error.message}`,
       );
     }
   }

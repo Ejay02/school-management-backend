@@ -215,7 +215,7 @@ input CreateFeeComponentInput {
 input CreateFeeStructureInput {
   academicYear: String!
   classId: String
-  classIds: [String!]
+  classIds: [String]
   components: [CreateFeeComponentInput!]!
   description: FeeDescription
   term: Term
@@ -394,6 +394,7 @@ enum FeeDescription {
 
 type FeeStructure {
   academicYear: String!
+  classes: [Class!]
   components: [FeeComponent!]!
   createdAt: DateTime!
   description: FeeDescription
@@ -518,6 +519,7 @@ type Mutation {
   deleteClass(classId: String!): DeleteResponse!
   deleteEvent(eventId: String!): Boolean!
   deleteExam(examId: String!): DeleteResponse!
+  deleteFeeStructure(feeStructureId: String!): DeleteResponse!
   deleteGrade(gradeId: String!): Boolean!
   deleteLesson(lessonId: String!): DeleteResponse!
   deleteResult(id: String!): Boolean!
