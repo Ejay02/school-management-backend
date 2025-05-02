@@ -34,7 +34,7 @@ export class PaymentService {
           components: true,
           classes: true,
         },
-        orderBy: { academicYear: 'desc' },
+        orderBy: { createdAt: 'desc' },
       };
 
       // Define searchable fields
@@ -137,24 +137,68 @@ export class PaymentService {
       return await this.prisma.$transaction(async (tx) => {
         const existingStructure = await tx.feeStructure.findUnique({
           where: { id },
-          include: { components: true },
+          include: { components: true, classes: true },
         });
 
         if (!existingStructure) {
           throw new NotFoundException('Fee structure not found');
         }
 
-        if (input.classIds?.length) {
-          // Validate class fee structures
-          await this.validateClassFeeStructures(
-            tx,
-            input.classIds,
-            input.academicYear || existingStructure.academicYear,
-            (input.type || existingStructure.type) as FeeType,
-            input.type === FeeType.YEARLY
-              ? null
-              : ((input.term || existingStructure.term) as Term),
-          );
+        // Handle both single classId and array of classIds
+        let classIdsToUse: string[] = [];
+
+        if (input.classId) {
+          // If a single classId is provided, use it
+          classIdsToUse = [input.classId];
+        } else if (input.classIds?.length) {
+          // If an array of classIds is provided, use them
+          classIdsToUse = input.classIds;
+        } else if (existingStructure.classes?.length) {
+          // If no new class IDs provided, use existing ones for validation
+          classIdsToUse = existingStructure.classes.map((cls) => cls.id);
+        }
+
+        // Determine the values to use for validation (either new input or existing values)
+        const academicYearToUse =
+          input.academicYear || existingStructure.academicYear;
+        const typeToUse = (input.type || existingStructure.type) as FeeType;
+        const termToUse =
+          typeToUse === FeeType.YEARLY
+            ? null
+            : ((input.term || existingStructure.term) as Term);
+
+        // Check for duplicate fee structures only if we have classes to validate against
+        if (classIdsToUse.length) {
+          // Check if there are any other fee structures with the same critical fields
+          // but exclude the current fee structure being updated
+          const duplicateFeeStructure = await tx.feeStructure.findFirst({
+            where: {
+              id: { not: id }, // Exclude the current fee structure
+              academicYear: academicYearToUse,
+              type: typeToUse,
+              term: termToUse,
+              classes: {
+                some: {
+                  id: { in: classIdsToUse },
+                },
+              },
+            },
+            include: {
+              classes: true,
+            },
+          });
+
+          if (duplicateFeeStructure) {
+            const duplicateClass = duplicateFeeStructure.classes.find((cls) =>
+              classIdsToUse.includes(cls.id),
+            );
+
+            if (duplicateClass) {
+              throw new BadRequestException(
+                `Cannot update fee structure: Class ${duplicateClass.name} already has a ${typeToUse === FeeType.YEARLY ? 'yearly' : termToUse} fee structure for academic year ${academicYearToUse}`,
+              );
+            }
+          }
         }
 
         // Validate components if updated
@@ -169,7 +213,7 @@ export class PaymentService {
           where: { id },
           data: {
             academicYear: input.academicYear,
-            term: input.type === FeeType.YEARLY ? null : input.term,
+            term: typeToUse === FeeType.YEARLY ? null : input.term,
             type: input.type,
             description: input.description,
             totalAmount: input.totalAmount,
@@ -187,7 +231,8 @@ export class PaymentService {
           include: { components: true },
         });
 
-        if (input.classIds) {
+        // Check if we need to update class associations
+        if (classIdsToUse.length || input.classIds === null) {
           // Reset existing class associations
           await tx.class.updateMany({
             where: { feeStructureId: id },
@@ -195,8 +240,8 @@ export class PaymentService {
           });
 
           // Set new class associations if provided
-          if (input.classIds.length) {
-            await this.updateClassFeeStructures(tx, input.classIds, id);
+          if (classIdsToUse.length) {
+            await this.updateClassFeeStructures(tx, classIdsToUse, id);
           }
         }
 
@@ -292,9 +337,7 @@ export class PaymentService {
     }
   }
 
-  /**
-   * Validates that component amounts sum up to the total amount
-   */
+  // Validates that component amounts sum up to the total amount
   private validateComponentSum(
     components: Array<{ amount: number }>,
     totalAmount: number,
@@ -539,6 +582,74 @@ export class PaymentService {
       params,
       searchFields,
     );
+  }
+
+  async getAllPayments(params?: PaginationParams) {
+    try {
+      const baseQuery = {
+        include: {
+          parent: {
+            include: {
+              students: {
+                include: {
+                  class: true,
+                },
+              },
+            },
+          },
+          invoice: {
+            include: {
+              feeStructure: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      };
+
+      const searchFields = ['status', 'paymentMethod', 'description'];
+
+      const result = await PrismaQueryBuilder.paginateResponse(
+        this.prisma.payment,
+        baseQuery,
+        params || {},
+        searchFields,
+      );
+
+      // Transform the data to include student information
+      const transformedData = result.data.map((payment: any) => {
+        // Get the first student of the parent (assuming we want the first one)
+        const student = payment.parent?.students?.[0];
+
+        return {
+          id: payment.id,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          paymentMethod: payment.paymentMethod,
+          stripePaymentId: payment.stripePaymentId,
+          description: payment.description,
+          invoiceId: payment.invoiceId,
+          parentId: payment.parentId,
+          studentName: student?.name ?? 'Unknown',
+          studentSurname: student?.surname ?? 'Unknown',
+          studentId: student?.id ?? '',
+          studentImage: student?.image ?? null,
+          classId: student?.class?.id ?? '',
+          className: student?.class?.name ?? 'Unknown',
+          feeType: payment.invoice?.feeStructure?.type ?? null,
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt,
+        };
+      });
+
+      return {
+        ...result,
+        data: transformedData,
+      };
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      throw new InternalServerErrorException('Failed to fetch payments');
+    }
   }
 
   async initiatePayment(parentId: string, invoiceId: string, amount: number) {

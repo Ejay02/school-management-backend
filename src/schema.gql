@@ -630,6 +630,7 @@ type Query {
   getAllFeeStructures(params: PaginationInput): [FeeStructure!]!
   getAllLessons(params: PaginationInput): [Lesson!]!
   getAllParents(params: PaginationInput): [Parent!]!
+  getAllPayments(params: PaginationInput): [StudentPayment!]!
   getAllStudents(params: PaginationInput): [Student!]!
   getAllSubjects(params: PaginationInput): [Subject!]!
   getAllTeachers(params: PaginationInput): [Teacher!]!
@@ -780,6 +781,27 @@ type StudentGenderStatistics {
   totalStudents: Int!
 }
 
+type StudentPayment {
+  amount: Float!
+  classId: String!
+  className: String!
+  createdAt: DateTime!
+  currency: String!
+  description: String
+  feeType: FeeType
+  id: ID!
+  invoiceId: String!
+  parentId: String!
+  paymentMethod: String!
+  status: PaymentStatus!
+  stripePaymentId: String!
+  studentId: String!
+  studentImage: String
+  studentName: String!
+  studentSurname: String!
+  updatedAt: DateTime!
+}
+
 input StudentSignupInput {
   classId: DefaultClass!
   email: String
@@ -883,7 +905,8 @@ input UpdateFeeComponentInput {
 
 input UpdateFeeStructureInput {
   academicYear: String
-  classIds: [String!]
+  classId: String
+  classIds: [String]
   components: [UpdateFeeComponentInput!]
   description: FeeDescription
   term: Term

@@ -26,6 +26,9 @@ export class UpdateFeeStructureInput {
   @Field(() => [UpdateFeeComponentInput], { nullable: true })
   components?: UpdateFeeComponentInput[];
 
-  @Field(() => [String], { nullable: true })
+  @Field(() => [String], { nullable: 'itemsAndList' })
   classIds?: string[];
+
+  @Field(() => String, { nullable: true })
+  classId?: string;
 }

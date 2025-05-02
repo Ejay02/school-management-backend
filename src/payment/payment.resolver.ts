@@ -11,6 +11,7 @@ import { Invoice } from './types/invoice.type';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { StudentPayment } from './types/student.payment.type';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -77,6 +78,15 @@ export class PaymentResolver {
       context.req.user.userId,
       params || {},
     );
+    return result.data;
+  }
+
+  @Query(() => [StudentPayment])
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  async getAllPayments(
+    @Args('params', { nullable: true }) params?: PaginationInput,
+  ) {
+    const result = await this.paymentService.getAllPayments(params || {});
     return result.data;
   }
 
