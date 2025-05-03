@@ -39,6 +39,9 @@ export class Payment {
   parentId: string;
 
   @Field()
+  studentId: string;
+
+  @Field()
   createdAt: Date;
 
   @Field()
