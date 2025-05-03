@@ -82,12 +82,22 @@ export class PaymentResolver {
   }
 
   @Query(() => [StudentPayment])
-  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.PARENT)
   async getAllPayments(
+    @Context() context,
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
-    const result = await this.paymentService.getAllPayments(params || {});
+    const result = await this.paymentService.getAllPayments(
+      params || {},
+      context.req.user.userId,
+    );
     return result.data;
+  }
+
+  @Query(() => StudentPayment)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.PARENT)
+  async getPaymentById(@Args('paymentId') paymentId: string) {
+    return this.paymentService.getPaymentById(paymentId);
   }
 
   @Mutation(() => String)

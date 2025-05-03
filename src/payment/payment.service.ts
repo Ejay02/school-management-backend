@@ -584,9 +584,13 @@ export class PaymentService {
     );
   }
 
-  async getAllPayments(params?: PaginationParams) {
+  async getAllPayments(params?: PaginationParams, parentId?: string) {
     try {
+      // Build the query based on provided filters
+      // If parentId is not provided, it's an admin request - return all payments
+      // If parentId is provided, filter by that parent
       const baseQuery = {
+        where: parentId ? { parentId } : {},
         include: {
           parent: {
             include: {
@@ -617,7 +621,7 @@ export class PaymentService {
 
       // Transform the data to include student information
       const transformedData = result.data.map((payment: any) => {
-        // Get the first student of the parent (assuming we want the first one)
+        // Get the first student of the parent
         const student = payment.parent?.students?.[0];
 
         return {
@@ -649,6 +653,34 @@ export class PaymentService {
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException('Failed to fetch payments');
+    }
+  }
+
+  async getPaymentById(paymentId: string) {
+    try {
+      const payment = await this.prisma.payment.findUnique({
+        where: { id: paymentId },
+        include: {
+          invoice: {
+            include: {
+              feeStructure: true,
+            },
+          },
+        },
+      });
+
+      if (!payment) {
+        throw new NotFoundException(`Payment with ID ${paymentId} not found`);
+      }
+
+      // Return the payment directly without transforming
+      // The frontend already has the student data from the list view
+      return payment;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        `Failed to fetch payment: ${error.message}`,
+      );
     }
   }
 

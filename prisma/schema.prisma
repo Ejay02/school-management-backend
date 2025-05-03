@@ -408,6 +408,7 @@ model Payment {
   invoiceId       String
   invoice         Invoice       @relation(fields: [invoiceId], references: [id])
   parentId        String
+  studentId       String 
   parent          Parent        @relation(fields: [parentId], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

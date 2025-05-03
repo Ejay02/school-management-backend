@@ -653,6 +653,7 @@ type Query {
   getMyInvoices(params: PaginationInput): [Invoice!]!
   getMySubmissions(params: PaginationInput): [Submission!]!
   getParentById(parentId: String!): Parent!
+  getPaymentById(paymentId: String!): StudentPayment!
   getResultHistory(academicYear: String, studentId: String!): [Result!]!
   getResultStatistics(className: String!): ResultStatistics!
   getSchoolAttendanceStats(endDate: DateTime!, startDate: DateTime!): SchoolAttendanceStats!
