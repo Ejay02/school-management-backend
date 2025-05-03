@@ -255,9 +255,8 @@ export class PaymentService {
     }
   }
 
-  /**
-   * Validates that classes don't have conflicting fee structures
-   */
+  //  * Validates that classes don't have conflicting fee structures
+
   private async validateClassFeeStructures(
     tx: any,
     classIds: string[],
@@ -351,9 +350,8 @@ export class PaymentService {
     }
   }
 
-  /**
-   * Creates a fee structure record in the database
-   */
+  //  * Creates a fee structure record in the database
+
   private async createFeeStructureRecord(
     tx: any,
     academicYear: string,
@@ -384,9 +382,8 @@ export class PaymentService {
     });
   }
 
-  /**
-   * Updates class records to associate them with a fee structure
-   */
+  //  * Updates class records to associate them with a fee structure
+
   private async updateClassFeeStructures(
     tx: any,
     classIds: string[],
