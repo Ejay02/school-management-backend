@@ -55,10 +55,15 @@ export class EventService {
       if (filter?.type) {
         baseQuery.where.type = { contains: filter.type, mode: 'insensitive' };
       }
-      if (filter?.startDate)
+      if (filter?.startDate) {
         baseQuery.where.startTime = { gte: filter.startDate };
-      if (filter?.endDate) baseQuery.where.endTime = { lte: filter.endDate };
-      if (filter?.classId) baseQuery.where.classId = filter.classId;
+      }
+      if (filter?.endDate) {
+        baseQuery.where.endTime = { lte: filter.endDate };
+      }
+      if (filter?.classId) {
+        baseQuery.where.classId = filter.classId;
+      }
 
       // Role-based visibility rules
       if (userRole === Roles.ADMIN || userRole === Roles.SUPER_ADMIN) {
@@ -79,34 +84,121 @@ export class EventService {
               { targetRoles: { has: Roles.PARENT } },
               { class: { students: { some: { parentId: userId } } } },
             );
+
             break;
 
-          case Roles.TEACHER:
-            baseQuery.where.OR.push(
-              { targetRoles: { has: Roles.TEACHER } },
-              { class: { teachers: { some: { id: userId } } } },
-            );
+          case Roles.TEACHER: {
+            const teacherWithClasses = await this.prisma.teacher.findUnique({
+              where: { id: userId },
+              include: { classes: true },
+            });
+
+            const classIds =
+              teacherWithClasses?.classes?.map((c) => c.id) || [];
+
+            // Clear the OR array and rebuild it with proper conditions
+            baseQuery.where.OR = [
+              { creatorId: userId }, // Events created by the teacher
+
+              // Public events with proper class association for role-targeted events
+              {
+                AND: [
+                  { visibility: EventVisibility.PUBLIC },
+                  {
+                    OR: [
+                      // Non-role-targeted public events
+                      { targetRoles: { isEmpty: true } },
+
+                      // Teacher-targeted public events (global or for teacher's classes)
+                      {
+                        AND: [
+                          { targetRoles: { has: Roles.TEACHER } },
+                          {
+                            OR: [
+                              { classId: null },
+                              { class: { id: { in: classIds } } },
+                            ],
+                          },
+                        ],
+                      },
+                      // Student-targeted public events (only for teacher's classes)
+                      {
+                        AND: [
+                          { targetRoles: { has: Roles.STUDENT } },
+                          { class: { id: { in: classIds } } },
+                        ],
+                      },
+                      // Other role-targeted public events that aren't class-specific
+                      {
+                        AND: [
+                          {
+                            targetRoles: {
+                              hasEvery: [
+                                Roles.ADMIN,
+                                Roles.SUPER_ADMIN,
+                                Roles.PARENT,
+                              ].filter(
+                                (r) =>
+                                  r !== Roles.TEACHER && r !== Roles.STUDENT,
+                              ),
+                            },
+                          },
+                          { classId: null },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+
+              // Teacher-targeted events (global or for teacher's classes)
+              {
+                AND: [
+                  { targetRoles: { has: Roles.TEACHER } },
+                  {
+                    OR: [
+                      { classId: null },
+                      { class: { id: { in: classIds } } },
+                    ],
+                  },
+                ],
+              },
+              // Student-targeted events (only for teacher's classes)
+              {
+                AND: [
+                  { targetRoles: { has: Roles.STUDENT } },
+                  { class: { id: { in: classIds } } },
+                ],
+              },
+            ];
+
             break;
+          }
 
           case Roles.STUDENT:
             baseQuery.where.OR.push(
               { targetRoles: { has: Roles.STUDENT } },
               { class: { students: { some: { id: userId } } } },
             );
+
             break;
         }
       }
 
       const searchFields = ['title', 'description', 'type'];
 
-      return await PrismaQueryBuilder.paginateResponse(
+      const result = await PrismaQueryBuilder.paginateResponse(
         this.prisma.event,
         baseQuery,
         params,
         searchFields,
       );
+
+      return result;
     } catch (error) {
-      throw new InternalServerErrorException('Failed to fetch events');
+      throw new InternalServerErrorException('Failed to fetch events', {
+        cause: error,
+      });
     }
   }
 
@@ -144,14 +236,22 @@ export class EventService {
               ],
             });
             break;
-          case Roles.TEACHER:
+          case Roles.TEACHER: {
+            const teacherClasses = await this.prisma.teacher.findUnique({
+              where: { id: userId },
+              select: { classes: { select: { id: true } } },
+            });
+
+            const classIds = teacherClasses?.classes?.map((c) => c.id) || [];
+
             query.where.AND.push({
               OR: [
                 { targetRoles: { has: Roles.TEACHER } },
-                { class: { teachers: { some: { id: userId } } } },
+                { class: { id: { in: classIds } } },
               ],
             });
             break;
+          }
           case Roles.STUDENT:
             query.where.AND.push({
               OR: [
@@ -171,7 +271,9 @@ export class EventService {
 
       return event;
     } catch (error) {
-      throw new InternalServerErrorException('Failed to fetch event by ID');
+      throw new InternalServerErrorException('Failed to fetch event by id', {
+        cause: error,
+      });
     }
   }
 
@@ -489,7 +591,9 @@ export class EventService {
       const results = await Promise.all(queries);
       return results.flat().filter((user) => Boolean(user?.email));
     } catch (error) {
-      throw new InternalServerErrorException('Failed to fetch target users');
+      throw new InternalServerErrorException('Failed to fetch target users', {
+        cause: error,
+      });
     }
   }
 
@@ -713,7 +817,9 @@ export class EventService {
         return true;
       });
     } catch (error) {
-      return false;
+      throw new InternalServerErrorException('Failed to mark event as read', {
+        cause: error,
+      });
     }
   }
 }

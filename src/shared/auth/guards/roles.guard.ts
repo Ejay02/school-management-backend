@@ -303,6 +303,22 @@ export class RolesGuard implements CanActivate {
     const operation = ctx.getInfo().operation?.name?.value;
     const fieldName = ctx.getInfo().fieldName;
 
+    if (fieldName === 'getAllAnnouncements') {
+      // Allow access for all authenticated users with valid roles
+      // The actual filtering of announcements based on user role is handled in the service
+      if (
+        [
+          Roles.ADMIN,
+          Roles.SUPER_ADMIN,
+          Roles.TEACHER,
+          Roles.PARENT,
+          Roles.STUDENT,
+        ].includes(user.role)
+      ) {
+        return true;
+      }
+    }
+
     // For creating announcements
     if (fieldName === 'createAnnouncement') {
       // Allow admin and super admin to create any announcement
@@ -532,6 +548,23 @@ export class RolesGuard implements CanActivate {
 
         // Parents and students can create private events
         if ([Roles.PARENT, Roles.STUDENT].includes(user.role)) {
+          return true;
+        }
+      }
+
+      // Handle getEvents and getEventById
+      if (fieldName === 'getEvents' || fieldName === 'getEventById') {
+        // Allow access for all authenticated users with valid roles
+        // The actual filtering of events based on user role is handled in the service
+        if (
+          [
+            Roles.ADMIN,
+            Roles.SUPER_ADMIN,
+            Roles.TEACHER,
+            Roles.PARENT,
+            Roles.STUDENT,
+          ].includes(user.role)
+        ) {
           return true;
         }
       }

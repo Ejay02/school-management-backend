@@ -14,7 +14,7 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EventResolver {
-  constructor(private eventService: EventService) {}
+  constructor(private readonly eventService: EventService) {}
 
   @Query(() => [Event])
   @HasRoles(
