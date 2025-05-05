@@ -16,6 +16,7 @@ import { FeeType } from './enum/fee.type';
 import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 import { Term } from './enum/term';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { ClassRevenueItem } from './types/class.revenue.item.type';
 
 @Injectable()
 export class PaymentService {
@@ -256,7 +257,6 @@ export class PaymentService {
   }
 
   //  * Validates that classes don't have conflicting fee structures
-
   private async validateClassFeeStructures(
     tx: any,
     classIds: string[],
@@ -351,7 +351,6 @@ export class PaymentService {
   }
 
   //  * Creates a fee structure record in the database
-
   private async createFeeStructureRecord(
     tx: any,
     academicYear: string,
@@ -383,7 +382,6 @@ export class PaymentService {
   }
 
   //  * Updates class records to associate them with a fee structure
-
   private async updateClassFeeStructures(
     tx: any,
     classIds: string[],
@@ -981,5 +979,203 @@ export class PaymentService {
         'Failed to process failed payment',
       );
     }
+  }
+
+  // ... existing code ...
+  async getBillingReportDashboard() {
+    // Define academic year boundaries (September to July)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const isBeforeSeptember = now.getMonth() < 8; // 0-indexed: 8 = September
+    const academicYearStart = new Date(
+      isBeforeSeptember ? currentYear - 1 : currentYear,
+      8,
+      1,
+    ); // September 1
+    const academicYearEnd = new Date(
+      isBeforeSeptember ? currentYear : currentYear + 1,
+      7,
+      31,
+      23,
+      59,
+      59,
+      999,
+    ); // July 31
+
+    // 1. Total Revenue (Paid + Partial)
+    const totalRevenueResult = await this.prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: {
+        status: { in: ['COMPLETED'] },
+        createdAt: { gte: academicYearStart, lte: academicYearEnd },
+      },
+    });
+    const totalRevenue = totalRevenueResult._sum.amount || 0;
+
+    // 2. Outstanding Payments
+    const outstandingInvoices = await this.prisma.invoice.findMany({
+      where: {
+        status: { in: ['PENDING', 'PARTIAL'] },
+        createdAt: { gte: academicYearStart, lte: academicYearEnd },
+      },
+      select: { id: true, totalAmount: true, dueDate: true, status: true },
+    });
+    const outstandingAmount = outstandingInvoices.reduce(
+      (sum, inv) => sum + inv.totalAmount,
+      0,
+    );
+    const overdueInvoices = outstandingInvoices.filter(
+      (inv) => inv.dueDate < now && inv.status !== 'PAID',
+    );
+    const overdueCount = overdueInvoices.length;
+    const overdueAmount = overdueInvoices.reduce(
+      (sum, inv) => sum + inv.totalAmount,
+      0,
+    );
+    const overduePercentage =
+      outstandingAmount > 0
+        ? Math.round((overdueAmount / outstandingAmount) * 100)
+        : 0;
+
+    // 3. Collection Rate
+    const allInvoices = await this.prisma.invoice.findMany({
+      where: { createdAt: { gte: academicYearStart, lte: academicYearEnd } },
+      select: { totalAmount: true, status: true },
+    });
+    const totalInvoiceAmount = allInvoices.reduce(
+      (sum, inv) => sum + inv.totalAmount,
+      0,
+    );
+    const collectedAmount = allInvoices
+      .filter((inv) => inv.status === 'PAID' || inv.status === 'PARTIAL')
+      .reduce((sum, inv) => sum + inv.totalAmount, 0);
+    const collectionRate =
+      totalInvoiceAmount > 0
+        ? Math.round((collectedAmount / totalInvoiceAmount) * 100)
+        : 0;
+    const targetRate = 95; // Example target rate
+
+    // 4. Revenue Trend (Monthly, Sep-Jul)
+    const months = [
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+    ];
+    const revenueTrendData = Array(months.length).fill(0);
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        status: { in: ['COMPLETED'] },
+        createdAt: { gte: academicYearStart, lte: academicYearEnd },
+      },
+      select: { amount: true, createdAt: true },
+    });
+    payments.forEach((payment) => {
+      const date = payment.createdAt;
+      let monthIndex = date.getMonth() - 8; // September is 8
+      if (monthIndex < 0) monthIndex += 12;
+      if (monthIndex >= 0 && monthIndex < months.length) {
+        revenueTrendData[monthIndex] += payment.amount;
+      }
+    });
+
+    // 5. Payment Status Distribution
+    const statusCounts = { PAID: 0, PARTIAL: 0, PENDING: 0, OVERDUE: 0 };
+    allInvoices.forEach((inv) => {
+      if (inv.status === 'PAID') statusCounts.PAID++;
+      else if (inv.status === 'PARTIAL') statusCounts.PARTIAL++;
+      else if (inv.status === 'PENDING') statusCounts.PENDING++;
+      // Overdue is determined by dueDate < now and not PAID
+    });
+    statusCounts.OVERDUE = overdueCount;
+    const paymentStatusLabels = ['Paid', 'Partial', 'Pending', 'Overdue'];
+    const paymentStatusData = [
+      statusCounts.PAID,
+      statusCounts.PARTIAL,
+      statusCounts.PENDING,
+      statusCounts.OVERDUE,
+    ];
+
+    // 6. Top Classes by Revenue
+    const classRevenue: Record<string, ClassRevenueItem> = {};
+    const paidPayments = await this.prisma.payment.findMany({
+      where: {
+        status: { in: ['COMPLETED'] },
+        createdAt: { gte: academicYearStart, lte: academicYearEnd },
+      },
+      include: {
+        invoice: {
+          include: {
+            feeStructure: {
+              include: {
+                classes: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    paidPayments.forEach((payment) => {
+      const classes = payment.invoice?.feeStructure?.classes ?? [];
+      classes.forEach((cls) => {
+        if (!classRevenue[cls.id]) {
+          classRevenue[cls.id] = { id: cls.id, name: cls.name, revenue: 0 };
+        }
+        classRevenue[cls.id].revenue += payment.amount;
+      });
+    });
+    const topClassesByRevenue = Object.values(classRevenue)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    // 7. Growth Percentage (compared to previous academic year)
+    const prevAcademicYearStart = new Date(academicYearStart);
+    prevAcademicYearStart.setFullYear(prevAcademicYearStart.getFullYear() - 1);
+    const prevAcademicYearEnd = new Date(academicYearEnd);
+    prevAcademicYearEnd.setFullYear(prevAcademicYearEnd.getFullYear() - 1);
+    const prevRevenueResult = await this.prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: {
+        status: { in: ['COMPLETED'] },
+        createdAt: { gte: prevAcademicYearStart, lte: prevAcademicYearEnd },
+      },
+    });
+    const prevRevenue = prevRevenueResult._sum.amount || 0;
+    const growthPercentage =
+      prevRevenue > 0
+        ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 100)
+        : 100;
+
+    return {
+      totalRevenue: {
+        amount: totalRevenue,
+        growthPercentage,
+      },
+      outstandingPayments: {
+        amount: outstandingAmount,
+        overdueCount,
+        overduePercentage,
+      },
+      collectionRate: {
+        rate: collectionRate,
+        targetRate,
+      },
+      revenueTrend: {
+        months,
+        data: revenueTrendData,
+      },
+      paymentStatusDistribution: {
+        labels: paymentStatusLabels,
+        data: paymentStatusData,
+      },
+      topClassesByRevenue,
+    };
   }
 }

@@ -137,6 +137,15 @@ input BaseLoginInput {
   username: String!
 }
 
+type BillingReportDashboard {
+  collectionRate: CollectionRateData!
+  outstandingPayments: OutstandingPaymentsData!
+  paymentStatusDistribution: PaymentStatusDistributionData!
+  revenueTrend: RevenueTrendData!
+  topClassesByRevenue: [TopClassByRevenue!]!
+  totalRevenue: TotalRevenueData!
+}
+
 type Class {
   announcements: [Announcement!]!
   assignments: [Assignment!]!
@@ -153,6 +162,11 @@ type Class {
   supervisor: Teacher
   supervisorId: String
   updatedAt: DateTime!
+}
+
+type CollectionRateData {
+  rate: Float!
+  targetRate: Float!
 }
 
 type Counts {
@@ -561,6 +575,12 @@ type Mutation {
   updateTeacherProfile(input: UpdateProfileInput!): Teacher!
 }
 
+type OutstandingPaymentsData {
+  amount: Float!
+  overdueCount: Int!
+  overduePercentage: Float!
+}
+
 input PaginationInput {
   limit: Int
   page: Int
@@ -606,6 +626,7 @@ type Payment {
   paymentMethod: String!
   status: PaymentStatus!
   stripePaymentId: String!
+  studentId: String!
   updatedAt: DateTime!
 }
 
@@ -615,6 +636,11 @@ enum PaymentStatus {
   FAILED
   PENDING
   REFUNDED
+}
+
+type PaymentStatusDistributionData {
+  data: [Float!]!
+  labels: [String!]!
 }
 
 type Query {
@@ -637,6 +663,7 @@ type Query {
   getAnnouncementById(announcementId: String!): Announcement!
   getAssignmentById(assignmentId: String!): [Assignment!]!
   getAttendances: [Attendance!]!
+  getBillingReportDashboard: BillingReportDashboard!
   getClassById(id: String!): Class!
   getClassExams(classId: String!, params: PaginationInput): [Exam!]!
   getClassGrades(academicPeriod: String, classId: String!, params: PaginationInput): Grade!
@@ -712,6 +739,11 @@ type ResultStatistics {
   highest: Float!
   lowest: Float!
   totalStudents: Int!
+}
+
+type RevenueTrendData {
+  data: [Float!]!
+  months: [String!]!
 }
 
 enum Roles {
@@ -878,6 +910,17 @@ enum Term {
 type TokenResponse {
   accessToken: String!
   refreshToken: String!
+}
+
+type TopClassByRevenue {
+  id: String!
+  name: String!
+  revenue: Float!
+}
+
+type TotalRevenueData {
+  amount: Float!
+  growthPercentage: Float!
 }
 
 input UpdateClassInput {
