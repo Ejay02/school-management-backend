@@ -80,6 +80,12 @@ export class RolesGuard implements CanActivate {
   ): Promise<boolean> {
     try {
       const args = ctx.getArgs();
+      const fieldName = ctx.getInfo().fieldName;
+
+      // If accessing getUserById endpoint
+      if (fieldName === 'getUserById' && args.id) {
+        return true; // Allow teachers to access user information
+      }
 
       // If accessing parent info
       if (args.parentId) {
@@ -138,6 +144,12 @@ export class RolesGuard implements CanActivate {
     try {
       const args = ctx.getArgs();
       const info = ctx.getInfo();
+      const fieldName = ctx.getInfo().fieldName;
+
+      // If accessing getUserById endpoint
+      if (fieldName === 'getUserById' && args.id) {
+        return true; // Allow parents to access user information
+      }
 
       // If accessing parent info
       if (args.parentId) {
@@ -252,6 +264,12 @@ export class RolesGuard implements CanActivate {
   ): Promise<boolean> {
     try {
       const args = ctx.getArgs();
+      const fieldName = ctx.getInfo().fieldName;
+
+      // If accessing getUserById endpoint
+      if (fieldName === 'getUserById' && args.id) {
+        return true; // Allow parents to access user information
+      }
 
       // If accessing student info
       if (args.studentId || args.input?.studentId) {

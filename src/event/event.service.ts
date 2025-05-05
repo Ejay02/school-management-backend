@@ -218,15 +218,23 @@ export class EventService {
 
       // For non-admin users, add visibility filters
       if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
-        // Only allow events that are either created by the user or public
-        // and then apply additional role-specific rules.
-        query.where.AND = [
-          {
-            OR: [{ creatorId: userId }, { visibility: EventVisibility.PUBLIC }],
+        // First check if the user is the creator of the event
+        const creatorCheck = await this.prisma.event.findFirst({
+          where: {
+            id: eventId,
+            creatorId: userId,
           },
-        ];
+        });
 
-        // Role-specific restrictions
+        // If user is the creator, return the event without additional filters
+        if (creatorCheck) {
+          return creatorCheck;
+        }
+
+        // If not the creator, only allow public events with role-specific restrictions
+        query.where.AND = [{ visibility: EventVisibility.PUBLIC }];
+
+        // Role-specific restrictions for public events
         switch (userRole) {
           case Roles.PARENT:
             query.where.AND.push({
@@ -246,8 +254,25 @@ export class EventService {
 
             query.where.AND.push({
               OR: [
-                { targetRoles: { has: Roles.TEACHER } },
-                { class: { id: { in: classIds } } },
+                // Teacher-targeted events (global or for teacher's classes)
+                {
+                  AND: [
+                    { targetRoles: { has: Roles.TEACHER } },
+                    {
+                      OR: [
+                        { classId: null },
+                        { class: { id: { in: classIds } } },
+                      ],
+                    },
+                  ],
+                },
+                // Student-targeted events (only for teacher's classes)
+                {
+                  AND: [
+                    { targetRoles: { has: Roles.STUDENT } },
+                    { class: { id: { in: classIds } } },
+                  ],
+                },
               ],
             });
             break;
@@ -291,12 +316,16 @@ export class EventService {
           throw new Error('Event with this title already exists');
         }
 
-        let visibility = EventVisibility.PRIVATE; // Default to private
+        const visibility = data.visibility;
         let targetRoles = [role]; // Default to creator's role
+        let classIdToUse = data.classId;
 
-        if (role === Roles.ADMIN || role === Roles.SUPER_ADMIN) {
+        // For private events, we don't need classId or targetRoles
+        if (visibility === EventVisibility.PRIVATE) {
+          classIdToUse = null;
+          targetRoles = [role]; // Only creator's role for private events
+        } else if (role === Roles.ADMIN || role === Roles.SUPER_ADMIN) {
           // Admins can create public events with specified target roles
-          visibility = data.visibility;
           targetRoles = data.targetRoles || [role];
         } else if (role === Roles.TEACHER && data.classId) {
           // Check if the teacher has access to the class
@@ -315,8 +344,6 @@ export class EventService {
           });
 
           if (teacherAccess) {
-            visibility = data.visibility;
-
             // If teacher specified target roles, use those
             if (data.targetRoles && data.targetRoles.length > 0) {
               targetRoles = data.targetRoles;
@@ -341,9 +368,9 @@ export class EventService {
             location: data.location,
             type: 'ACADEMIC',
             creatorId,
-            ...(data.classId && {
+            ...(classIdToUse && {
               class: {
-                connect: { id: data.classId },
+                connect: { id: classIdToUse },
               },
             }),
             status: 'SCHEDULED',
@@ -357,54 +384,58 @@ export class EventService {
         return { event };
       });
 
-      // Move Google Calendar API call outside the transaction
+      // Only send notifications and calendar invites for non-private events
+      if (data.visibility !== EventVisibility.PRIVATE) {
+        const targetUsers = await this.getTargetUsers({
+          classId: data.classId,
+          targetRoles: data.targetRoles,
+        });
 
-      const targetUsers = await this.getTargetUsers({
-        classId: data.classId,
-        targetRoles: data.targetRoles,
-      });
+        try {
+          await Promise.all([
+            // Google Calendar API call - with error handling
+            this.googleCalendarService
+              .createCalendarEvent({
+                ...event,
+                attendees: targetUsers.map((user) => user.email),
+              })
+              .catch((error) => {
+                console.warn(
+                  'Google Calendar integration failed:',
+                  error.message,
+                );
+                // Continue execution - don't let calendar failure stop event creation
+              }),
 
-      try {
-        await Promise.all([
-          // Google Calendar API call - with error handling
-          this.googleCalendarService
-            .createCalendarEvent({
-              ...event,
-              attendees: targetUsers.map((user) => user.email),
-            })
-            .catch((error) => {
-              console.warn(
-                'Google Calendar integration failed:',
-                error.message,
-              );
-              // Continue execution - don't let calendar failure stop event creation
-            }),
-
-          // Send email notifications
-          this.sendNotifications(
-            event,
-            targetUsers,
-            'event.notification',
-            'New Event',
-            {
-              eventTitle: event.title,
-              eventDescription: event.description,
-              startTime: event.startTime.toLocaleString(),
-              endTime: event.endTime.toLocaleString(),
-              location: event.location || 'N/A',
-              calendarLink: '#',
-            },
-          ),
-        ]);
-      } catch (error) {
-        console.error('Error with notifications:', error);
+            // Send email notifications
+            this.sendNotifications(
+              event,
+              targetUsers,
+              'event.notification',
+              'New Event',
+              {
+                eventTitle: event.title,
+                eventDescription: event.description,
+                startTime: event.startTime.toLocaleString(),
+                endTime: event.endTime.toLocaleString(),
+                location: event.location || 'N/A',
+                calendarLink: '#',
+              },
+            ),
+          ]);
+        } catch (error) {
+          console.error('Error with notifications:', error);
+        }
       }
 
       // Emit socket event to notify clients
       this.server.emit('eventCreated', {
         message: 'A new event has been created!',
         event,
-        targetRoles: data.targetRoles,
+        targetRoles:
+          data.visibility === EventVisibility.PRIVATE
+            ? [role]
+            : data.targetRoles,
       });
 
       return event;
@@ -426,6 +457,18 @@ export class EventService {
         if (event.creatorId !== userId)
           throw new ForbiddenException('Unauthorized');
 
+        // Handle visibility changes for private events
+        let targetRoles = input.targetRoles ?? (event.targetRoles as Roles[]);
+        let classIdToUse = input.classId ?? event.classId;
+
+        // If changing to private visibility, reset classId and targetRoles
+        if (input.visibility === EventVisibility.PRIVATE) {
+          classIdToUse = null;
+          // Only keep creator's role for private events
+          const userRole = await this.getUserRole(userId);
+          targetRoles = userRole ? [userRole] : [];
+        }
+
         const editData: EditEventInput = {
           title: input.title ?? event.title,
           description: input.description ?? event.description,
@@ -433,8 +476,8 @@ export class EventService {
           endTime: input.endTime ?? event.endTime,
           location: input.location ?? event.location,
           visibility: input.visibility ?? (event.visibility as EventVisibility),
-          targetRoles: input.targetRoles ?? (event.targetRoles as Roles[]),
-          classId: input.classId ?? event.classId,
+          targetRoles: targetRoles,
+          classId: classIdToUse,
         };
 
         const updatedEvent = await tx.event.update({
@@ -445,42 +488,48 @@ export class EventService {
           },
         });
 
-        const targetUsers = await this.getTargetUsers({
-          classId: updatedEvent.classId,
-          targetRoles: updatedEvent.targetRoles as Roles[],
-        });
+        // Only send notifications for non-private events
+        if (updatedEvent.visibility !== EventVisibility.PRIVATE) {
+          const targetUsers = await this.getTargetUsers({
+            classId: updatedEvent.classId,
+            targetRoles: updatedEvent.targetRoles as Roles[],
+          });
 
-        try {
-          await Promise.all([
-            this.googleCalendarService
-              .updateCalendarEvent(eventId, {
-                ...updatedEvent,
-                attendees: targetUsers.map((user) => user.email),
-              })
-              .catch((error) => {
-                console.warn('Google Calendar update failed:', error.message);
-                // Continue execution even if calendar update fails
+          try {
+            await Promise.all([
+              this.googleCalendarService
+                .updateCalendarEvent(eventId, {
+                  ...updatedEvent,
+                  attendees: targetUsers.map((user) => user.email),
+                })
+                .catch((error) => {
+                  console.warn('Google Calendar update failed:', error.message);
+                  // Continue execution even if calendar update fails
+                }),
+              this.sendNotifications(
+                updatedEvent,
+                targetUsers,
+                'event.update',
+                'Event Updated',
+                {
+                  eventTitle: updatedEvent.title,
+                  eventDescription: updatedEvent.description,
+                  startTime: updatedEvent.startTime.toLocaleString(),
+                  endTime: updatedEvent.endTime.toLocaleString(),
+                  location: updatedEvent.location || 'N/A',
+                  calendarLink: '#',
+                },
+              ).catch((error) => {
+                console.warn('Email notification failed:', error.message);
               }),
-            this.sendNotifications(
-              updatedEvent,
-              targetUsers,
-              'event.update',
-              'Event Updated',
-              {
-                eventTitle: updatedEvent.title,
-                eventDescription: updatedEvent.description,
-                startTime: updatedEvent.startTime.toLocaleString(),
-                endTime: updatedEvent.endTime.toLocaleString(),
-                location: updatedEvent.location || 'N/A',
-                calendarLink: '#',
-              },
-            ).catch((error) => {
-              console.warn('Email notification failed:', error.message);
-            }),
-          ]);
-        } catch (error) {
-          console.error('Error with notifications or calendar update:', error);
-          // Don't throw the error, just log it
+            ]);
+          } catch (error) {
+            console.error(
+              'Error with notifications or calendar update:',
+              error,
+            );
+            // Don't throw the error, just log it
+          }
         }
 
         // Emit socket event to notify clients
@@ -497,6 +546,29 @@ export class EventService {
       }
       throw error;
     }
+  }
+
+  // Helper method to get user role
+  private async getUserRole(userId: string): Promise<Roles | null> {
+    const admin = await this.prisma.admin.findUnique({ where: { id: userId } });
+    if (admin) return Roles.ADMIN;
+
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: userId },
+    });
+    if (teacher) return Roles.TEACHER;
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: userId },
+    });
+    if (student) return Roles.STUDENT;
+
+    const parent = await this.prisma.parent.findUnique({
+      where: { id: userId },
+    });
+    if (parent) return Roles.PARENT;
+
+    return null;
   }
 
   private async getTargetUsers(event: {
