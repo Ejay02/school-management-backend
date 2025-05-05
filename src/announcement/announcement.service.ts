@@ -95,10 +95,11 @@ export class AnnouncementService {
     params: PaginationParams & { isArchived?: boolean },
   ) {
     try {
+      // Create base query with isArchived condition
+      const isArchivedCondition = { isArchived: params.isArchived ?? false };
+
       const baseQuery: any = {
-        where: {
-          isArchived: params.isArchived ?? false,
-        },
+        where: isArchivedCondition,
         include: {
           class: true,
           reads: {
@@ -118,33 +119,45 @@ export class AnnouncementService {
           select: { classId: true },
         });
 
+        // Preserve isArchived condition by using AND
         baseQuery.where = {
-          OR: [
+          AND: [
+            isArchivedCondition,
             {
-              classId: {
-                in: teacherClassIds.map((lesson) => lesson.classId),
-              },
-            },
-            { creatorId: userId },
-            {
-              AND: [
-                { targetRoles: { hasSome: [Roles.TEACHER] } },
-                { creatorRole: { in: [Roles.ADMIN, Roles.SUPER_ADMIN] } },
+              OR: [
+                {
+                  classId: {
+                    in: teacherClassIds.map((lesson) => lesson.classId),
+                  },
+                },
+                { creatorId: userId },
+                {
+                  AND: [
+                    { targetRoles: { hasSome: [Roles.TEACHER] } },
+                    { creatorRole: { in: [Roles.ADMIN, Roles.SUPER_ADMIN] } },
+                  ],
+                },
               ],
             },
           ],
         };
       } else if (role === Roles.STUDENT) {
+        // Preserve isArchived condition by using AND
         baseQuery.where = {
-          OR: [
-            { classId: userId },
+          AND: [
+            isArchivedCondition,
             {
-              AND: [
-                { targetRoles: { hasSome: [Roles.STUDENT] } },
+              OR: [
+                { classId: userId },
                 {
-                  creatorRole: {
-                    in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
-                  },
+                  AND: [
+                    { targetRoles: { hasSome: [Roles.STUDENT] } },
+                    {
+                      creatorRole: {
+                        in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
+                      },
+                    },
+                  ],
                 },
               ],
             },
@@ -156,20 +169,26 @@ export class AnnouncementService {
           select: { classId: true },
         });
 
+        // Preserve isArchived condition by using AND
         baseQuery.where = {
-          OR: [
+          AND: [
+            isArchivedCondition,
             {
-              classId: {
-                in: childrenClasses.map((student) => student.classId),
-              },
-            },
-            {
-              AND: [
-                { targetRoles: { hasSome: [Roles.PARENT] } },
+              OR: [
                 {
-                  creatorRole: {
-                    in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
+                  classId: {
+                    in: childrenClasses.map((student) => student.classId),
                   },
+                },
+                {
+                  AND: [
+                    { targetRoles: { hasSome: [Roles.PARENT] } },
+                    {
+                      creatorRole: {
+                        in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
+                      },
+                    },
+                  ],
                 },
               ],
             },
