@@ -40,7 +40,7 @@ export class SchedulingService
   async handleConnection(client: Socket) {
     try {
       const token =
-        client.handshake.auth.token ||
+        client.handshake.auth.token ??
         client.handshake.headers.authorization?.split(' ')[1];
 
       if (!token) {
@@ -62,7 +62,7 @@ export class SchedulingService
         // Store user info in socket data
         client.data.user = payload;
         this.logger.log(
-          `Client ${client.id} connected: ${payload.email || payload.username || payload.sub}`,
+          `Client ${client.id} connected: ${payload.email ?? payload.username ?? payload.sub}`,
         );
 
         // Send successful connection event
@@ -169,55 +169,6 @@ export class SchedulingService
    * Deletes old announcements
    * @param daysOld Number of days after which to delete announcements
    */
-  private async deleteOldAnnouncements(daysOld: number = 30) {
-    this.logger.log(
-      `Running task to delete announcements older than ${daysOld} days`,
-    );
-
-    try {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-
-      // Find announcements older than the cutoff date
-      const oldAnnouncements = await this.prisma.announcement.findMany({
-        where: {
-          createdAt: { lt: cutoffDate },
-          isArchived: true, // Only delete announcements that were already archived
-        },
-      });
-
-      this.logger.log(
-        `Found ${oldAnnouncements.length} old announcements to delete`,
-      );
-
-      // Delete all old announcements at once
-      if (oldAnnouncements.length > 0) {
-        const deletedAnnouncements = await this.prisma.announcement.deleteMany({
-          where: {
-            createdAt: { lt: cutoffDate },
-            isArchived: true,
-          },
-        });
-
-        this.logger.log(
-          `Deleted ${deletedAnnouncements.count} old announcements`,
-        );
-
-        // Emit individual deletion events for each announcement
-        oldAnnouncements.forEach((announcement) => {
-          this.server.emit('announcementDeleted', {
-            message: 'An announcement has been permanently deleted',
-            announcementId: announcement.id,
-            timestamp: new Date().toISOString(),
-          });
-        });
-
-        // Remove the scheduledTaskUpdate emission since it's not needed on the frontend
-      }
-    } catch (error) {
-      this.logger.error('Error deleting old announcements', error);
-    }
-  }
 
   private async archiveOldAnnouncements(daysOld: number = 30) {
     this.logger.log(
@@ -232,7 +183,10 @@ export class SchedulingService
       const oldAnnouncements = await this.prisma.announcement.findMany({
         where: {
           createdAt: { lt: cutoffDate },
-          isArchived: false,
+        },
+        include: {
+          // Include archives to check if any user has already archived this
+          archives: true,
         },
       });
 
@@ -240,41 +194,151 @@ export class SchedulingService
         `Found ${oldAnnouncements.length} announcements to archive`,
       );
 
-      // Archive all old announcements at once
-      if (oldAnnouncements.length > 0) {
-        const archivedAnnouncements = await this.prisma.announcement.updateMany(
-          {
-            where: {
-              createdAt: { lt: cutoffDate },
-              isArchived: false,
-            },
-            data: {
-              isArchived: true,
-              archivedAt: new Date(),
-            },
-          },
+      // Get all users to create archive records for
+      const users = await this.prisma.$transaction([
+        this.prisma.admin.findMany({ select: { id: true } }),
+        this.prisma.teacher.findMany({ select: { id: true } }),
+        this.prisma.student.findMany({ select: { id: true } }),
+        this.prisma.parent.findMany({ select: { id: true } }),
+      ]);
+
+      // Flatten all user IDs
+      const userIds = [
+        ...users[0].map((u) => u.id),
+        ...users[1].map((u) => u.id),
+        ...users[2].map((u) => u.id),
+        ...users[3].map((u) => u.id),
+      ];
+
+      // Create archive records for each announcement and user combination
+      const now = new Date();
+      let archiveCount = 0;
+
+      for (const announcement of oldAnnouncements) {
+        // Get existing archive records for this announcement
+        const existingArchiveUserIds = announcement.archives.map(
+          (a) => a.userId,
         );
 
-        this.logger.log(
-          `Archived ${archivedAnnouncements.count} announcements`,
-        );
+        // Create archive records for users who haven't archived this announcement yet
+        const newArchives = userIds
+          .filter((userId) => !existingArchiveUserIds.includes(userId))
+          .map((userId) => ({
+            announcementId: announcement.id,
+            userId,
+            archivedAt: now,
+          }));
+
+        if (newArchives.length > 0) {
+          const result = await this.prisma.announcementArchive.createMany({
+            data: newArchives,
+            skipDuplicates: true,
+          });
+          archiveCount += result.count;
+        }
 
         // Emit socket events for each archived announcement
-        oldAnnouncements.forEach((announcement) => {
-          this.server.emit('announcementArchived', {
-            message: 'An announcement has been automatically archived',
-            announcementId: announcement.id,
-            timestamp: new Date().toISOString(),
-          });
+        this.server.emit('announcementArchived', {
+          message: 'An announcement has been automatically archived',
+          announcementId: announcement.id,
+          timestamp: now.toISOString(),
         });
-
-        // Removed the scheduledTaskUpdate event since it's not needed on the frontend
       }
+
+      this.logger.log(
+        `Created ${archiveCount} archive records for old announcements`,
+      );
     } catch (error) {
       this.logger.error('Error archiving old announcements', error);
     }
   }
 
+  private async deleteOldAnnouncements(daysOld: number = 60) {
+    this.logger.log(
+      `Running task to delete announcements older than ${daysOld} days`,
+    );
+
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+      // Find announcements older than the cutoff date
+      const oldAnnouncements = await this.prisma.announcement.findMany({
+        where: {
+          createdAt: { lt: cutoffDate },
+        },
+        include: {
+          archives: true,
+        },
+      });
+
+      this.logger.log(
+        `Found ${oldAnnouncements.length} old announcements to check for deletion`,
+      );
+
+      // Get total user count to check if all users have archived an announcement
+      const [adminCount, teacherCount, studentCount, parentCount] =
+        await Promise.all([
+          this.prisma.admin.count(),
+          this.prisma.teacher.count(),
+          this.prisma.student.count(),
+          this.prisma.parent.count(),
+        ]);
+
+      const totalUserCount =
+        adminCount + teacherCount + studentCount + parentCount;
+
+      // Identify announcements to delete (those archived by all users or extremely old)
+      const announcementsToDelete = oldAnnouncements.filter((announcement) => {
+        // If the announcement is extremely old (e.g., 2x the deletion threshold), delete it regardless
+        const isExtremelyOld =
+          announcement.createdAt <
+          new Date(cutoffDate.getTime() - daysOld * 24 * 60 * 60 * 1000);
+        if (isExtremelyOld) return true;
+
+        // Otherwise, only delete if all users have archived it
+        return announcement.archives.length >= totalUserCount;
+      });
+
+      const announcementIdsToDelete = announcementsToDelete.map((a) => a.id);
+
+      this.logger.log(
+        `Found ${announcementIdsToDelete.length} announcements eligible for deletion`,
+      );
+
+      // Delete all eligible announcements at once
+      if (announcementIdsToDelete.length > 0) {
+        // First delete all archive records for these announcements
+        await this.prisma.announcementArchive.deleteMany({
+          where: {
+            announcementId: { in: announcementIdsToDelete },
+          },
+        });
+
+        // Then delete the announcements themselves
+        const deletedAnnouncements = await this.prisma.announcement.deleteMany({
+          where: {
+            id: { in: announcementIdsToDelete },
+          },
+        });
+
+        this.logger.log(
+          `Deleted ${deletedAnnouncements.count} old announcements`,
+        );
+
+        // Emit individual deletion events for each announcement
+        announcementsToDelete.forEach((announcement) => {
+          this.server.emit('announcementDeleted', {
+            message: 'An announcement has been permanently deleted',
+            announcementId: announcement.id,
+            timestamp: new Date().toISOString(),
+          });
+        });
+      }
+    } catch (error) {
+      this.logger.error('Error deleting old announcements', error);
+    }
+  }
   // Public methods to manually trigger tasks if needed (useful for testing)
 
   /**

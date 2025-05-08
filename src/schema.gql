@@ -44,7 +44,6 @@ type Announcement {
   creatorId: String!
   creatorRole: String!
   id: String!
-  isArchived: Boolean!
   readAt: DateTime
   targetRoles: [Roles!]!
   title: String!

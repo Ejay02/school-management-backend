@@ -29,9 +29,6 @@ export class Announcement {
   @Field(() => String, { nullable: false })
   creatorRole: string;
 
-  @Field(() => Boolean, { defaultValue: false })
-  isArchived: boolean;
-
   @Field(() => Date, { nullable: true })
   archivedAt?: Date;
 

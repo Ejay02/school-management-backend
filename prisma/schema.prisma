@@ -322,12 +322,12 @@ model Announcement {
   classId         String?
   class           Class?        @relation(fields: [classId], references: [id])
   targetRoles     Role[] 
-  reads           AnnouncementRead[]   
+  reads           AnnouncementRead[]
+  archives        AnnouncementArchive[]    
   creatorId       String
   creatorRole     Role 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  isArchived      Boolean       @default(false)
   archivedAt      DateTime?
 }
 
@@ -338,7 +338,18 @@ model AnnouncementRead {
   userId          String        // The ID of the user who read the announcement
   readAt          DateTime      @default(now())
   deletedAt       DateTime?     // Null means not deleted
+  archivedAt      DateTime?  
 
+  @@unique([announcementId, userId])
+  @@index([userId])
+}
+
+model AnnouncementArchive {
+  id              String        @id @default(uuid())
+  announcementId  String
+  announcement    Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId          String        // The ID of the user who archived the announcement
+  archivedAt      DateTime      @default(now())
 
   @@unique([announcementId, userId])
   @@index([userId])

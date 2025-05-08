@@ -95,46 +95,70 @@ export class AnnouncementService {
     params: PaginationParams & { isArchived?: boolean },
   ) {
     try {
-      // Create base query with isArchived condition
-      const isArchivedCondition = { isArchived: params.isArchived ?? false };
-
       const baseQuery: any = {
-        where: isArchivedCondition,
+        where: {},
         include: {
           class: true,
           reads: {
             where: { userId },
             select: { readAt: true },
           },
+          archives: {
+            where: { userId },
+            select: { archivedAt: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       };
 
+      // Filter by archive status
+      if (params.isArchived) {
+        // Show only archived announcements for this user
+        baseQuery.where.archives = {
+          some: {
+            userId,
+          },
+        };
+      } else {
+        // Show only non-archived announcements for this user
+        baseQuery.where.archives = {
+          none: {
+            userId,
+          },
+        };
+      }
+
       // Build the where clause based on role
       if ([Roles.SUPER_ADMIN, Roles.ADMIN].includes(role)) {
-        // No additional where clause needed for admins
+        // Admins can see all announcements (no additional filters)
       } else if (role === Roles.TEACHER) {
         const teacherClassIds = await this.prisma.lesson.findMany({
           where: { teacherId: userId },
           select: { classId: true },
         });
 
+        const classIdList = teacherClassIds.map((lesson) => lesson.classId);
+
         // Preserve isArchived condition by using AND
         baseQuery.where = {
           AND: [
-            isArchivedCondition,
+            baseQuery.where,
             {
               OR: [
+                // Only announcements for classes they teach
                 {
                   classId: {
-                    in: teacherClassIds.map((lesson) => lesson.classId),
+                    in: classIdList,
                   },
                 },
+                // Only announcements they created themselves
                 { creatorId: userId },
+                // Only global announcements targeting teachers (with no class)
                 {
                   AND: [
                     { targetRoles: { hasSome: [Roles.TEACHER] } },
                     { creatorRole: { in: [Roles.ADMIN, Roles.SUPER_ADMIN] } },
+                    { classId: null }, // Only truly global announcements
                   ],
                 },
               ],
@@ -145,10 +169,12 @@ export class AnnouncementService {
         // Preserve isArchived condition by using AND
         baseQuery.where = {
           AND: [
-            isArchivedCondition,
+            baseQuery.where,
             {
               OR: [
+                // Only announcements for their class
                 { classId: userId },
+                // Only global announcements targeting students (with no class)
                 {
                   AND: [
                     { targetRoles: { hasSome: [Roles.STUDENT] } },
@@ -156,6 +182,10 @@ export class AnnouncementService {
                       creatorRole: {
                         in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
                       },
+                    },
+                    // Ensure no class-specific announcements from other classes
+                    {
+                      OR: [{ classId: null }, { classId: userId }],
                     },
                   ],
                 },
@@ -169,17 +199,23 @@ export class AnnouncementService {
           select: { classId: true },
         });
 
+        const childClassIdList = childrenClasses.map(
+          (student) => student.classId,
+        );
+
         // Preserve isArchived condition by using AND
         baseQuery.where = {
           AND: [
-            isArchivedCondition,
+            baseQuery.where,
             {
               OR: [
+                // Only announcements for their children's classes
                 {
                   classId: {
-                    in: childrenClasses.map((student) => student.classId),
+                    in: childClassIdList,
                   },
                 },
+                // Only global announcements targeting parents (with no class)
                 {
                   AND: [
                     { targetRoles: { hasSome: [Roles.PARENT] } },
@@ -187,6 +223,13 @@ export class AnnouncementService {
                       creatorRole: {
                         in: [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER],
                       },
+                    },
+                    // Ensure no class-specific announcements from other classes
+                    {
+                      OR: [
+                        { classId: null },
+                        { classId: { in: childClassIdList } },
+                      ],
                     },
                   ],
                 },
@@ -653,11 +696,20 @@ export class AnnouncementService {
         throw new NotFoundException('Announcement not found');
       }
 
-      // Update the announcement
-      await this.prisma.announcement.update({
-        where: { id: announcementId },
-        data: {
-          isArchived: true,
+      // Create an archive record for this user
+      await this.prisma.announcementArchive.upsert({
+        where: {
+          announcementId_userId: {
+            announcementId,
+            userId,
+          },
+        },
+        create: {
+          announcementId,
+          userId,
+          archivedAt: new Date(),
+        },
+        update: {
           archivedAt: new Date(),
         },
       });
@@ -689,12 +741,11 @@ export class AnnouncementService {
         throw new NotFoundException('Announcement not found');
       }
 
-      // Update the announcement
-      await this.prisma.announcement.update({
-        where: { id: announcementId },
-        data: {
-          isArchived: false,
-          archivedAt: null,
+      // Delete the archive record for this user
+      await this.prisma.announcementArchive.deleteMany({
+        where: {
+          announcementId,
+          userId,
         },
       });
 
