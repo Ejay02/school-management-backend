@@ -14,7 +14,7 @@ import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ExamResolver {
-  constructor(private examService: ExamService) {}
+  constructor(private readonly examService: ExamService) {}
 
   @Mutation(() => Exam)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
@@ -37,11 +37,16 @@ export class ExamResolver {
   }
 
   @Query(() => [Exam])
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER, Roles.STUDENT)
   async getAllExams(
+    @Context() context,
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
-    const result = await this.examService.getAllExams(params || {});
+    const result = await this.examService.getAllExams(
+      context.req.user.userId,
+      context.req.user.role,
+      params || {},
+    );
     return result.data;
   }
 

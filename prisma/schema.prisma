@@ -45,6 +45,7 @@ model Student {
   attendances     Attendance[]
   results         Result[]
   submissions     Submission[]
+  exams           StudentExam[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -197,6 +198,7 @@ model Exam {
   results         Result[]
   gradeId         String?
   grade           Grade[] //?
+  studentExams    StudentExam[] 
   description     String?       // General exam description
   instructions    String?       // Markdown instructions for students
   content         Json?         // Store MCQs and other question types as JSON
@@ -204,6 +206,24 @@ model Exam {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
+
+model StudentExam {
+  id              String        @id @default(uuid())
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id])
+  examId          String
+  exam            Exam          @relation(fields: [examId], references: [id])
+  hasTaken        Boolean       @default(false) // Flag to track if student has taken the exam
+  startedAt       DateTime?     // When the student started the exam
+  completedAt     DateTime?     // When the student completed the exam
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([studentId, examId]) // Ensure a student can only be assigned to an exam once
+  @@index([studentId])
+  @@index([examId])
+}
+
 
 model Assignment {
   id              String        @id @default(uuid())
@@ -313,7 +333,6 @@ model EventRead {
 
   @@unique([eventId, userId])
 }
-
 
 model Announcement {
   id              String        @id @default(uuid())

@@ -17,7 +17,7 @@ export class ClassResolver {
   constructor(private readonly classService: ClassService) {}
 
   @Query(() => [Class])
-  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.TEACHER)
   async getAllClasses(
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {

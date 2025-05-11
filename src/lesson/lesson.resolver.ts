@@ -68,7 +68,7 @@ export class LessonResolver {
   }
 
   @Mutation(() => Lesson)
-  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
+  @HasRoles(Roles.TEACHER)
   async editLesson(
     @Context() context,
     @Args('lessonId') lessonId: string,

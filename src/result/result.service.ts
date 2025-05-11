@@ -8,9 +8,9 @@ import { ClassService } from '../class/class.service';
 @Injectable()
 export class ResultService {
   constructor(
-    private prisma: PrismaService,
-    private announcementService: AnnouncementService,
-    private classService: ClassService,
+    private readonly prisma: PrismaService,
+    private readonly announcementService: AnnouncementService,
+    private readonly classService: ClassService,
   ) {}
 
   async generateResults(data: {

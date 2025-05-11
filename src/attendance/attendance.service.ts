@@ -18,7 +18,7 @@ export class AttendanceService {
   @WebSocketServer()
   private readonly server: Server;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getAttendances(
     userId: string,

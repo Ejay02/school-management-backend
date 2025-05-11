@@ -140,15 +140,17 @@ export class ExamService {
   }
 
   async getAllExams(
+    userId: string,
+    userRole: Roles,
     params: PaginationParams,
   ): Promise<PaginatedResponse<Exam>> {
     try {
-      const baseQuery = {
+      // Base query that will be modified based on user role
+      const baseQuery: any = {
         include: {
           subject: true,
           class: true,
           teacher: true,
-          // lesson: true,
           results: {
             include: {
               student: true,
@@ -158,9 +160,47 @@ export class ExamService {
         orderBy: { createdAt: 'desc' },
       };
 
-      // Define searchable fields for exam name, teacher name, subject name, and class name.
+      // Apply role-based filtering
+      switch (userRole) {
+        case Roles.SUPER_ADMIN:
+        case Roles.ADMIN: {
+          // Admins can see all exams
+          // No additional filters needed
+          break;
+        }
+
+        case Roles.TEACHER: {
+          // Teachers can only see exams they've created
+          baseQuery.where = {
+            teacherId: userId,
+          };
+          break;
+        }
+
+        case Roles.STUDENT: {
+          // Students can only see exams for their class
+          const student = await this.prisma.student.findUnique({
+            where: { id: userId },
+            select: { classId: true },
+          });
+
+          if (!student) {
+            throw new NotFoundException('Student not found');
+          }
+
+          baseQuery.where = {
+            classId: student.classId,
+          };
+          break;
+        }
+
+        default:
+          throw new ForbiddenException('Unauthorized access to exams');
+      }
+
+      // Define searchable fields for exam name, teacher name, subject name, and class name
       const searchFields = [
-        'name',
+        'title',
         'teacher.name',
         'subject.name',
         'class.name',
@@ -173,7 +213,11 @@ export class ExamService {
         searchFields,
       );
     } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      )
+        throw error;
       throw new InternalServerErrorException('Failed to fetch exams');
     }
   }
@@ -187,7 +231,7 @@ export class ExamService {
   ) {
     // Verify access based on role
     switch (userRole) {
-      case Roles.TEACHER:
+      case Roles.TEACHER: {
         const teacherAccess = await this.prisma.class.findFirst({
           where: {
             id: classId,
@@ -201,8 +245,9 @@ export class ExamService {
           throw new ForbiddenException('You do not have access to this class');
         }
         break;
+      }
 
-      case Roles.STUDENT:
+      case Roles.STUDENT: {
         const studentAccess = await this.prisma.student.findFirst({
           where: {
             id: userId,
@@ -213,8 +258,9 @@ export class ExamService {
           throw new ForbiddenException('You do not have access to this class');
         }
         break;
+      }
 
-      case Roles.PARENT:
+      case Roles.PARENT: {
         const parentAccess = await this.prisma.parent.findFirst({
           where: {
             id: userId,
@@ -229,6 +275,7 @@ export class ExamService {
           throw new ForbiddenException('You do not have access to this class');
         }
         break;
+      }
     }
 
     const baseQuery = {

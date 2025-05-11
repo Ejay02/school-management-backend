@@ -82,9 +82,47 @@ export class RolesGuard implements CanActivate {
       const args = ctx.getArgs();
       const fieldName = ctx.getInfo().fieldName;
 
+      // Define allowed endpoints for teachers
+      const allowedEndpoints = [
+        'getUserById',
+        'getAllTeachers',
+        'getAllParents',
+        'getAllStudents',
+        'getStudentById',
+        'getAllClasses',
+        'getAllLessons',
+        'getLessonById',
+        'editLesson',
+        'getAllExams',
+        'getExamById',
+        'createExam',
+        'deleteExam',
+        'getAllAssignments',
+        'getAllResults',
+      ];
+
+      //
+      console.log('Teacher access check - User:', user);
+      console.log('Teacher access check - Args:', args);
+
+      console.log('Teacher access check - Field Name:', fieldName);
+      console.log(
+        'Teacher access check - Allowed Endpoints:',
+        allowedEndpoints,
+      );
+      console.log(
+        'Teacher access check - Is in allowed list:',
+        allowedEndpoints.includes(fieldName),
+      );
+      //
+
       // If accessing getUserById endpoint
       if (fieldName === 'getUserById' && args.id) {
-        return true; // Allow teachers to access user information
+        return true;
+      }
+
+      if (allowedEndpoints.includes(fieldName)) {
+        return true;
       }
 
       // If accessing parent info
@@ -107,7 +145,7 @@ export class RolesGuard implements CanActivate {
       }
       // If accessing student info
       if (args.studentId || args.input?.studentId) {
-        const studentId = args.studentId || args.input?.studentId;
+        const studentId = args.studentId ?? args.input?.studentId;
 
         // Allow if student is in teacher's classes
         const student = await this.prisma.student.findFirst({
@@ -147,7 +185,10 @@ export class RolesGuard implements CanActivate {
       const fieldName = ctx.getInfo().fieldName;
 
       // If accessing getUserById endpoint
-      if (fieldName === 'getUserById' && args.id) {
+      if (
+        (fieldName === 'getUserById' && args.id) ||
+        fieldName === 'getAllTeachers'
+      ) {
         return true; // Allow parents to access user information
       }
 
