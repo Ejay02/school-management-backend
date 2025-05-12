@@ -140,27 +140,4 @@ export class ExamResolver {
       context.req.user.role,
     );
   }
-
-  @Query(() => Number, {
-    description: 'Calculate final grade for a student in a class',
-  })
-  @HasRoles(
-    Roles.TEACHER,
-    Roles.ADMIN,
-    Roles.SUPER_ADMIN,
-    Roles.STUDENT,
-    Roles.PARENT,
-  )
-  async calculateFinalGrade(
-    @Context() context,
-    @Args('studentId') studentId: string,
-    @Args('classId') classId: string,
-  ) {
-    return await this.examService.calculateFinalGrade(
-      studentId,
-      classId,
-      context.req.user.userId,
-      context.req.user.role,
-    );
-  }
 }

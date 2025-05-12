@@ -13,7 +13,7 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class GradeResolver {
-  constructor(private gradeService: GradeService) {}
+  constructor(private readonly gradeService: GradeService) {}
 
   @Mutation(() => Grade)
   @HasRoles(Roles.TEACHER)
@@ -98,6 +98,23 @@ export class GradeResolver {
       academicPeriod,
       comments,
     );
+  }
+
+  @Query(() => Number, {
+    description: 'Calculate final grade for a student in a class',
+  })
+  @HasRoles(
+    Roles.TEACHER,
+    Roles.ADMIN,
+    Roles.SUPER_ADMIN,
+    Roles.STUDENT,
+    Roles.PARENT,
+  )
+  async calculateFinalGrade(
+    @Args('studentId') studentId: string,
+    @Args('classId') classId: string,
+  ) {
+    return await this.gradeService.calculateFinalGrade(studentId, classId);
   }
 
   @Mutation(() => Grade)

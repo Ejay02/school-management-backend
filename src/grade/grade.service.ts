@@ -15,7 +15,7 @@ import {
 
 @Injectable()
 export class GradeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // Assign a grade to a student's exam or assignment.
   async assignGrade(teacherId: string, input: CreateGradeInput) {
@@ -123,6 +123,109 @@ export class GradeService {
     }
 
     return await PrismaQueryBuilder.paginateResponse(
+      this.prisma.grade,
+      baseQuery,
+      params,
+      searchFields,
+    );
+  }
+
+  async getChildrenGrades(
+    parentId: string,
+    studentId?: string,
+    academicPeriod?: string,
+    params?: PaginationParams,
+  ): Promise<PaginatedResponse<any>> {
+    // First verify this parent has access to the requested student(s)
+    let studentIds: string[] = [];
+
+    if (studentId) {
+      // If a specific student is requested, verify parent relationship
+      const hasAccess = await this.prisma.parent.findFirst({
+        where: {
+          id: parentId,
+          students: {
+            some: {
+              id: studentId,
+            },
+          },
+        },
+      });
+
+      if (!hasAccess) {
+        throw new ForbiddenException(
+          "You can only view your children's grades",
+        );
+      }
+
+      studentIds = [studentId];
+    } else {
+      // Get all children of this parent
+      const parent = await this.prisma.parent.findUnique({
+        where: { id: parentId },
+        include: {
+          students: {
+            select: { id: true },
+          },
+        },
+      });
+
+      if (!parent || parent.students.length === 0) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page: 1,
+            lastPage: 1,
+            limit: 0,
+          },
+        };
+      }
+
+      studentIds = parent.students.map((student) => student.id);
+    }
+
+    // Now use the existing getMyGrades logic but with an array of student IDs
+    const baseQuery = {
+      where: {
+        studentId: { in: studentIds },
+        ...(academicPeriod && { academicPeriod }),
+      },
+      include: {
+        student: true,
+        exam: true,
+        assignment: true,
+      },
+    };
+
+    const searchFields = [
+      'score',
+      'exam',
+      'academicPeriod',
+      'exams',
+      'comments',
+      'student.firstName',
+      'student.surname',
+    ];
+
+    if (!params) {
+      const data = await this.prisma.grade.findMany({
+        ...baseQuery,
+        orderBy: [{ student: { surname: 'asc' } }, { createdAt: 'desc' }],
+      });
+
+      return {
+        data,
+        meta: {
+          total: data.length,
+          page: 1,
+          lastPage: 1,
+          limit: data.length,
+        },
+      };
+    }
+
+    return PrismaQueryBuilder.paginateResponse(
       this.prisma.grade,
       baseQuery,
       params,
@@ -276,6 +379,41 @@ export class GradeService {
           : 'An error occurred while creating the exam grade',
       );
     }
+  }
+
+  async calculateFinalGrade(studentId: string, classId: string) {
+    // Get all results for this student in this class
+    const results = await this.prisma.result.findMany({
+      where: {
+        studentId,
+        OR: [{ exam: { classId } }, { assignment: { classId } }],
+      },
+      include: {
+        exam: true,
+        assignment: true,
+      },
+    });
+
+    // Separate exam and assignment results
+    const examResults = results.filter((r) => r.examId);
+    const assignmentResults = results.filter((r) => r.assignmentId);
+
+    // Calculate average scores
+    const examAverage =
+      examResults.length > 0
+        ? examResults.reduce((sum, r) => sum + r.score, 0) / examResults.length
+        : 0;
+
+    const assignmentAverage =
+      assignmentResults.length > 0
+        ? assignmentResults.reduce((sum, r) => sum + r.score, 0) /
+          assignmentResults.length
+        : 0;
+
+    // Apply weights: 60% exam, 40% assignment
+    const finalGrade = examAverage * 0.6 + assignmentAverage * 0.4;
+
+    return finalGrade;
   }
 
   async calculateOverallGrade(studentId: string, academicPeriod: string) {
