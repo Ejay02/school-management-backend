@@ -58,6 +58,11 @@ input AnnouncementQueryInput {
   sortOrder: SortOrder
 }
 
+input AssignExamToStudentInput {
+  examId: String!
+  studentId: String!
+}
+
 input AssignStudentToClassInput {
   classId: String!
   studentId: String!
@@ -166,6 +171,12 @@ type Class {
 type CollectionRateData {
   rate: Float!
   targetRate: Float!
+}
+
+input CompleteExamInput {
+  examId: String!
+  score: Float
+  studentId: String!
 }
 
 type Counts {
@@ -376,6 +387,7 @@ type Exam {
   date: DateTime!
   description: String
   endTime: DateTime!
+  exams: [StudentExam]
   id: String!
   instructions: String
   questions: [Question!]
@@ -513,6 +525,7 @@ type Mutation {
   assignAssignmentGrade(academicPeriod: String!, assignmentId: String!, comments: String, score: Float!, studentId: String!): Grade!
   assignClassToTeacher(classId: String!, teacherId: String!): Class!
   assignExamGrade(academicPeriod: String!, comments: String, examId: String!, score: Float!, studentId: String!): Grade!
+  assignExamToStudent(input: AssignExamToStudentInput!): StudentExam!
   assignGrade(input: CreateGradeInput!): Grade!
   assignLessonsToClass(classId: String!, lessons: [String!]!): Lesson!
   assignLessonsToTeacher(lessons: [String!]!, teacherId: String!): Lesson!
@@ -520,6 +533,7 @@ type Mutation {
   assignSubjectsToClass(input: AssignSubjectsInput!): AssignSubjectsResponse!
   calculateOverallGrade(academicPeriod: String!, studentId: String!): Grade!
   cancelEvent(id: String!, reason: String!): Event!
+  completeExam(input: CompleteExamInput!): StudentExam!
   createAnnouncement(classId: String, content: String!, targetRoles: [String!], title: String!): Announcement!
   createAssignment(createAssignmentInput: CreateAssignmentInput!): Assignment!
   createClass(input: CreateClassInput!): Class!
@@ -558,6 +572,7 @@ type Mutation {
   publishResults(classId: String!, message: String, term: String!): [Result!]!
   refreshTokens(refreshToken: String!): TokenResponse!
   resetPassword(input: ResetPasswordInput!): AuthResponse!
+  startExam(input: StartExamInput!): StudentExam!
   studentSignup(input: StudentSignupInput!): AuthResponse!
   teacherSignup(input: TeacherSignupInput!): AuthResponse!
   unarchiveAnnouncement(announcementId: String!): Boolean!
@@ -645,6 +660,9 @@ type PaymentStatusDistributionData {
 type Query {
   attendanceByLesson(lessonId: String!): Attendance!
   attendanceStats(endDate: DateTime!, startDate: DateTime!, studentId: String!): Attendance!
+
+  """Calculate final grade for a student in a class"""
+  calculateFinalGrade(classId: String!, studentId: String!): Float!
   getAllAdminUsers: AdminUsersResponse!
   getAllAdmins: [Admin!]!
   getAllAnnouncements(params: AnnouncementQueryInput): [Announcement!]!
@@ -684,6 +702,7 @@ type Query {
   getResultStatistics(className: String!): ResultStatistics!
   getSchoolAttendanceStats(endDate: DateTime!, startDate: DateTime!): SchoolAttendanceStats!
   getStudentById(studentId: String!): Student!
+  getStudentExams(studentId: String): [StudentExam!]!
   getStudentResults(studentId: String!): [Result!]!
   getStudentsByGender(classId: String, params: PaginationInput): StudentGenderStatistics!
   getSubjectById(id: String!): Subject!
@@ -778,6 +797,11 @@ enum SortOrder {
   DESC
 }
 
+input StartExamInput {
+  examId: String!
+  studentId: String!
+}
+
 type Student {
   address: String
   attendances: [Attendance]
@@ -787,6 +811,7 @@ type Student {
   createdAt: DateTime!
   dateOfBirth: DateTime
   email: String
+  exams: [StudentExam]
   grade: Grade
   gradeId: String!
   id: ID!
@@ -802,6 +827,19 @@ type Student {
   surname: String!
   updatedAt: DateTime!
   username: String!
+}
+
+type StudentExam {
+  completedAt: DateTime
+  createdAt: DateTime!
+  exam: Exam!
+  examId: String!
+  hasTaken: Boolean!
+  id: ID!
+  startedAt: DateTime
+  student: Student!
+  studentId: String!
+  updatedAt: DateTime!
 }
 
 type StudentGenderStatistics {

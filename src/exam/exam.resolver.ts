@@ -10,6 +10,12 @@ import { UpdateExamInput } from './input/update.exam.input';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { CreateExamInput } from './input/create.exam.input';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { StudentExam } from './types/student-exam.types';
+import {
+  AssignExamToStudentInput,
+  CompleteExamInput,
+  StartExamInput,
+} from './input/student-exam.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -91,5 +97,70 @@ export class ExamResolver {
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
   async deleteExam(@Args('examId') examId: string): Promise<DeleteResponse> {
     return await this.examService.deleteExam(examId);
+  }
+
+  @Mutation(() => StudentExam)
+  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  async assignExamToStudent(@Args('input') input: AssignExamToStudentInput) {
+    return await this.examService.assignExamToStudent(input);
+  }
+
+  @Mutation(() => StudentExam)
+  @HasRoles(Roles.STUDENT)
+  async startExam(@Context() context, @Args('input') input: StartExamInput) {
+    return await this.examService.startExam(
+      input,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Mutation(() => StudentExam)
+  @HasRoles(Roles.STUDENT)
+  async completeExam(
+    @Context() context,
+    @Args('input') input: CompleteExamInput,
+  ) {
+    return await this.examService.completeExam(
+      input,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Query(() => [StudentExam])
+  @HasRoles(Roles.STUDENT, Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getStudentExams(
+    @Context() context,
+    @Args('studentId', { nullable: true }) studentId?: string,
+  ) {
+    return await this.examService.getStudentExams(
+      studentId,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Query(() => Number, {
+    description: 'Calculate final grade for a student in a class',
+  })
+  @HasRoles(
+    Roles.TEACHER,
+    Roles.ADMIN,
+    Roles.SUPER_ADMIN,
+    Roles.STUDENT,
+    Roles.PARENT,
+  )
+  async calculateFinalGrade(
+    @Context() context,
+    @Args('studentId') studentId: string,
+    @Args('classId') classId: string,
+  ) {
+    return await this.examService.calculateFinalGrade(
+      studentId,
+      classId,
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 }

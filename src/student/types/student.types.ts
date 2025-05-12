@@ -4,6 +4,7 @@ import { Class } from 'src/class/types/class.types';
 import { Grade } from 'src/grade/types/grade.types';
 import { Attendance } from 'src/attendance/types/attendance.types';
 import { Result } from 'src/result/types/result.types';
+import { StudentExam } from 'src/exam/types/student-exam.types';
 
 @ObjectType()
 export class Student {
@@ -69,6 +70,9 @@ export class Student {
 
   @Field(() => [Result], { nullable: 'itemsAndList' })
   results?: Result[];
+
+  @Field(() => [StudentExam], { nullable: 'itemsAndList' })
+  exams?: StudentExam[];
 
   @Field()
   createdAt: Date;

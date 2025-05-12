@@ -16,6 +16,12 @@ import { UpdateExamInput } from './input/update.exam.input';
 import { CreateExamInput } from './input/create.exam.input';
 import { Exam } from './types/exam.types';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import {
+  AssignExamToStudentInput,
+  CompleteExamInput,
+  CompleteExamWithAnswersInput,
+  StartExamInput,
+} from './input/student-exam.input';
 
 @Injectable()
 export class ExamService {
@@ -44,7 +50,7 @@ export class ExamService {
       }
 
       // Create the exam within the transaction
-      return tx.exam.create({
+      const exam = await tx.exam.create({
         data: {
           title: input.title,
           startTime: input.startTime,
@@ -82,6 +88,27 @@ export class ExamService {
           // lesson: true,
         },
       });
+
+      // Get all students in the class
+      const students = await tx.student.findMany({
+        where: {
+          classId: input.classId,
+        },
+      });
+
+      // Create StudentExam records for each student in the class
+      if (students.length > 0) {
+        await tx.studentExam.createMany({
+          data: students.map((student) => ({
+            studentId: student.id,
+            examId: exam.id,
+            hasTaken: false,
+          })),
+          skipDuplicates: true, // Skip if a student is already assigned to this exam
+        });
+      }
+
+      return exam;
     });
 
     return result;
@@ -321,7 +348,7 @@ export class ExamService {
 
     // Verify access based on role
     switch (userRole) {
-      case Roles.TEACHER:
+      case Roles.TEACHER: {
         const teacherAccess = await this.prisma.class.findFirst({
           where: {
             id: exam.classId,
@@ -335,8 +362,9 @@ export class ExamService {
           throw new ForbiddenException('You do not have access to this exam');
         }
         break;
+      }
 
-      case Roles.STUDENT:
+      case Roles.STUDENT: {
         const studentAccess = await this.prisma.student.findFirst({
           where: {
             id: userId,
@@ -346,9 +374,20 @@ export class ExamService {
         if (!studentAccess) {
           throw new ForbiddenException('You do not have access to this exam');
         }
-        break;
 
-      case Roles.PARENT:
+        // Remove correct answers from questions for students
+        if (exam.questions) {
+          exam.questions = exam.questions.map((question) => {
+            return {
+              ...question,
+              correctAnswer: '',
+            };
+          });
+        }
+        break;
+      }
+
+      case Roles.PARENT: {
         const parentAccess = await this.prisma.parent.findFirst({
           where: {
             id: userId,
@@ -363,6 +402,7 @@ export class ExamService {
           throw new ForbiddenException('You do not have access to this exam');
         }
         break;
+      }
     }
 
     return exam;
@@ -414,5 +454,368 @@ export class ExamService {
         `Failed to delete exam: ${error.message}`,
       );
     }
+  }
+
+  //  might want to assign an exam to only certain students in a class (for example, makeup exams, special assessments, or accommodations)
+  async assignExamToStudent(input: AssignExamToStudentInput) {
+    // Check if the exam exists
+    const exam = await this.prisma.exam.findUnique({
+      where: { id: input.examId },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    // Check if the student exists
+    const student = await this.prisma.student.findUnique({
+      where: { id: input.studentId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Check if the student is in the class for which the exam is scheduled
+    if (student.classId !== exam.classId) {
+      throw new ForbiddenException('Student is not in the class for this exam');
+    }
+
+    // Check if the student is already assigned to this exam
+    const existingAssignment = await this.prisma.studentExam.findUnique({
+      where: {
+        studentId_examId: {
+          studentId: input.studentId,
+          examId: input.examId,
+        },
+      },
+    });
+
+    if (existingAssignment) {
+      throw new ForbiddenException('Student is already assigned to this exam');
+    }
+
+    // Create the student-exam assignment
+    return this.prisma.studentExam.create({
+      data: {
+        studentId: input.studentId,
+        examId: input.examId,
+        hasTaken: false,
+      },
+      include: {
+        student: true,
+        exam: true,
+      },
+    });
+  }
+
+  async startExam(input: StartExamInput, userId: string, userRole: Roles) {
+    // Ensure the student can only start their own exam
+    if (userRole === Roles.STUDENT && userId !== input.studentId) {
+      throw new ForbiddenException('You can only start your own exams');
+    }
+
+    // Check if the student-exam assignment exists
+    const studentExam = await this.prisma.studentExam.findUnique({
+      where: {
+        studentId_examId: {
+          studentId: input.studentId,
+          examId: input.examId,
+        },
+      },
+    });
+
+    if (!studentExam) {
+      throw new NotFoundException('Student is not assigned to this exam');
+    }
+
+    // Check if the exam has already been started
+    if (studentExam.startedAt) {
+      throw new ForbiddenException('Exam has already been started');
+    }
+
+    // Update the student-exam record to mark it as started
+    return this.prisma.studentExam.update({
+      where: {
+        id: studentExam.id,
+      },
+      data: {
+        startedAt: new Date(),
+        hasTaken: true,
+      },
+      include: {
+        student: true,
+        exam: true,
+      },
+    });
+  }
+
+  async completeExam(
+    input: CompleteExamInput | CompleteExamWithAnswersInput,
+    userId: string,
+    userRole: Roles,
+  ) {
+    // Ensure the student can only complete their own exam
+    if (userRole === Roles.STUDENT && userId !== input.studentId) {
+      throw new ForbiddenException('You can only complete your own exams');
+    }
+
+    // Check if the student-exam assignment exists
+    const studentExam = await this.prisma.studentExam.findUnique({
+      where: {
+        studentId_examId: {
+          studentId: input.studentId,
+          examId: input.examId,
+        },
+      },
+    });
+
+    if (!studentExam) {
+      throw new NotFoundException('Student is not assigned to this exam');
+    }
+
+    // Check if the exam has been started
+    if (!studentExam.startedAt) {
+      throw new ForbiddenException('Exam has not been started yet');
+    }
+
+    // Check if the exam has already been completed
+    if (studentExam.completedAt) {
+      throw new ForbiddenException('Exam has already been completed');
+    }
+
+    if ('answers' in input) {
+      return this.completeExamWithAnswers(input, userId, userRole);
+    }
+
+    // Update the student-exam record to mark it as completed
+    return this.prisma.$transaction(async (tx) => {
+      // Update the student-exam record to mark it as completed
+      const updatedStudentExam = await tx.studentExam.update({
+        where: {
+          id: studentExam.id,
+        },
+        data: {
+          completedAt: new Date(),
+          hasTaken: true,
+        },
+        include: {
+          student: true,
+          exam: true,
+        },
+      });
+      // If input.score is provided, generate a result record
+
+      if (input.score !== undefined) {
+        await tx.result.create({
+          data: {
+            score: input.score,
+            examId: input.examId,
+            studentId: input.studentId,
+          },
+        });
+      }
+
+      return updatedStudentExam;
+    });
+  }
+
+  async getStudentExams(
+    studentId: string | undefined,
+    userId: string,
+    userRole: Roles,
+  ) {
+    // If no studentId is provided and the user is a student, use their own ID
+    const targetStudentId =
+      studentId || (userRole === Roles.STUDENT ? userId : null);
+
+    if (!targetStudentId) {
+      throw new ForbiddenException('Student ID is required');
+    }
+
+    // Ensure students can only view their own exams
+    if (userRole === Roles.STUDENT && userId !== targetStudentId) {
+      throw new ForbiddenException('You can only view your own exams');
+    }
+
+    // Check if the student exists
+    const student = await this.prisma.student.findUnique({
+      where: { id: targetStudentId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Get all exams assigned to the student
+    return this.prisma.studentExam.findMany({
+      where: {
+        studentId: targetStudentId,
+      },
+      include: {
+        exam: {
+          include: {
+            subject: true,
+            teacher: true,
+          },
+        },
+      },
+    });
+  }
+
+  private async completeExamWithAnswers(
+    input: CompleteExamWithAnswersInput,
+    userId: string,
+    userRole: Roles,
+  ) {
+    // Ensure the student can only complete their own exam
+    if (userRole === Roles.STUDENT && userId !== input.studentId) {
+      throw new ForbiddenException('You can only complete your own exams');
+    }
+
+    // Check if the student-exam assignment exists
+    const studentExam = await this.prisma.studentExam.findUnique({
+      where: {
+        studentId_examId: {
+          studentId: input.studentId,
+          examId: input.examId,
+        },
+      },
+    });
+
+    if (!studentExam) {
+      throw new NotFoundException('Student is not assigned to this exam');
+    }
+
+    // Check if the exam has been started
+    if (!studentExam.startedAt) {
+      throw new ForbiddenException('Exam has not been started yet');
+    }
+
+    // Check if the exam has already been completed
+    if (studentExam.completedAt) {
+      throw new ForbiddenException('Exam has already been completed');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Get the exam with questions
+      const exam = await tx.exam.findUnique({
+        where: { id: input.examId },
+        include: { questions: true },
+      });
+
+      if (!exam) {
+        throw new NotFoundException('Exam not found');
+      }
+
+      // Calculate score based on answers
+      let totalPoints = 0;
+      let earnedPoints = 0;
+
+      // Create a map of question IDs to answers for quick lookup
+      const answerMap = new Map(
+        input.answers.map((a) => [a.questionId, a.answer]),
+      );
+
+      // Check each question
+      for (const question of exam.questions) {
+        totalPoints += question.points;
+
+        const studentAnswer = answerMap.get(question.id);
+        if (studentAnswer && studentAnswer === question.correctAnswer) {
+          earnedPoints += question.points;
+        }
+      }
+
+      // Calculate percentage score (0-100)
+      const score = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+
+      // Update the student-exam record to mark it as completed
+      const updatedStudentExam = await tx.studentExam.update({
+        where: {
+          id: studentExam.id,
+        },
+        data: {
+          completedAt: new Date(),
+          hasTaken: true,
+        },
+        include: {
+          student: true,
+          exam: true,
+        },
+      });
+
+      // Create a result record with the calculated score
+      await tx.result.create({
+        data: {
+          score,
+          examId: input.examId,
+          studentId: input.studentId,
+        },
+      });
+
+      return updatedStudentExam;
+    });
+  }
+
+  async calculateFinalGrade(
+    studentId: string,
+    classId: string,
+    userId: string,
+    userRole: Roles,
+  ) {
+    if (userRole === Roles.STUDENT && userId !== studentId) {
+      throw new ForbiddenException('You can only view your own grades');
+    }
+
+    if (userRole === Roles.PARENT) {
+      const hasAccess = await this.prisma.parent.findFirst({
+        where: {
+          id: userId,
+          students: {
+            some: {
+              id: studentId,
+            },
+          },
+        },
+      });
+      if (!hasAccess) {
+        throw new ForbiddenException(
+          "You can only view your children's grades",
+        );
+      }
+    }
+    // Get all results for this student in this class
+    const results = await this.prisma.result.findMany({
+      where: {
+        studentId,
+        OR: [{ exam: { classId } }, { assignment: { classId } }],
+      },
+      include: {
+        exam: true,
+        assignment: true,
+      },
+    });
+
+    // Separate exam and assignment results
+    const examResults = results.filter((r) => r.examId);
+    const assignmentResults = results.filter((r) => r.assignmentId);
+
+    // Calculate average scores
+    const examAverage =
+      examResults.length > 0
+        ? examResults.reduce((sum, r) => sum + r.score, 0) / examResults.length
+        : 0;
+
+    const assignmentAverage =
+      assignmentResults.length > 0
+        ? assignmentResults.reduce((sum, r) => sum + r.score, 0) /
+          assignmentResults.length
+        : 0;
+
+    // Apply weights: 60% exam, 40% assignment
+    const finalGrade = examAverage * 0.6 + assignmentAverage * 0.4;
+
+    return finalGrade;
   }
 }

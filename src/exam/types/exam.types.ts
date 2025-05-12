@@ -5,6 +5,7 @@ import { Teacher } from 'src/teacher/types/teacher.types';
 import { Result } from 'src/result/types/result.types';
 import GraphQLJSON from 'graphql-type-json';
 import { Question } from 'src/shared/question/types/question.types';
+import { StudentExam } from './student-exam.types';
 
 @ObjectType()
 export class Exam {
@@ -55,6 +56,9 @@ export class Exam {
 
   @Field(() => [Result])
   results: Result[];
+
+  @Field(() => [StudentExam], { nullable: 'itemsAndList' })
+  exams?: StudentExam[];
 
   @Field()
   createdAt: Date;

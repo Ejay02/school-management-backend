@@ -32,7 +32,7 @@ model Student {
   password        String
   phone           String?       @unique
   address         String?
-  image             String?
+  image           String?
   bloodType       String?
   sex             Sex?
   dateOfBirth     DateTime? 
