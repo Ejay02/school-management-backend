@@ -70,7 +70,7 @@ export class LessonService {
                 class: {
                   connect: { id: classItem.id },
                 },
-                // gradeId: classItem.supervisorId,
+
                 day: daysString,
                 startTime: start,
                 endTime: end,

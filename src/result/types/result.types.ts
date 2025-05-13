@@ -2,6 +2,9 @@ import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { Exam } from 'src/exam/types/exam.types';
 import { Assignment } from 'src/assignment/types/assignment.types';
 import { Student } from 'src/student/types/student.types';
+import { ResultType } from 'src/result/enum/resultType';
+import { Subject } from 'src/subject/types/subject.types';
+import { Term } from 'src/payment/enum/term';
 
 @ObjectType()
 export class Result {
@@ -28,6 +31,24 @@ export class Result {
 
   @Field(() => Student)
   student: Student;
+
+  @Field(() => ResultType, { nullable: true })
+  type?: ResultType;
+
+  @Field(() => [Subject], { nullable: true })
+  subjects?: Subject[];
+
+  @Field(() => String, { nullable: true })
+  academicPeriod?: string;
+
+  @Field(() => Term, { nullable: true })
+  term?: Term;
+
+  @Field(() => String, { nullable: true })
+  comments?: string;
+
+  @Field(() => Boolean)
+  isOfficialResult: boolean;
 
   @Field()
   createdAt: Date;

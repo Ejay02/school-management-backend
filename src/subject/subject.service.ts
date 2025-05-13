@@ -45,7 +45,7 @@ export class SubjectService {
             data: {
               name: subjectName,
               classId: classItem.id,
-              gradeId: classItem.supervisorId, // adjust as necessary
+              resultId: classItem.supervisorId,
             },
           });
         }
@@ -124,7 +124,7 @@ export class SubjectService {
         teachers: true,
         lessons: true,
         assignments: true,
-        grade: true,
+        result: true,
         class: true,
       };
 
@@ -152,13 +152,13 @@ export class SubjectService {
           };
           break;
 
-        case Roles.PARENT:
+        case Roles.PARENT: {
           // Parents see subjects their children are enrolled in
           const children = await this.prisma.student.findMany({
             where: { parentId: userId },
             select: {
               classId: true,
-              gradeId: true,
+              result: { select: { id: true } },
             },
           });
 
@@ -176,23 +176,26 @@ export class SubjectService {
                 },
               },
               {
-                grade: {
+                result: {
                   id: {
-                    in: children.map((child) => child.gradeId),
+                    in: children.flatMap((child) =>
+                      child.result.map((r) => r.id),
+                    ),
                   },
                 },
               },
             ],
           };
           break;
+        }
 
-        case Roles.STUDENT:
-          // Students see subjects in their class/grade
+        case Roles.STUDENT: {
+          // Students see subjects in their class
           const student = await this.prisma.student.findUnique({
             where: { id: userId },
             select: {
               classId: true,
-              gradeId: true,
+              result: true,
             },
           });
 
@@ -201,9 +204,17 @@ export class SubjectService {
           }
 
           baseQuery.where = {
-            OR: [{ classId: student.classId }, { gradeId: student.gradeId }],
+            OR: [
+              { classId: student.classId },
+              {
+                result: {
+                  some: { id: { in: student.result.map((r) => r.id) } },
+                },
+              },
+            ],
           };
           break;
+        }
 
         default:
           throw new ForbiddenException(
@@ -223,6 +234,7 @@ export class SubjectService {
       throw new InternalServerErrorException('Failed to fetch subjects');
     }
   }
+
   async getSubjectById(subjectId: string) {
     const subject = await this.prisma.subject.findUnique({
       where: { id: subjectId },

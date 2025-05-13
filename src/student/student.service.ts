@@ -40,7 +40,7 @@ export class StudentService {
             },
           },
         },
-        grade: true,
+        result: true,
         attendances: true,
       };
 
@@ -57,7 +57,7 @@ export class StudentService {
           // Admins can see all students
           break;
 
-        case Roles.TEACHER:
+        case Roles.TEACHER: {
           // Teachers can only see students in their assigned classes
           const teacherClasses = await this.prisma.class.findMany({
             where: {
@@ -74,6 +74,7 @@ export class StudentService {
             },
           };
           break;
+        }
 
         case Roles.PARENT:
           // Parents can only see their own children
@@ -111,17 +112,10 @@ export class StudentService {
     try {
       const student = await this.prisma.student.findUnique({
         where: { id: studentId },
-        // include: {
-        //   attendances: true,
-        //   results: true,
-        //   submissions: true,
-        //   class: true,
-        //   parent: true,
-        //   // lessons:true
-        // },
+
         include: {
           attendances: true,
-          results: true,
+          result: true,
           submissions: true,
           class: {
             include: {
@@ -200,7 +194,7 @@ export class StudentService {
       const baseInclude = {
         parent: true,
         class: true,
-        grade: true,
+        result: true,
       };
 
       // Initialize where clause

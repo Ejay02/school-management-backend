@@ -1,6 +1,7 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 import { Assignment } from 'src/assignment/types/assignment.types';
-import { Grade } from 'src/grade/types/grade.types';
+import { Result } from 'src/result/types/result.types';
+
 import { Student } from 'src/student/types/student.types';
 
 @ObjectType()
@@ -29,6 +30,6 @@ export class Submission {
   @Field()
   status: string; // Status (e.g., 'submitted', 'graded')
 
-  @Field(() => Grade, { nullable: true })
-  grade?: Grade;
+  @Field(() => Result, { nullable: true })
+  result?: Result;
 }

@@ -55,7 +55,7 @@ export class Exam {
   teacher: Teacher;
 
   @Field(() => [Result])
-  results: Result[];
+  result: Result[];
 
   @Field(() => [StudentExam], { nullable: 'itemsAndList' })
   exams?: StudentExam[];

@@ -122,12 +122,18 @@ export class SubmissionService {
         assignmentId: input.assignmentId,
         content: input.content,
         status: 'SUBMITTED',
-        gradeId: (
+        resultId: (
           await this.prisma.student.findUnique({
             where: { id: studentId },
-            select: { gradeId: true },
+            select: {
+              result: {
+                take: 1,
+                orderBy: { createdAt: 'desc' },
+                select: { id: true },
+              },
+            },
           })
-        ).gradeId,
+        ).result[0]?.id,
       },
       include: {
         student: true,

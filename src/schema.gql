@@ -90,7 +90,7 @@ type Assignment {
   lesson: Lesson!
   lessonId: Int!
   questions: [Question!]
-  results: [Result!]!
+  result: [Result!]!
   startDate: DateTime!
   subject: Subject!
   subjectId: Int!
@@ -121,7 +121,6 @@ type AuthResponse {
   classId: String
   dateOfBirth: String
   email: String!
-  gradeId: String
   id: String
   image: String
   name: String
@@ -247,16 +246,6 @@ input CreateFeeStructureInput {
   type: FeeType!
 }
 
-input CreateGradeInput {
-  academicPeriod: String!
-  assignmentId: String
-  comments: String
-  examId: String
-  score: Float!
-  studentId: String!
-  type: GradeType!
-}
-
 input CreateLessonInput {
   content: JSON
   day: String!
@@ -272,6 +261,16 @@ input CreateQuestionInput {
   options: JSON
   points: Float! = 1
   questionType: QuestionType!
+}
+
+input CreateResultInput {
+  academicPeriod: String!
+  assignmentId: String
+  comments: String
+  examId: String
+  score: Float!
+  studentId: String!
+  type: ResultType!
 }
 
 input CreateSubjectInput {
@@ -391,7 +390,7 @@ type Exam {
   id: String!
   instructions: String
   questions: [Question!]
-  results: [Result!]!
+  result: [Result!]!
   startTime: DateTime!
   subject: Subject!
   subjectId: String!
@@ -433,28 +432,6 @@ type FeeStructure {
 enum FeeType {
   TERM
   YEARLY
-}
-
-type Grade {
-  academicPeriod: String!
-  assignment: Assignment
-  assignmentId: String
-  comments: String
-  createdAt: DateTime!
-  exam: Exam
-  examId: String
-  id: String!
-  score: Float!
-  student: Student!
-  studentId: String!
-  type: GradeType!
-  updatedAt: DateTime!
-}
-
-enum GradeType {
-  ASSIGNMENT
-  EXAM
-  OVERALL
 }
 
 type Invoice {
@@ -522,16 +499,15 @@ type Mutation {
   adminSignup(input: AdminSignupInput!): AuthResponse!
   archiveAnnouncement(announcementId: String!): Boolean!
   assignAdminRole(role: String!, targetId: String!): Admin!
-  assignAssignmentGrade(academicPeriod: String!, assignmentId: String!, comments: String, score: Float!, studentId: String!): Grade!
+  assignAssignmentResult(academicPeriod: String!, assignmentId: String!, comments: String, score: Float!, studentId: String!): Result!
   assignClassToTeacher(classId: String!, teacherId: String!): Class!
-  assignExamGrade(academicPeriod: String!, comments: String, examId: String!, score: Float!, studentId: String!): Grade!
   assignExamToStudent(input: AssignExamToStudentInput!): StudentExam!
-  assignGrade(input: CreateGradeInput!): Grade!
   assignLessonsToClass(classId: String!, lessons: [String!]!): Lesson!
   assignLessonsToTeacher(lessons: [String!]!, teacherId: String!): Lesson!
+  assignResult(input: CreateResultInput!): Result!
   assignStudentToClass(input: AssignStudentToClassInput!): Student!
   assignSubjectsToClass(input: AssignSubjectsInput!): AssignSubjectsResponse!
-  calculateOverallGrade(academicPeriod: String!, studentId: String!): Grade!
+  calculateOverallResult(academicPeriod: String!, studentId: String!): Result!
   cancelEvent(id: String!, reason: String!): Event!
   completeExam(input: CompleteExamInput!): StudentExam!
   createAnnouncement(classId: String, content: String!, targetRoles: [String!], title: String!): Announcement!
@@ -547,9 +523,8 @@ type Mutation {
   deleteEvent(eventId: String!): Boolean!
   deleteExam(examId: String!): DeleteResponse!
   deleteFeeStructure(feeStructureId: String!): DeleteResponse!
-  deleteGrade(gradeId: String!): Boolean!
   deleteLesson(lessonId: String!): DeleteResponse!
-  deleteResult(id: String!): Boolean!
+  deleteResult(id: String!): DeleteResponse!
   deleteSubject(subjectId: String!): DeleteResponse!
   deleteSubmission(submissionId: String!): Boolean!
   deleteUser(targetId: String!): Boolean!
@@ -581,9 +556,8 @@ type Mutation {
   updateEvent(eventId: String!, input: EditEventInput!): Event!
   updateExam(examId: String!, input: UpdateExamInput!): Exam!
   updateFeeStructure(id: String!, input: UpdateFeeStructureInput!): FeeStructure!
-  updateGrade(input: UpdateGradeInput!): Grade!
   updateParentProfile(input: UpdateProfileInput!): Parent!
-  updateResult(assignmentId: String, examId: String, id: String!, score: Int): Result!
+  updateResult(input: UpdateResultInput!): Result!
   updateStudentProfile(input: UpdateProfileInput!): Student!
   updateSubject(input: UpdateSubjectInput!, subjectId: String!): Subject!
   updateTeacherProfile(input: UpdateProfileInput!): Teacher!
@@ -661,8 +635,8 @@ type Query {
   attendanceByLesson(lessonId: String!): Attendance!
   attendanceStats(endDate: DateTime!, startDate: DateTime!, studentId: String!): Attendance!
 
-  """Calculate final grade for a student in a class"""
-  calculateFinalGrade(classId: String!, studentId: String!): Float!
+  """Calculate final Result for a student in a class"""
+  calculateFinalResult(classId: String!, studentId: String!, term: Term!): Float!
   getAllAdminUsers: AdminUsersResponse!
   getAllAdmins: [Admin!]!
   getAllAnnouncements(params: AnnouncementQueryInput): [Announcement!]!
@@ -681,10 +655,10 @@ type Query {
   getAssignmentById(assignmentId: String!): [Assignment!]!
   getAttendances: [Attendance!]!
   getBillingReportDashboard: BillingReportDashboard!
+  getChildrenResults(academicPeriod: String, params: PaginationInput, parentId: String!, studentId: String!): Result!
   getClassById(id: String!): Class!
   getClassExams(classId: String!, params: PaginationInput): [Exam!]!
-  getClassGrades(academicPeriod: String, classId: String!, params: PaginationInput): Grade!
-  getClassResults(classId: String!): [Result!]!
+  getClassResults(academicPeriod: String, classId: String!, params: PaginationInput): Result!
   getDashboardUserCardSummary: DashboardSummary!
   getEventById(id: String!): Event!
   getEvents(filter: EventFilter!, params: PaginationInput): [Event!]!
@@ -693,8 +667,8 @@ type Query {
   getHello: String!
   getIncomeGraphData: MonthlyRevenue!
   getLessonById(id: String!): Lesson!
-  getMyGrades(academicPeriod: String, params: PaginationInput): Grade!
   getMyInvoices(params: PaginationInput): [Invoice!]!
+  getMyResults(academicPeriod: String, params: PaginationInput): Result!
   getMySubmissions(params: PaginationInput): [Submission!]!
   getParentById(parentId: String!): Parent!
   getPaymentById(paymentId: String!): StudentPayment!
@@ -739,15 +713,21 @@ input ResetPasswordInput {
 }
 
 type Result {
+  academicPeriod: String
   assignment: Assignment
   assignmentId: Int
+  comments: String
   createdAt: DateTime!
   exam: Exam
   examId: Int
   id: String!
+  isOfficialResult: Boolean!
   score: Int!
   student: Student!
   studentId: String!
+  subjects: [Subject!]
+  term: Term
+  type: ResultType
   updatedAt: DateTime!
 }
 
@@ -757,6 +737,12 @@ type ResultStatistics {
   highest: Float!
   lowest: Float!
   totalStudents: Int!
+}
+
+enum ResultType {
+  ASSIGNMENT
+  EXAM
+  OVERALL
 }
 
 type RevenueTrendData {
@@ -812,8 +798,6 @@ type Student {
   dateOfBirth: DateTime
   email: String
   exams: [StudentExam]
-  grade: Grade
-  gradeId: String!
   id: ID!
   image: String
   name: String!
@@ -821,7 +805,8 @@ type Student {
   parentId: String!
   password: String
   phone: String
-  results: [Result]
+  result: [Result]
+  resultId: String!
   role: String!
   sex: String
   surname: String!
@@ -888,10 +873,11 @@ type Subject {
   class: Class
   classId: String
   createdAt: DateTime!
-  gradeId: String
   id: String!
   lessons: [Lesson]
   name: String!
+  result: Result
+  resultId: String
   teachers: [Teacher]
   updatedAt: DateTime!
 }
@@ -900,8 +886,8 @@ type Submission {
   assignment: Assignment!
   assignmentId: String!
   content: String
-  grade: Grade
   id: String!
+  result: Result
   status: String!
   student: Student!
   studentId: String!
@@ -995,12 +981,6 @@ input UpdateFeeStructureInput {
   type: FeeType
 }
 
-input UpdateGradeInput {
-  comments: String
-  id: String!
-  score: Float
-}
-
 input UpdateProfileInput {
   address: String
   bloodType: String
@@ -1013,6 +993,12 @@ input UpdateProfileInput {
   sex: Sex
   surname: String
   username: String
+}
+
+input UpdateResultInput {
+  comments: String
+  id: String!
+  score: Float
 }
 
 input UpdateSubjectInput {

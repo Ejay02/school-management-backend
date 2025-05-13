@@ -178,7 +178,7 @@ export class ExamService {
           subject: true,
           class: true,
           teacher: true,
-          results: {
+          result: {
             include: {
               student: true,
             },

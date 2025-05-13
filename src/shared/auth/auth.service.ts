@@ -291,8 +291,6 @@ export class AuthService {
 
                   parentId: studentInput.parentId,
                   classId: classRecord.id,
-                  // classId: studentInput.classId,
-                  // gradeId: '0',
                 },
               });
             }
@@ -424,7 +422,6 @@ export class AuthService {
       sex: user.sex ?? null,
       parentId: user.parentId ?? null,
       classId: user.classId ?? null,
-      gradeId: user.gradeId ?? null,
     };
 
     return authResponse;
@@ -595,16 +592,15 @@ export class AuthService {
       userId: updatedUser.id,
       role: updatedUser.role,
       username: updatedUser.username,
-      name: updatedUser.name || null,
-      surname: updatedUser.surname || null,
-      email: updatedUser.email || null,
-      address: updatedUser.address || null,
-      phone: updatedUser.phone || null,
-      bloodType: updatedUser.bloodType || null,
-      sex: updatedUser.sex || null,
-      parentId: updatedUser.parentId || null,
-      classId: updatedUser.classId || null,
-      gradeId: updatedUser.gradeId || null,
+      name: updatedUser.name ?? null,
+      surname: updatedUser.surname ?? null,
+      email: updatedUser.email ?? null,
+      address: updatedUser.address ?? null,
+      phone: updatedUser.phone ?? null,
+      bloodType: updatedUser.bloodType ?? null,
+      sex: updatedUser.sex ?? null,
+      parentId: updatedUser.parentId ?? null,
+      classId: updatedUser.classId ?? null,
     };
   }
 }

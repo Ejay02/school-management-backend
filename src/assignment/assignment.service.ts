@@ -176,7 +176,7 @@ export class AssignmentService {
           id: assignmentId,
         },
         include: {
-          results: true,
+          result: true,
           submissions: true,
         },
       });
@@ -365,7 +365,7 @@ export class AssignmentService {
             class: true,
             teacher: true,
             lesson: true,
-            results: true,
+            result: true,
             submissions: true,
           },
         });

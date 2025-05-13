@@ -6,7 +6,6 @@ import { LessonModule } from './lesson/lesson.module';
 import { ClassModule } from './class/class.module';
 import { StudentModule } from './student/student.module';
 import { ParentModule } from './parent/parent.module';
-import { GradeModule } from './grade/grade.module';
 import { ExamModule } from './exam/exam.module';
 import { AssignmentModule } from './assignment/assignment.module';
 import { AttendanceModule } from './attendance/attendance.module';
@@ -59,7 +58,6 @@ import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
     ClassModule,
     StudentModule,
     ParentModule,
-    GradeModule,
     ExamModule,
     AssignmentModule,
     AttendanceModule,

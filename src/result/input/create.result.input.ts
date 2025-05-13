@@ -7,10 +7,10 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { GradeType } from '../enum/gradeType';
+import { ResultType } from '../enum/resultType';
 
 @InputType()
-export class CreateGradeInput {
+export class CreateResultInput {
   @Field()
   @IsString()
   studentId: string;
@@ -31,9 +31,9 @@ export class CreateGradeInput {
   @IsOptional()
   assignmentId?: string;
 
-  @Field(() => GradeType)
-  @IsEnum(GradeType)
-  type: GradeType;
+  @Field(() => ResultType)
+  @IsEnum(ResultType)
+  type: ResultType;
 
   @Field()
   @IsString()

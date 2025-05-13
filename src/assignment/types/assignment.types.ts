@@ -41,7 +41,7 @@ export class Assignment {
   lesson: Lesson;
 
   @Field(() => [Result])
-  results: Result[];
+  result: Result[];
 
   @Field(() => String)
   teacherId: string;

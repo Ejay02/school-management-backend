@@ -52,7 +52,4 @@ export class AuthResponse {
 
   @Field({ nullable: true })
   classId?: string;
-
-  @Field({ nullable: true })
-  gradeId?: string;
 }

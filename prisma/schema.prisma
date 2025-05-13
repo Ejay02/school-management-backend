@@ -39,11 +39,9 @@ model Student {
   parentId        String
   parent          Parent        @relation(fields: [parentId], references: [id] )
   classId         String
-  class           Class         @relation(fields: [classId], references: [id] )
-  gradeId         String        @default(uuid())
-  grade           Grade[]       
+  class           Class         @relation(fields: [classId], references: [id] )       
   attendances     Attendance[]
-  results         Result[]
+  result          Result[]
   submissions     Submission[]
   exams           StudentExam[]
   createdAt       DateTime      @default(now())
@@ -51,7 +49,6 @@ model Student {
 
   @@index([parentId])
   @@index([classId])
-  @@index([gradeId])
 }
 
 model Teacher{
@@ -104,30 +101,6 @@ model ParentStudentLink {
   @@unique([studentId, parentId]) 
 }
 
-model Grade {
-  id              String        @id @default(uuid())
-  studentId       String
-  student         Student       @relation(fields: [studentId], references: [id])
-  score           Float
-  examId          String?
-  exam            Exam?         @relation(fields: [examId], references: [id])
-  assignmentId    String?
-  assignment      Assignment?   @relation(fields: [assignmentId], references: [id])
-  type            GradeType
-  subjects        Subject[]   
-  submissions     Submission[] 
-  academicPeriod  String
-  comments        String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@unique([studentId, examId, assignmentId, academicPeriod])
-
-  @@index([studentId])
-  @@index([examId])
-  @@index([assignmentId])
-}
-
 model Class {
   id              String        @id @default(uuid())
   name            String        @unique
@@ -155,10 +128,10 @@ model Subject {
   teachers        Teacher[]
   lessons         Lesson[]
   assignments     Assignment[]
-  gradeId         String?
-  grade           Grade?        @relation(fields: [gradeId], references: [id] )
   classId         String
   class           Class         @relation(fields: [classId], references: [id])
+  resultId        String?
+  result         Result?        @relation(fields: [resultId], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -195,9 +168,7 @@ model Exam {
   subject         Subject       @relation(fields: [subjectId], references: [id])
   teacherId       String       
   teacher         Teacher       @relation(fields: [teacherId], references: [id])
-  results         Result[]
-  gradeId         String?
-  grade           Grade[] //?
+  result         Result[]
   studentExams    StudentExam[] 
   description     String?       // General exam description
   instructions    String?       // Markdown instructions for students
@@ -242,8 +213,7 @@ model Assignment {
   subject         Subject       @relation(fields: [subjectId], references: [id])
   classId         String   
   class           Class         @relation(fields: [classId], references: [id])
-  grade           Grade[]
-  results         Result[]    
+  result         Result[]    
   submissions     Submission[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -255,8 +225,8 @@ model Submission {
   assignment      Assignment    @relation(fields: [assignmentId], references: [id])
   studentId       String
   student         Student       @relation(fields: [studentId], references: [id] )
-  gradeId         String
-  grade           Grade?        @relation(fields: [gradeId], references: [id])  
+  resultId         String
+  result           Result?        @relation(fields: [resultId], references: [id])  
   submissionDate  DateTime      @default(now()) 
   status          String        // Submission status (e.g., 'submitted', 'graded', 'late')
   content         String?       // Optional field to store submission content (e.g., file URL or text)
@@ -265,7 +235,7 @@ model Submission {
 
   @@index([assignmentId])
   @@index([studentId])
-  @@index([gradeId])
+  @@index([resultId])
 }
 
 model Result {
@@ -276,7 +246,14 @@ model Result {
   assignmentId    String?
   assignment      Assignment?   @relation(fields: [assignmentId], references: [id])  
   studentId       String
-  student         Student       @relation(fields: [studentId], references: [id] )    
+  student         Student       @relation(fields: [studentId], references: [id] ) 
+  type            ResultType?    // Making it optional for backward compatibility
+  subjects        Subject[]     // Relation to subjects
+  academicPeriod  String?       // Making it optional for backward compatibility
+  term            Term?
+  comments        String?
+  isOfficialResult Boolean       @default(false)  // Flag to distinguish between auto-generated and teacher-assigned grades
+  submissions     Submission[]    
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -547,7 +524,7 @@ enum EventVisibility {
   PRIVATE 
 }
 
-enum GradeType {
+enum ResultType {
   EXAM
   ASSIGNMENT
   OVERALL

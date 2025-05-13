@@ -32,7 +32,7 @@ export class ParentService {
         students: {
           include: {
             class: true,
-            grade: true,
+            result: true,
           },
         },
       };
