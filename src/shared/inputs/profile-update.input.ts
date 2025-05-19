@@ -63,5 +63,10 @@ export class UpdateProfileInput {
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsString()
+  aboutMe?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
   dateOfBirth?: Date;
 }

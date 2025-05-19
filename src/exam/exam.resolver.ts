@@ -93,12 +93,6 @@ export class ExamResolver {
     );
   }
 
-  @Mutation(() => DeleteResponse)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
-  async deleteExam(@Args('examId') examId: string): Promise<DeleteResponse> {
-    return await this.examService.deleteExam(examId);
-  }
-
   @Mutation(() => StudentExam)
   @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
   async assignExamToStudent(@Args('input') input: AssignExamToStudentInput) {
@@ -139,5 +133,11 @@ export class ExamResolver {
       context.req.user.userId,
       context.req.user.role,
     );
+  }
+
+  @Mutation(() => DeleteResponse)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  async deleteExam(@Args('examId') examId: string): Promise<DeleteResponse> {
+    return await this.examService.deleteExam(examId);
   }
 }

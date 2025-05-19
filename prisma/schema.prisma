@@ -16,8 +16,9 @@ model Admin {
   role            Role
   email           String?   
   password        String
-  image             String?
-  dateOfBirth     DateTime? 
+  image           String?
+  dateOfBirth     DateTime?
+  aboutMe         String? 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -35,7 +36,8 @@ model Student {
   image           String?
   bloodType       String?
   sex             Sex?
-  dateOfBirth     DateTime? 
+  dateOfBirth     DateTime?
+  aboutMe         String? 
   parentId        String
   parent          Parent        @relation(fields: [parentId], references: [id] )
   classId         String
@@ -61,9 +63,10 @@ model Teacher{
   password        String
   phone           String?       @unique
   address         String?
-  image             String?
+  image           String?
   bloodType       String?
   sex             Sex?
+  aboutMe         String?
   dateOfBirth     DateTime? 
   exams           Exam[]
   subjects        Subject[]
@@ -84,7 +87,7 @@ model Parent {
   password        String
   phone           String ?       @unique
   address         String?
-  image             String?
+  image           String?
   dateOfBirth     DateTime? 
   students        Student[]
   invoices        Invoice[]

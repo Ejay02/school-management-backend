@@ -301,29 +301,113 @@ export class ResultService {
       },
     };
 
+    let data;
     if (!params) {
-      const data = await this.prisma.result.findMany({
+      data = await this.prisma.result.findMany({
         ...baseQuery,
         orderBy: [{ student: { surname: 'asc' } }, { createdAt: 'desc' }],
       });
-
-      return {
-        data,
-        meta: {
-          total: data.length,
-          page: 1,
-          lastPage: 1, // Since all records are returned in one go, lastPage is 1
-          limit: data.length,
-        },
-      };
+    } else {
+      const paginatedResponse = await PrismaQueryBuilder.paginateResponse(
+        this.prisma.result,
+        baseQuery,
+        params,
+        ['comments', 'student.firstName', 'student.surname'],
+      );
+      data = paginatedResponse.data;
     }
 
-    return PrismaQueryBuilder.paginateResponse(
-      this.prisma.result,
-      baseQuery,
-      params,
-      ['comments', 'student.firstName', 'student.surname'],
-    );
+    // Group results by student
+    const studentMap = {};
+
+    // Process each result and organize by student
+    data.forEach((result) => {
+      const studentId = result.studentId;
+
+      // Initialize student object if not exists
+      studentMap[studentId] ??= {
+        id: result.student.id,
+        name: result.student.name,
+        surname: result.student.surname,
+        image: result.student.image,
+        termResults: {
+          FIRST: { exams: [], assignments: [], averageScore: 0 },
+          SECOND: { exams: [], assignments: [], averageScore: 0 },
+          THIRD: { exams: [], assignments: [], averageScore: 0 },
+          OVERALL: { score: 0 },
+        },
+      };
+
+      // Add result to appropriate term array
+      if (result.term) {
+        const termData = studentMap[studentId].termResults[result.term];
+
+        if (result.examId) {
+          termData.exams.push({
+            id: result.id,
+            examId: result.examId,
+            examTitle: result.exam?.title ?? 'Unknown Exam',
+            score: result.score,
+            comments: result.comments,
+            createdAt: result.createdAt,
+          });
+        } else if (result.assignmentId) {
+          termData.assignments.push({
+            id: result.id,
+            assignmentId: result.assignmentId,
+            assignmentTitle: result.assignment?.title ?? 'Unknown Assignment',
+            score: result.score,
+            comments: result.comments,
+            createdAt: result.createdAt,
+          });
+        }
+
+        // Recalculate average score for the term
+        const allScores = [...termData.exams, ...termData.assignments].map(
+          (item) => item.score,
+        );
+        termData.averageScore =
+          allScores.length > 0
+            ? Math.round(
+                allScores.reduce((sum, score) => sum + score, 0) /
+                  allScores.length,
+              )
+            : 0;
+      } else if (result.type === 'OVERALL') {
+        studentMap[studentId].termResults.OVERALL.score = result.score;
+      }
+    });
+
+    // Calculate overall scores if not explicitly provided
+    Object.values(studentMap).forEach((student: any) => {
+      if (student.termResults.OVERALL.score === 0) {
+        const termScores = [
+          student.termResults.FIRST.averageScore,
+          student.termResults.SECOND.averageScore,
+          student.termResults.THIRD.averageScore,
+        ].filter((score) => score > 0);
+
+        if (termScores.length > 0) {
+          student.termResults.OVERALL.score = Math.round(
+            termScores.reduce((sum, score) => sum + score, 0) /
+              termScores.length,
+          );
+        }
+      }
+    });
+
+    // Convert to array format
+    const formattedResults = Object.values(studentMap);
+
+    return {
+      data: formattedResults,
+      meta: {
+        total: formattedResults.length,
+        page: params?.page || 1,
+        lastPage: params?.page || 1,
+        limit: params?.limit || formattedResults.length,
+      },
+    };
   }
 
   async assignAssignmentResult(

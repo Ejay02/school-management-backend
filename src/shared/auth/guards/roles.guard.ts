@@ -93,12 +93,25 @@ export class RolesGuard implements CanActivate {
         'getAllLessons',
         'getLessonById',
         'editLesson',
+        'getAllSubjects',
+        'updateSubject',
+        'deleteSubject',
+        'createSubject',
         'getAllExams',
         'getExamById',
-        'createExam',
-        'deleteExam',
+        'createExam', // T
+        'updateExam', // T
+        'deleteExam', //T
         'getAllAssignments',
+        'getAssignmentById',
+        'createAssignment',
+        'deleteAssignment',
+        'editAssignment',
         'getAllResults',
+        'getClassResults',
+        'getResultStatistics',
+        'getAttendances',
+        'updateTeacherProfile', //T
       ];
 
       //
@@ -307,14 +320,20 @@ export class RolesGuard implements CanActivate {
       const args = ctx.getArgs();
       const fieldName = ctx.getInfo().fieldName;
 
+      const allowedEndpoints = ['getAllExams', 'getExamById'];
+
       // If accessing getUserById endpoint
       if (fieldName === 'getUserById' && args.id) {
         return true; // Allow parents to access user information
       }
 
+      if (allowedEndpoints.includes(fieldName)) {
+        return true;
+      }
+
       // If accessing student info
       if (args.studentId || args.input?.studentId) {
-        const studentId = args.studentId || args.input?.studentId;
+        const studentId = args.studentId ?? args.input?.studentId;
         // Allow if it's their own info
         return studentId === user.id;
       }

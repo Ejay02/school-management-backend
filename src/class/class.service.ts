@@ -17,6 +17,7 @@ import {
 } from 'src/shared/pagination/types/pagination.types';
 import { Class } from './types/class.types';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { Roles } from 'src/shared/enum/role';
 
 @Injectable()
 export class ClassService {
@@ -45,10 +46,11 @@ export class ClassService {
   }
 
   async getAllClasses(
+    user: any,
     params: PaginationParams,
   ): Promise<PaginatedResponse<Class>> {
     try {
-      const baseQuery = {
+      const baseQuery: any = {
         include: {
           announcements: true,
           students: true,
@@ -72,10 +74,18 @@ export class ClassService {
         orderBy: { createdAt: 'desc' },
       };
 
+      // Filter classes if user is a teacher
+      if (user && user.role === Roles.TEACHER) {
+        baseQuery.where = {
+          OR: [
+            { supervisorId: user.id }, // Classes where teacher is supervisor
+            { subjects: { some: { teachers: { some: { id: user.id } } } } }, // Classes where teacher teaches a subject
+          ],
+        };
+      }
+
       // Define searchable fields
       const searchFields = ['name'];
-
-      // const totalCount = await this.prisma.class.count();
 
       // If no limit is specified, set it to a higher value to fetch all classes
       const enhancedParams = {

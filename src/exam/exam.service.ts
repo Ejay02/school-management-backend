@@ -140,6 +140,11 @@ export class ExamService {
           description: input.description,
           instructions: input.instructions,
           content: input.content,
+          //
+          class: input.classId ? { connect: { id: input.classId } } : undefined,
+          subject: input.subjectId
+            ? { connect: { id: input.subjectId } }
+            : undefined,
           // Handle questions update if provided
           questions: input.questions
             ? {
@@ -406,54 +411,6 @@ export class ExamService {
     }
 
     return exam;
-  }
-
-  async deleteExam(examId: string): Promise<DeleteResponse> {
-    try {
-      const exam = await this.prisma.exam.findUnique({
-        where: { id: examId },
-      });
-
-      if (!exam) {
-        throw new NotFoundException('Exam not found');
-      }
-
-      // Check if exam has any results
-      const hasResults = await this.prisma.result.findFirst({
-        where: { examId },
-      });
-
-      if (hasResults) {
-        throw new ForbiddenException(
-          'Cannot delete exam with existing results',
-        );
-      }
-
-      // Delete questions first
-      await this.prisma.question.deleteMany({
-        where: { examId },
-      });
-
-      // Then delete the exam
-      await this.prisma.exam.delete({
-        where: { id: examId },
-      });
-
-      return {
-        success: true,
-        message: `Exam with ID ${examId} has been successfully deleted`,
-      };
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Failed to delete exam: ${error.message}`,
-      );
-    }
   }
 
   async startExam(input: StartExamInput, userId: string, userRole: Roles) {
@@ -756,5 +713,53 @@ export class ExamService {
         exam: true,
       },
     });
+  }
+
+  async deleteExam(examId: string): Promise<DeleteResponse> {
+    try {
+      const exam = await this.prisma.exam.findUnique({
+        where: { id: examId },
+      });
+
+      if (!exam) {
+        throw new NotFoundException('Exam not found');
+      }
+
+      // Check if exam has any results
+      const hasResults = await this.prisma.result.findFirst({
+        where: { examId },
+      });
+
+      if (hasResults) {
+        throw new ForbiddenException(
+          'Cannot delete exam with existing results',
+        );
+      }
+
+      // Delete questions first
+      await this.prisma.question.deleteMany({
+        where: { examId },
+      });
+
+      // Then delete the exam
+      await this.prisma.exam.delete({
+        where: { id: examId },
+      });
+
+      return {
+        success: true,
+        message: `Exam with ID ${examId} has been successfully deleted`,
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to delete exam: ${error.message}`,
+      );
+    }
   }
 }

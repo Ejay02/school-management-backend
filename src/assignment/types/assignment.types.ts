@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 import { Lesson } from 'src/lesson/types/lesson.types';
 import { Result } from 'src/result/types/result.types';
 import { Teacher } from 'src/teacher/types/teacher.types';
@@ -34,10 +34,10 @@ export class Assignment {
   @Field(() => [Question], { nullable: true })
   questions?: Question[];
 
-  @Field(() => Int)
+  @Field(() => String)
   lessonId: string;
 
-  @Field(() => Lesson)
+  @Field(() => Lesson, { nullable: true })
   lesson: Lesson;
 
   @Field(() => [Result])
@@ -46,19 +46,19 @@ export class Assignment {
   @Field(() => String)
   teacherId: string;
 
-  @Field(() => Teacher)
+  @Field(() => Teacher, { nullable: true })
   teacher: Teacher;
 
-  @Field(() => Int)
+  @Field(() => String)
   subjectId: string;
 
-  @Field(() => Subject)
+  @Field(() => Subject, { nullable: true })
   subject: Subject;
 
-  @Field(() => Int)
+  @Field(() => String)
   classId: string;
 
-  @Field(() => Class)
+  @Field(() => Class, { nullable: true })
   class: Class;
 
   @Field(() => [Submission])

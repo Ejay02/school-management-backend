@@ -9,6 +9,7 @@ import { Roles } from 'src/shared/enum/role';
 import { CreateAssignmentInput } from './input/create.assignment.input';
 import { EditAssignmentInput } from './input/edit.assignment.input';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,7 +37,7 @@ export class AssignmentResolver {
     return result.data;
   }
 
-  @Query(() => [Assignment])
+  @Query(() => Assignment)
   @HasRoles(
     Roles.ADMIN,
     Roles.TEACHER,
@@ -72,6 +73,19 @@ export class AssignmentResolver {
       context.req.user.userId,
       context.req.user.role,
       editAssignmentInput,
+    );
+  }
+
+  @Mutation(() => DeleteResponse)
+  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  async deleteAssignment(
+    @Context() context,
+    @Args('assignmentId') assignmentId: string,
+  ) {
+    return this.assignmentService.deleteAssignment(
+      assignmentId,
+      context.req.user.userId,
+      context.req.user.role,
     );
   }
 }

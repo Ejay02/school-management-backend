@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ClassService } from './class.service';
 import { Class } from './types/class.types';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
@@ -19,9 +19,13 @@ export class ClassResolver {
   @Query(() => [Class])
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.TEACHER)
   async getAllClasses(
+    @Context() context,
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
-    const result = await this.classService.getAllClasses(params || {});
+    const result = await this.classService.getAllClasses(
+      context.req.user,
+      params || {},
+    );
     return result.data;
   }
 

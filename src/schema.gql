@@ -79,23 +79,23 @@ type AssignSubjectsResponse {
 }
 
 type Assignment {
-  class: Class!
-  classId: Int!
+  class: Class
+  classId: String!
   content: JSON
   createdAt: DateTime!
   description: String
   dueDate: DateTime!
   id: String!
   instructions: String
-  lesson: Lesson!
-  lessonId: Int!
+  lesson: Lesson
+  lessonId: String!
   questions: [Question!]
   result: [Result!]!
   startDate: DateTime!
-  subject: Subject!
-  subjectId: Int!
+  subject: Subject
+  subjectId: String!
   submissions: [Submission!]!
-  teacher: Teacher!
+  teacher: Teacher
   teacherId: String!
   title: String!
   updatedAt: DateTime!
@@ -316,8 +316,15 @@ type DeleteResponse {
 }
 
 input EditAssignmentInput {
+  classId: String!
+  content: JSON
+  description: String
   dueDate: DateTime!
+  instructions: String
+  lessonId: String!
+  questions: [CreateQuestionInput!]
   startDate: DateTime!
+  subjectId: String!
   title: String!
 }
 
@@ -519,6 +526,7 @@ type Mutation {
   createLesson(classId: String!, createLessonInput: CreateLessonInput!, subjectId: String!): Lesson!
   createSubject(input: CreateSubjectInput!): Subject!
   createSubmission(input: CreateSubmissionInput!): Submission!
+  deleteAssignment(assignmentId: String!): DeleteResponse!
   deleteClass(classId: String!): DeleteResponse!
   deleteEvent(eventId: String!): Boolean!
   deleteExam(examId: String!): DeleteResponse!
@@ -652,7 +660,7 @@ type Query {
   getAllSubjects(params: PaginationInput): [Subject!]!
   getAllTeachers(params: PaginationInput): [Teacher!]!
   getAnnouncementById(announcementId: String!): Announcement!
-  getAssignmentById(assignmentId: String!): [Assignment!]!
+  getAssignmentById(assignmentId: String!): Assignment!
   getAttendances: [Attendance!]!
   getBillingReportDashboard: BillingReportDashboard!
   getChildrenResults(academicPeriod: String, params: PaginationInput, parentId: String!, studentId: String!): Result!
@@ -953,6 +961,7 @@ input UpdateClassInput {
 }
 
 input UpdateExamInput {
+  classId: String
   content: JSON
   date: DateTime
   description: String
@@ -960,6 +969,7 @@ input UpdateExamInput {
   instructions: String
   questions: [CreateQuestionInput!]
   startTime: DateTime
+  subjectId: String
   title: String
 }
 
@@ -982,6 +992,7 @@ input UpdateFeeStructureInput {
 }
 
 input UpdateProfileInput {
+  aboutMe: String
   address: String
   bloodType: String
   dateOfBirth: DateTime

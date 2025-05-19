@@ -178,6 +178,10 @@ export class AssignmentService {
         include: {
           result: true,
           submissions: true,
+          teacher: true,
+          subject: true,
+          class: true,
+          lesson: true,
         },
       });
     } catch (error) {
@@ -374,6 +378,72 @@ export class AssignmentService {
       if (error instanceof ForbiddenException) throw error;
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Failed to edit assignment');
+    }
+  }
+
+  async deleteAssignment(
+    assignmentId: string,
+    userId: string,
+    userRole: Roles,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const assignment = await tx.assignment.findUnique({
+          where: {
+            id: assignmentId,
+          },
+          include: {
+            teacher: true,
+            submissions: true,
+          },
+        });
+
+        if (!assignment) {
+          throw new NotFoundException('Assignment not found');
+        }
+
+        // If user is a teacher, verify they created the assignment
+        if (userRole === Roles.TEACHER) {
+          if (assignment.teacher?.id !== userId) {
+            throw new ForbiddenException(
+              'You can only delete your own assignments',
+            );
+          }
+        }
+
+        // Check if there are any submissions for this assignment
+        if (assignment.submissions.length > 0) {
+          throw new BadRequestException(
+            'Cannot delete assignment with existing submissions',
+          );
+        }
+
+        // Delete related questions first
+        await tx.question.deleteMany({
+          where: {
+            assignmentId: assignmentId,
+          },
+        });
+
+        // Delete the assignment
+        await tx.assignment.delete({
+          where: {
+            id: assignmentId,
+          },
+        });
+
+        this.server.emit('deleteAssignment', {
+          message: 'An assignment has been deleted!',
+          assignmentId: assignmentId,
+        });
+
+        return {
+          success: true,
+          message: 'Assignment successfully deleted',
+        };
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to delete assignment');
     }
   }
 }

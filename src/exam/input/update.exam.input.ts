@@ -42,4 +42,14 @@ export class UpdateExamInput {
   @Field(() => [CreateQuestionInput], { nullable: true })
   @IsOptional()
   questions?: CreateQuestionInput[];
+
+  @Field({ nullable: true })
+  @IsString()
+  @IsOptional()
+  classId?: string;
+
+  @Field({ nullable: true })
+  @IsString()
+  @IsOptional()
+  subjectId?: string;
 }
