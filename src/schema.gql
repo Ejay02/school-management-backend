@@ -8,6 +8,7 @@ type AcademicYear {
 }
 
 type Admin {
+  aboutMe: String
   createdAt: DateTime!
   dateOfBirth: DateTime
   email: String
@@ -797,6 +798,7 @@ input StartExamInput {
 }
 
 type Student {
+  aboutMe: String
   address: String
   attendances: [Attendance]
   bloodType: String
@@ -903,6 +905,7 @@ type Submission {
 }
 
 type Teacher {
+  aboutMe: String
   address: String
   bloodType: String
   classes: [Class!]!

@@ -89,6 +89,7 @@ model Parent {
   address         String?
   image           String?
   dateOfBirth     DateTime? 
+  aboutMe         String?
   students        Student[]
   invoices        Invoice[]
   payments        Payment[]
