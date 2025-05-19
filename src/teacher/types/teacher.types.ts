@@ -42,6 +42,9 @@ export class Teacher {
   sex?: string;
 
   @Field({ nullable: true })
+  aboutMe?: string;
+
+  @Field({ nullable: true })
   dateOfBirth?: Date;
 
   @Field(() => [Subject])

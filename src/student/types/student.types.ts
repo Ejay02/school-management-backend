@@ -47,6 +47,9 @@ export class Student {
   @Field({ nullable: true })
   dateOfBirth?: Date;
 
+  @Field({ nullable: true })
+  aboutMe?: string;
+
   @Field()
   parentId: string;
 

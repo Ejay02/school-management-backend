@@ -27,6 +27,9 @@ export class Admin {
   @Field({ nullable: true })
   dateOfBirth?: Date;
 
+  @Field({ nullable: true })
+  aboutMe?: string;
+
   @Field()
   createdAt: Date;
 
