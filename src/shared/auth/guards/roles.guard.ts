@@ -112,6 +112,7 @@ export class RolesGuard implements CanActivate {
         'getResultStatistics',
         'getAttendances',
         'updateTeacherProfile', //T
+        'getAllAdminUsers',
       ];
 
       //

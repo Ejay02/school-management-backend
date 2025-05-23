@@ -587,6 +587,7 @@ input PaginationInput {
 }
 
 type Parent {
+  aboutMe: String
   address: String
   createdAt: DateTime!
   dateOfBirth: DateTime

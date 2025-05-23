@@ -420,9 +420,9 @@ export class AdminService {
     }
   }
 
-  async getAllAdminUsers(userId: string) {
+  async getAllAdminUsers() {
     try {
-      await this.verifyAdmin(userId);
+      // await this.verifyAdmin(userId);
 
       const [admins, teachers, parents] = await Promise.all([
         this.prisma.admin.findMany(),

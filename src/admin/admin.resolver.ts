@@ -76,8 +76,8 @@ export class AdminResolver {
   }
 
   @Query(() => AdminUsersResponse)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  async getAllAdminUsers(@Context() context) {
-    return await this.adminService.getAllAdminUsers(context.req.user.userId);
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  async getAllAdminUsers() {
+    return await this.adminService.getAllAdminUsers();
   }
 }
