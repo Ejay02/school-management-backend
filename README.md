@@ -1,6 +1,6 @@
 # School Dashboard Backend
 
-This is the backend for the School Management application, built with NestJS and Prisma.
+This is the backend for the School Management application, built with NestJS and Prisma.. 
 
 ## Table of Contents
 
