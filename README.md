@@ -106,4 +106,4 @@ If using Docker, remember to start your PostgreSQL container on Docker
 
 #### License
 
-This project is licensed under the MIT License.
+✨This project is licensed under the MIT License.
