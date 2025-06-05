@@ -102,7 +102,7 @@ npx prisma studio
 
 ## Docker
 
-If using Docker, remember to start your PostgreSQL container on Docker
+💭If using Docker, remember to start your PostgreSQL container on Docker
 
 #### License
 
