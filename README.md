@@ -61,7 +61,7 @@ This is the backend for the School Management application, built with NestJS and
 Create a file in the root directory and add the following environment variables:
 
 ```env
-DATABASE_URL=your_database_url  #To connect to db via docker
+DATABASE_URL=your_database_url  #To connect to the db via docker
 JWT_SECRET=your_jwt_secret
 JWT_REFRESH_SECRET=your_jwt_refresh_secret
 FRONTEND_URL= 
@@ -102,8 +102,8 @@ npx prisma studio
 
 ## Docker
 
-If using docker, remember to start your postgres container on docker
+💭If using Docker, remember to start your PostgreSQL container on Docker.
 
 #### License
 
-This project is licensed under the MIT License.
+✨This project is licensed under the MIT License.
