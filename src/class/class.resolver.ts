@@ -1,15 +1,15 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ClassService } from './class.service';
 import { Class } from './types/class.types';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
 import { UseGuards } from '@nestjs/common';
 import { CreateClassInput } from './input/create.class.input';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
-import { Roles } from 'src/shared/enum/role';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
+import { Roles } from '../shared/enum/role';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
+import { PaginationInput } from '../shared/pagination/input/pagination.input';
 import { UpdateClassInput } from './input/update.class.input';
-import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { DeleteResponse } from '../shared/auth/response/delete.response';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)

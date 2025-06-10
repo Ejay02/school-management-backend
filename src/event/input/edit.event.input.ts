@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { EventVisibility } from '../enum/eventVisibility';
-import { Roles } from 'src/shared/enum/role';
+import { Roles } from '../../shared/enum/role';
 
 @InputType()
 export class EditEventInput {

@@ -8,8 +8,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { Roles } from 'src/shared/enum/role';
+
+import { PrismaService } from '../../../prisma/prisma.service';
+import { Roles } from '../../../shared/enum/role';
 
 @Injectable()
 export class RolesGuard implements CanActivate {

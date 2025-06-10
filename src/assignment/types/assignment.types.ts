@@ -1,12 +1,12 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { Lesson } from 'src/lesson/types/lesson.types';
-import { Result } from 'src/result/types/result.types';
-import { Teacher } from 'src/teacher/types/teacher.types';
-import { Subject } from 'src/subject/types/subject.types';
-import { Class } from 'src/class/types/class.types';
-import { Submission } from 'src/submission/types/submission.types';
+import { Lesson } from '../../lesson/types/lesson.types';
+import { Result } from '../../result/types/result.types';
+import { Teacher } from '../../teacher/types/teacher.types';
+import { Subject } from '../../subject/types/subject.types';
+import { Class } from '../../class/types/class.types';
+import { Submission } from '../../submission/types/submission.types';
 import GraphQLJSON from 'graphql-type-json';
-import { Question } from 'src/shared/question/types/question.types';
+import { Question } from '../../shared/question/types/question.types';
 
 @ObjectType()
 export class Assignment {

@@ -6,17 +6,17 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssignmentInput } from './input/create.assignment.input';
 import { EditAssignmentInput } from './input/edit.assignment.input';
-import { Roles } from 'src/shared/enum/role';
+import { Roles } from '../shared/enum/role';
 import { Server } from 'socket.io';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import {
   PaginatedResponse,
   PaginationParams,
-} from 'src/shared/pagination/types/pagination.types';
-import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+} from '../shared/pagination/types/pagination.types';
+import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination';
 
 @Injectable()
 @WebSocketGateway()

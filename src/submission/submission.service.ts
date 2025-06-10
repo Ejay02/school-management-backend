@@ -3,15 +3,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
-import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { PrismaService } from '../prisma/prisma.service';
+
+import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination';
 import { UpdateSubmissionInput } from './input/update.submission.input';
 import { CreateSubmissionInput } from './input/create.submission.input';
+import { PaginationParams } from '../shared/pagination/types/pagination.types';
 
 @Injectable()
 export class SubmissionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getSubmissionsByAssignment(
     assignmentId: string,

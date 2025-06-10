@@ -1,8 +1,8 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { Class } from 'src/class/types/class.types';
+import { Class } from '../../class/types/class.types';
 import { EventStatus } from '../enum/eventStatus';
 
-import { Roles } from 'src/shared/enum/role';
+import { Roles } from '../../shared/enum/role';
 import { EventVisibility } from '../enum/eventVisibility';
 
 @ObjectType()

@@ -5,14 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-
-import { PrismaService } from 'src/prisma/prisma.service';
-import { Roles } from 'src/shared/enum/role';
-import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
-import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
-import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import * as bcrypt from 'bcrypt';
-import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
+
+import { PrismaService } from '../prisma/prisma.service';
+import { Roles } from '../shared/enum/role';
+import { UpdateProfileInput } from '../shared/inputs/profile-update.input';
+import { PaginationParams } from '../shared/pagination/types/pagination.types';
+import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination';
+import { CloudinaryService } from '../shared/cloudinary/services/cloudinary.service';
 
 @Injectable()
 export class TeacherService {

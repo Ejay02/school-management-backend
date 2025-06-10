@@ -1,15 +1,15 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ExamService } from './exam.service';
 import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 import { Exam } from './types/exam.types';
-import { Roles } from 'src/shared/enum/role';
+import { Roles } from '../shared/enum/role';
 import { UpdateExamInput } from './input/update.exam.input';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { PaginationInput } from '../shared/pagination/input/pagination.input';
 import { CreateExamInput } from './input/create.exam.input';
-import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { DeleteResponse } from '../shared/auth/response/delete.response';
 import { StudentExam } from './types/student-exam.types';
 import {
   AssignExamToStudentInput,

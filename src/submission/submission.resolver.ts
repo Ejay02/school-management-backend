@@ -1,19 +1,19 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { SubmissionService } from './submission.service';
 import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
 import { Submission } from './types/submission.types';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
-import { Roles } from 'src/shared/enum/role';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
+import { Roles } from '../shared/enum/role';
+import { PaginationInput } from '../shared/pagination/input/pagination.input';
 import { CreateSubmissionInput } from './input/create.submission.input';
 import { UpdateSubmissionInput } from './input/update.submission.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SubmissionResolver {
-  constructor(private submissionService: SubmissionService) {}
+  constructor(private readonly submissionService: SubmissionService) {}
 
   @Query(() => [Submission])
   @HasRoles(Roles.TEACHER)

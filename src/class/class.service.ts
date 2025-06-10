@@ -6,18 +6,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { DefaultClass } from './enum/class';
 
 import { CreateClassInput } from './input/create.class.input';
-import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination';
 import {
   PaginatedResponse,
   PaginationParams,
-} from 'src/shared/pagination/types/pagination.types';
+} from '../shared/pagination/types/pagination.types';
 import { Class } from './types/class.types';
-import { DeleteResponse } from 'src/shared/auth/response/delete.response';
-import { Roles } from 'src/shared/enum/role';
+import { DeleteResponse } from '../shared/auth/response/delete.response';
+import { Roles } from '../shared/enum/role';
 
 @Injectable()
 export class ClassService {

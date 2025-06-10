@@ -1,6 +1,6 @@
 import { InputType, Field } from '@nestjs/graphql';
 import { IsOptional } from 'class-validator';
-import { CreateQuestionInput } from 'src/shared/question/input/create-question.input';
+import { CreateQuestionInput } from '../../shared/question/input/create-question.input';
 import GraphQLJSON from 'graphql-type-json';
 
 @InputType()

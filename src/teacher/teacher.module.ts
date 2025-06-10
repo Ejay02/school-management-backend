@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TeacherService } from './teacher.service';
 import { TeacherResolver } from './teacher.resolver';
 import { JwtService } from '@nestjs/jwt';
-import { CloudinaryModule } from 'src/shared/cloudinary/cloudinary.module';
+import { CloudinaryModule } from '../shared/cloudinary/cloudinary.module';
 
 @Module({
   imports: [CloudinaryModule],

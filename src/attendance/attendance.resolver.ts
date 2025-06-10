@@ -1,19 +1,19 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceService } from './attendance.service';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
 import { UseGuards } from '@nestjs/common';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
-import { Roles } from 'src/shared/enum/role';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
+import { Roles } from '../shared/enum/role';
 import { Attendance } from './types/attendance.types';
 import { MarkAttendanceInput } from './input/attendance.input';
-// import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+
 import { SchoolAttendanceStats } from './types/attendance.stat.types';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AttendanceResolver {
-  constructor(private attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService) {}
 
   @Query(() => [Attendance])
   @HasRoles(

@@ -4,8 +4,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { Roles } from 'src/shared/enum/role';
+import { PrismaService } from '../prisma/prisma.service';
+import { Roles } from '../shared/enum/role';
 import { MarkAttendanceInput } from './input/attendance.input';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';

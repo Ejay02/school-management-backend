@@ -8,14 +8,14 @@ import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Roles } from '../shared/enum/role';
 import { EventVisibility } from './enum/eventVisibility';
-import { GoogleCalendarService } from 'src/config/google.calender.config';
+import { GoogleCalendarService } from '../config/google.calender.config';
 import { EventFilter } from './interface/event.filter';
 import { CreateEventInput } from './input/create.event.input';
 import { EditEventInput } from './input/edit.event.input';
 import { Server } from 'socket.io';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
-import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
-import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { PaginationParams } from '../shared/pagination/types/pagination.types';
+import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination';
 import { EventGateway } from './gateway/event.gateway';
 
 @Injectable()

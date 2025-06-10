@@ -1,15 +1,15 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { EventService } from './event.service';
 import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
-import { Roles } from 'src/shared/enum/role';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
+import { Roles } from '../shared/enum/role';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 import { CreateEventInput } from './input/create.event.input';
 import { EventFilter } from './interface/event.filter';
 import { EditEventInput } from './input/edit.event.input';
 import { Event } from './types/event.types';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { PaginationInput } from '../shared/pagination/input/pagination.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
