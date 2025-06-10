@@ -115,21 +115,6 @@ export class RolesGuard implements CanActivate {
         'getAllAdminUsers',
       ];
 
-      //
-      console.log('Teacher access check - User:', user);
-      console.log('Teacher access check - Args:', args);
-
-      console.log('Teacher access check - Field Name:', fieldName);
-      console.log(
-        'Teacher access check - Allowed Endpoints:',
-        allowedEndpoints,
-      );
-      console.log(
-        'Teacher access check - Is in allowed list:',
-        allowedEndpoints.includes(fieldName),
-      );
-      //
-
       // If accessing getUserById endpoint
       if (fieldName === 'getUserById' && args.id) {
         return true;
@@ -322,6 +307,18 @@ export class RolesGuard implements CanActivate {
       const fieldName = ctx.getInfo().fieldName;
 
       const allowedEndpoints = ['getAllExams', 'getExamById'];
+
+      //
+      console.log('User access check - User:', user);
+      console.log('User access check - Args:', args);
+
+      console.log('User access check - Field Name:', fieldName);
+      console.log('User access check - Allowed Endpoints:', allowedEndpoints);
+      console.log(
+        'User access check - Is in allowed list:',
+        allowedEndpoints.includes(fieldName),
+      );
+      //
 
       // If accessing getUserById endpoint
       if (fieldName === 'getUserById' && args.id) {

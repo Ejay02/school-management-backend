@@ -26,8 +26,8 @@ async function bootstrap() {
   // SSL/TLS Configuration
   let httpsOptions = undefined;
 
-  // Check if we're in production mode
-  if (process.env.NODE_ENV === 'production') {
+  // Check if we're in production mode but not on Render (Render handles SSL for us)
+  if (process.env.NODE_ENV === 'production' && !process.env.RENDER) {
     // Use production certificates
     httpsOptions = {
       key: fs.readFileSync(
@@ -56,7 +56,7 @@ async function bootstrap() {
   app.enableCors({
     origin:
       process.env.NODE_ENV === 'production'
-        ? ['https://yourdomain.com', 'https://www.yourdomain.com']
+        ? ['https://eduhub-portal.netlify.app']
         : '*',
     credentials: true,
   });

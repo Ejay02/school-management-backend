@@ -204,6 +204,7 @@ export class EventService {
 
   async getEventById(eventId: string, userId: string, userRole: Roles) {
     try {
+      console.log('hello taiga');
       // Base query includes the event by ID and its associated class details
       const query: any = {
         where: { id: eventId },
@@ -296,6 +297,7 @@ export class EventService {
 
       return event;
     } catch (error) {
+      console.log('error:', error);
       throw new InternalServerErrorException('Failed to fetch event by id', {
         cause: error,
       });
