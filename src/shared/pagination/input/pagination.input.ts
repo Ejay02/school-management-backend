@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { SortOrder } from 'src/shared/enum/sort';
+import { SortOrder } from '../../enum/sort';
 
 @InputType()
 export class PaginationInput {

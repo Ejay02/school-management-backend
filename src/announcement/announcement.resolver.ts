@@ -1,13 +1,14 @@
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AnnouncementService } from './announcement.service';
 import { Announcement } from './types/announcement.types';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
+
 import { UseGuards } from '@nestjs/common';
-import { Roles } from 'src/shared/enum/role';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 
 import { AnnouncementQueryInput } from './types/announcement-query.input';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
+import { Roles } from '../shared/enum/role';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)

@@ -1,14 +1,14 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
-import { Lesson } from 'src/lesson/types/lesson.types';
-import { Student } from 'src/student/types/student.types';
-import { Teacher } from 'src/teacher/types/teacher.types';
+import { Lesson } from '../../lesson/types/lesson.types';
+import { Student } from '../../student/types/student.types';
+import { Teacher } from '../../teacher/types/teacher.types';
 
-import { Event } from 'src/event/types/event.types';
-import { Announcement } from 'src/announcement/types/announcement.types';
-import { Subject } from 'src/subject/types/subject.types';
-import { Exam } from 'src/exam/types/exam.types';
-import { Assignment } from 'src/assignment/types/assignment.types';
-import { FeeStructure } from 'src/payment/types/fee.structure.type';
+import { Event } from '../../event/types/event.types';
+import { Announcement } from '../../announcement/types/announcement.types';
+import { Subject } from '../../subject/types/subject.types';
+import { Exam } from '../../exam/types/exam.types';
+import { Assignment } from '../../assignment/types/assignment.types';
+import { FeeStructure } from '../../payment/types/fee.structure.type';
 
 @ObjectType()
 export class Class {

@@ -1,5 +1,5 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { PaginationInput } from '../../shared/pagination/input/pagination.input';
 
 @InputType()
 export class AnnouncementQueryInput extends PaginationInput {

@@ -1,10 +1,10 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
-import { Exam } from 'src/exam/types/exam.types';
-import { Assignment } from 'src/assignment/types/assignment.types';
-import { Student } from 'src/student/types/student.types';
-import { ResultType } from 'src/result/enum/resultType';
-import { Subject } from 'src/subject/types/subject.types';
-import { Term } from 'src/payment/enum/term';
+import { Exam } from '../../exam/types/exam.types';
+import { Assignment } from '../../assignment/types/assignment.types';
+import { Student } from '../../student/types/student.types';
+import { ResultType } from '../../result/enum/resultType';
+import { Subject } from '../../subject/types/subject.types';
+import { Term } from '../../payment/enum/term';
 
 @ObjectType()
 export class Result {

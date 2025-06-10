@@ -1,10 +1,10 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
-import { Parent } from 'src/parent/types/parent.types';
-import { Class } from 'src/class/types/class.types';
+import { Parent } from '../../parent/types/parent.types';
+import { Class } from '../../class/types/class.types';
 
-import { Attendance } from 'src/attendance/types/attendance.types';
-import { Result } from 'src/result/types/result.types';
-import { StudentExam } from 'src/exam/types/student-exam.types';
+import { Attendance } from '../../attendance/types/attendance.types';
+import { Result } from '../../result/types/result.types';
+import { StudentExam } from '../../exam/types/student-exam.types';
 
 @ObjectType()
 export class Student {

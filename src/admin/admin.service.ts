@@ -7,17 +7,17 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
-import { PrismaService } from 'src/prisma/prisma.service';
-import { Roles } from 'src/shared/enum/role';
 import * as bcrypt from 'bcrypt';
-import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
 
 import { MonthlyRevenue } from './types/income.graph.type';
 import { Prisma } from '@prisma/client';
-import { Term } from 'src/payment/enum/term';
-import { FeeType } from 'src/payment/enum/fee.type';
-import { PaymentStatus } from 'src/payment/enum/payment.status';
-import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
+import { Roles } from '../shared/enum/role';
+import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../shared/cloudinary/services/cloudinary.service';
+import { Term } from '../payment/enum/term';
+import { PaymentStatus } from '../payment/enum/payment.status';
+import { FeeType } from '../payment/enum/fee.type';
+import { UpdateProfileInput } from '../shared/inputs/profile-update.input';
 
 @Injectable()
 export class AdminService {

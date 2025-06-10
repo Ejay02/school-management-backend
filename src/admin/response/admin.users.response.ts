@@ -1,5 +1,6 @@
-import { Teacher } from 'src/teacher/types/teacher.types';
-import { Parent } from 'src/parent/types/parent.types';
+import { Teacher } from '../../teacher/types/teacher.types';
+
+import { Parent } from '../../parent/types/parent.types';
 import { Field, ObjectType } from '@nestjs/graphql';
 import { Admin } from '../types/admin.types';
 

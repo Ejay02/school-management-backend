@@ -1,7 +1,7 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 
-import { Class } from 'src/class/types/class.types';
-import { Roles } from 'src/shared/enum/role';
+import { Class } from '../../class/types/class.types';
+import { Roles } from '../../shared/enum/role';
 
 @ObjectType()
 export class Announcement {

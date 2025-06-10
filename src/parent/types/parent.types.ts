@@ -1,5 +1,5 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
-import { Student } from 'src/student/types/student.types';
+import { Student } from '../../student/types/student.types';
 
 @ObjectType()
 export class Parent {

@@ -1,20 +1,20 @@
 import { Query, Resolver, Args, Mutation, Context } from '@nestjs/graphql';
 import { AssignmentService } from './assignment.service';
 import { Assignment } from './types/assignment.types';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 import { UseGuards } from '@nestjs/common';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
-import { Roles } from 'src/shared/enum/role';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
+import { Roles } from '../shared/enum/role';
 import { CreateAssignmentInput } from './input/create.assignment.input';
 import { EditAssignmentInput } from './input/edit.assignment.input';
-import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
-import { DeleteResponse } from 'src/shared/auth/response/delete.response';
+import { PaginationInput } from '../shared/pagination/input/pagination.input';
+import { DeleteResponse } from '../shared/auth/response/delete.response';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AssignmentResolver {
-  constructor(private assignmentService: AssignmentService) {}
+  constructor(private readonly assignmentService: AssignmentService) {}
 
   @Query(() => [Assignment])
   @HasRoles(

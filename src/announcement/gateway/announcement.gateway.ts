@@ -8,7 +8,7 @@ import {
   OnGatewayConnection,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Roles } from 'src/shared/enum/role';
+import { Roles } from '../../shared/enum/role';
 
 @WebSocketGateway({
   cors: {

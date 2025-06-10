@@ -4,12 +4,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-
 import { AnnouncementGateway } from './gateway/announcement.gateway';
-import { Roles } from 'src/shared/enum/role';
-import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
-import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
+import { PrismaService } from '../prisma/prisma.service';
+import { Roles } from '../shared/enum/role';
+import { PaginationParams } from '../shared/pagination/types/pagination.types';
+
+import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination';
 
 @Injectable()
 export class AnnouncementService {

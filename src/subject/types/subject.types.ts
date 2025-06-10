@@ -1,8 +1,8 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { Teacher } from 'src/teacher/types/teacher.types';
-import { Lesson } from 'src/lesson/types/lesson.types';
-import { Class } from 'src/class/types/class.types';
-import { Result } from 'src/result/types/result.types';
+import { Teacher } from '../../teacher/types/teacher.types';
+import { Lesson } from '../../lesson/types/lesson.types';
+import { Class } from '../../class/types/class.types';
+import { Result } from '../../result/types/result.types';
 
 @ObjectType()
 export class Subject {

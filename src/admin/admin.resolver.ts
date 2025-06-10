@@ -1,16 +1,17 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AdminService } from './admin.service';
 import { UseGuards } from '@nestjs/common';
-import { Roles } from 'src/shared/enum/role';
-import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
-import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
+
 import { Admin } from './types/admin.types';
-import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 
 import { DashboardSummary } from './types/dashboard.summary.type';
 import { MonthlyRevenue } from './types/income.graph.type';
 import { AdminUsersResponse } from './response/admin.users.response';
-import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
+import { RolesGuard } from '../shared/auth/guards/roles.guard';
+import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
+import { HasRoles } from '../shared/auth/decorators/roles.decorator';
+import { Roles } from '../shared/enum/role';
+import { UpdateProfileInput } from '../shared/inputs/profile-update.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)

@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID } from '@nestjs/graphql';
-import { Roles } from 'src/shared/enum/role';
+import { Roles } from '../../shared/enum/role';
 
 @ObjectType()
 export class Admin {
