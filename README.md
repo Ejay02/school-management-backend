@@ -79,7 +79,7 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PUBLIC_KEY=
 
-etc
+etc..
 ```
 
 ## Database
