@@ -78,6 +78,8 @@ GOOGLE_REFRESH_TOKEN=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PUBLIC_KEY=
+
+etc..
 ```
 
 ## Database
@@ -106,4 +108,4 @@ npx prisma studio
 
 #### License
 
-✨This project is licensed under the MIT License.
+✨This project is licensed under the MIT License...
