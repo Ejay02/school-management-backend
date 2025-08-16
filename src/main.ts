@@ -92,7 +92,7 @@ async function bootstrap() {
     express.raw({ type: 'application/json' }), // Stripe requires raw body for webhooks
   );
 
-  // Set up HSTS for production
+  // Set up HSTS ?? for production
   if (process.env.NODE_ENV === 'production') {
     app.use((req, res, next) => {
       res.setHeader(
