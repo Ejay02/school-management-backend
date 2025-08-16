@@ -446,7 +446,7 @@ model Question {
   type            QuestionType
   content         String        // Markdown content for the question
   options         Json?         // For MCQs, store options as JSON
-  correctAnswer   String?       // For MCQs, store the correct answer
+  correctAnswer   String?       // For MCQs, store the correct answer ??
   points          Float         @default(1.0)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
