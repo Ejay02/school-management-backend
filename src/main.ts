@@ -26,25 +26,37 @@ async function bootstrap() {
   // SSL/TLS Configuration
   let httpsOptions = undefined;
 
+  // Helper to resolve SSL file paths relative to compiled code
+  const resolveSsl = (p: string) => path.resolve(__dirname, p);
+
   // Check if we're in production mode but not on Render (Render handles SSL for us)
   if (process.env.NODE_ENV === 'production' && !process.env.RENDER) {
-    // Use production certificates
-    httpsOptions = {
-      key: fs.readFileSync(
-        process.env.SSL_KEY_PATH ||
-          path.resolve(__dirname, '../ssl/private-key.pem'),
-      ),
-      cert: fs.readFileSync(
-        process.env.SSL_CERT_PATH ||
-          path.resolve(__dirname, '../ssl/certificate.pem'),
-      ),
-    };
+    const keyPath =
+      process.env.SSL_KEY_PATH || resolveSsl('../ssl/private-key.pem');
+    const certPath =
+      process.env.SSL_CERT_PATH || resolveSsl('../ssl/certificate.pem');
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+      };
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn('Production SSL files not found, starting without HTTPS');
+    }
   } else if (process.env.USE_HTTPS_DEV === 'true') {
     // Use development self-signed certificates if specified
-    httpsOptions = {
-      key: fs.readFileSync(path.resolve(__dirname, '../ssl/dev-key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, '../ssl/dev-cert.pem')),
-    };
+    const keyPath = resolveSsl('../ssl/dev-key.pem');
+    const certPath = resolveSsl('../ssl/dev-cert.pem');
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+      };
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn('Dev SSL files not found, starting without HTTPS');
+    }
   }
 
   // Create the app with HTTPS options if available

@@ -43,3 +43,5 @@ try {
 
 // Finally require the compiled app entry
 require(path.resolve(__dirname, 'dist', 'main'));
+
+// "start": "node -r tsconfig-paths/register dist/main"
