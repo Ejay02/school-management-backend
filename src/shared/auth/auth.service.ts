@@ -22,6 +22,7 @@ import { ClassService } from 'src/class/class.service';
 import { SubjectService } from 'src/subject/subject.service';
 import { LessonService } from 'src/lesson/lesson.service';
 import { SecurityService } from '../security/security.service';
+import { MailService } from 'src/mail/mail.service';
 
 type SignupInputType =
   | AdminSignupInput
@@ -37,7 +38,27 @@ export class AuthService {
     private readonly lessonService: LessonService,
     private readonly subjectService: SubjectService,
     private readonly securityService: SecurityService,
+    private readonly mailService: MailService,
   ) {}
+
+  private buildWelcomeEmailHtml(params: {
+    username: string;
+    role?: string;
+  }): string {
+    const { username, role } = params;
+    return `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+        <h2 style="margin: 0 0 12px;">Welcome to Eduhub</h2>
+        <p style="margin: 0 0 8px;">Hi ${username},</p>
+        <p style="margin: 0 0 8px;">
+          Your ${role ?? 'user'} account has been created successfully.
+        </p>
+        <p style="margin: 0;">
+          You can now sign in to the portal and complete your profile.
+        </p>
+      </div>
+    `.trim();
+  }
 
   private async validateForeignKeys(tx: any, input: StudentSignupInput) {
     // Validate that parent exists
@@ -336,6 +357,21 @@ export class AuthService {
         };
         return authResponse;
       });
+
+      if (result.email) {
+        try {
+          await this.mailService.sendMail({
+            to: result.email,
+            subject: 'Welcome to Eduhub',
+            html: this.buildWelcomeEmailHtml({
+              username: result.username,
+              role: result.role,
+            }),
+          });
+        } catch {
+          void 0;
+        }
+      }
 
       return result;
     } catch (error) {

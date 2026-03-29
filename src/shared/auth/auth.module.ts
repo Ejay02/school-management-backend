@@ -10,6 +10,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { ClassModule } from '../../class/class.module';
 import { SubjectModule } from '../../subject/subject.module';
 import { LessonModule } from '../../lesson/lesson.module';
+import { MailModule } from '../../mail/mail.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { LessonModule } from '../../lesson/lesson.module';
     ClassModule,
     SubjectModule,
     LessonModule,
+    MailModule,
   ],
 
   providers: [

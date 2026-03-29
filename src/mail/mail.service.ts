@@ -14,17 +14,23 @@ export class MailService {
     subject,
     template,
     context,
+    text,
+    html,
   }: {
     to: string;
     subject: string;
-    template: string;
-    context: any;
+    template?: string;
+    context?: any;
+    text?: string;
+    html?: string;
   }) {
     await this.mailerService.sendMail({
       to,
       subject,
       template,
       context,
+      text,
+      html,
     });
   }
 }

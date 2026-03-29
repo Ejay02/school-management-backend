@@ -14,6 +14,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   app:
+    image: node:18
     container_name: school_management
     ports:
       - '3000:3000'
@@ -21,3 +22,6 @@ services:
       DATABASE_URL: postgresql://user:password@localhost:5432/school?schema=public
     depends_on:
       - postgres
+
+volumes:
+  postgres-data:

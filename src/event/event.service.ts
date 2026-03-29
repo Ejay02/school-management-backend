@@ -795,7 +795,7 @@ export class EventService {
           this.sendNotifications(
             cancelledEvent,
             targetUsers,
-            'event-cancellation',
+            'event.cancellation',
             'Event Cancelled',
             { cancellationReason: reason },
           ),
