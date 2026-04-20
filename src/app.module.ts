@@ -35,6 +35,7 @@ import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
 import { InvitationModule } from './invitation/invitation.module';
 import { SetupModule } from './setup/setup.module';
 import { AiModule } from './ai/ai.module';
+import { ContactModule } from './contact/contact.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { AiModule } from './ai/ai.module';
     InvitationModule,
     SetupModule,
     AiModule,
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],

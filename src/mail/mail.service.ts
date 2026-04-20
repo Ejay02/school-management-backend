@@ -16,6 +16,7 @@ export class MailService {
     context,
     text,
     html,
+    replyTo,
   }: {
     to: string;
     subject: string;
@@ -23,6 +24,7 @@ export class MailService {
     context?: any;
     text?: string;
     html?: string;
+    replyTo?: string;
   }) {
     await this.mailerService.sendMail({
       to,
@@ -31,6 +33,7 @@ export class MailService {
       context,
       text,
       html,
+      replyTo,
     });
   }
 }
