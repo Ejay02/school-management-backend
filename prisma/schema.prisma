@@ -364,6 +364,38 @@ model RefreshToken {
   updatedAt       DateTime     @updatedAt
 }
 
+model Invitation {
+  id         String       @id @default(uuid())
+  email      String
+  role       Role
+  token      String       @unique
+  status     InviteStatus @default(PENDING)
+  invitedBy  String?
+  sentCount  Int          @default(1)
+  lastSentAt DateTime     @default(now())
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model SetupState {
+  id                  String   @id @default("default")
+  schoolName          String?
+  schoolEmail         String?
+  schoolPhone         String?
+  schoolAddress       String?
+  academicYearCurrent String?
+  academicYearNext    String?
+  currentTerm         Term?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
 model FeeStructure {
   id              String        @id @default(uuid())
   academicYear    String
@@ -515,6 +547,13 @@ enum Role {
   TEACHER
   PARENT 
   STUDENT
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
 }
 
 enum EventStatus {

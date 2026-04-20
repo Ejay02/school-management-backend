@@ -34,6 +34,8 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 .env
+env
+*.env
 note
 # SSL certificates
 /ssl/*.pem
@@ -42,3 +44,4 @@ note
 /ssl/*.pfx
 /ssl/*.p12
 ssl
+roadmap

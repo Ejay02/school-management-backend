@@ -60,6 +60,18 @@ export class AuthService {
     `.trim();
   }
 
+  private async findUserById(userId: string) {
+    const userPromises = [
+      this.prisma.admin.findUnique({ where: { id: userId } }),
+      this.prisma.teacher.findUnique({ where: { id: userId } }),
+      this.prisma.student.findUnique({ where: { id: userId } }),
+      this.prisma.parent.findUnique({ where: { id: userId } }),
+    ];
+
+    const users = await Promise.all(userPromises);
+    return users.find((user) => user !== null);
+  }
+
   private async validateForeignKeys(tx: any, input: StudentSignupInput) {
     // Validate that parent exists
     const parent = await tx.parent.findUnique({
@@ -521,9 +533,13 @@ export class AuthService {
     }
 
     // Get user
-    const user = await this.prisma.admin.findUnique({
-      where: { id: storedToken.userId },
-    });
+    const user = await this.findUserById(storedToken.userId);
+    if (!user) {
+      await this.prisma.refreshToken.delete({
+        where: { token: refreshToken },
+      });
+      throw new UnauthorizedException('User no longer exists');
+    }
 
     // Generate new tokens
     const newAccessToken = this.generateAccessToken(user.id, user.role);

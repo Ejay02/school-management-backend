@@ -32,6 +32,9 @@ import { join } from 'path';
 import { QuestionModule } from './shared/question/question.module';
 import GraphQLJSON from 'graphql-type-json';
 import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
+import { InvitationModule } from './invitation/invitation.module';
+import { SetupModule } from './setup/setup.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -74,6 +77,9 @@ import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
     SecurityModule,
     QuestionModule,
     CloudinaryModule,
+    InvitationModule,
+    SetupModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],

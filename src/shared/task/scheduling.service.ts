@@ -9,6 +9,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 @WebSocketGateway({
@@ -28,6 +29,7 @@ export class SchedulingService
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly authService: AuthService,
   ) {
     this.logger.log(
       '=== Scheduling service initialized at: ' +
@@ -36,50 +38,95 @@ export class SchedulingService
     );
   }
 
+  private getRefreshToken(client: Socket): string | undefined {
+    const refreshToken =
+      client.handshake.auth?.refreshToken ??
+      client.handshake.headers['x-refresh-token'];
+
+    return Array.isArray(refreshToken) ? refreshToken[0] : refreshToken;
+  }
+
+  private async authenticateSocket(client: Socket) {
+    const token =
+      client.handshake.auth.token ??
+      client.handshake.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      throw new Error('AUTH_TOKEN_MISSING');
+    }
+
+    try {
+      return {
+        payload: this.jwtService.verify(token, {
+          secret: process.env.JWT_SECRET,
+        }),
+      };
+    } catch (tokenError) {
+      const isExpired =
+        tokenError?.name === 'TokenExpiredError' ||
+        tokenError?.message === 'jwt expired';
+
+      if (!isExpired) {
+        throw tokenError;
+      }
+
+      const refreshToken = this.getRefreshToken(client);
+      if (!refreshToken) {
+        const expiredError = new Error('SOCKET_TOKEN_EXPIRED');
+        (expiredError as any).code = 'SOCKET_TOKEN_EXPIRED';
+        throw expiredError;
+      }
+
+      const newTokens = await this.authService.refreshTokens(refreshToken);
+      const payload = this.jwtService.verify(newTokens.accessToken, {
+        secret: process.env.JWT_SECRET,
+      });
+
+      return {
+        payload,
+        newTokens,
+      };
+    }
+  }
+
   // Handle new connections with authentication
   async handleConnection(client: Socket) {
     try {
-      const token =
-        client.handshake.auth.token ??
-        client.handshake.headers.authorization?.split(' ')[1];
+      const { payload, newTokens } = await this.authenticateSocket(client);
 
-      if (!token) {
+      // Store user info in socket data
+      client.data.user = payload;
+
+      if (newTokens) {
+        client.emit('authRefreshed', newTokens);
+      }
+
+      this.logger.log(
+        `Client ${client.id} connected: ${payload.email ?? payload.username ?? payload.sub}`,
+      );
+
+      // Send successful connection event
+      client.emit('connected', {
+        message: 'Successfully connected to real-time updates',
+        userId: payload.sub,
+      });
+    } catch (error) {
+      if (error?.message === 'AUTH_TOKEN_MISSING') {
         this.logger.warn(
           `Client ${client.id} attempted connection without token`,
         );
         client.emit('error', { message: 'Authentication required' });
-        client.disconnect();
-        return;
-      }
-
-      // Verify the token
-      try {
-        // Make sure we're using the same JWT secret as in your auth module
-        const payload = this.jwtService.verify(token, {
-          secret: process.env.JWT_SECRET,
+      } else if (error?.message === 'SOCKET_TOKEN_EXPIRED') {
+        client.emit('error', {
+          code: 'TOKEN_EXPIRED',
+          message: 'Socket authentication token expired',
         });
-
-        // Store user info in socket data
-        client.data.user = payload;
-        this.logger.log(
-          `Client ${client.id} connected: ${payload.email ?? payload.username ?? payload.sub}`,
-        );
-
-        // Send successful connection event
-        client.emit('connected', {
-          message: 'Successfully connected to real-time updates',
-          userId: payload.sub,
-        });
-      } catch (tokenError) {
+      } else {
         this.logger.warn(
-          `Client ${client.id} provided invalid token: ${tokenError.message}`,
+          `Client ${client.id} provided invalid token: ${error.message}`,
         );
         client.emit('error', { message: 'Invalid authentication token' });
-        client.disconnect();
       }
-    } catch (error) {
-      this.logger.error(`Socket connection error: ${error.message}`);
-      client.emit('error', { message: 'Connection error' });
       client.disconnect();
     }
   }

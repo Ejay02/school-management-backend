@@ -3,9 +3,10 @@ import { AnnouncementService } from './announcement.service';
 import { JwtService } from '@nestjs/jwt';
 import { AnnouncementResolver } from './announcement.resolver';
 import { AnnouncementGateway } from './gateway/announcement.gateway';
+import { AuthModule } from 'src/shared/auth/auth.module';
 
 @Module({
-  imports: [],
+  imports: [AuthModule],
   providers: [
     AnnouncementService,
     JwtService,

@@ -7,6 +7,14 @@ type AcademicYear {
   next: String!
 }
 
+input AcceptInvitationInput {
+  name: String!
+  password: String!
+  surname: String!
+  token: String!
+  username: String!
+}
+
 type Admin {
   aboutMe: String
   createdAt: DateTime!
@@ -247,6 +255,11 @@ input CreateFeeStructureInput {
   type: FeeType!
 }
 
+input CreateInvitationInput {
+  email: String!
+  role: Roles!
+}
+
 input CreateLessonInput {
   content: JSON
   day: String!
@@ -442,6 +455,35 @@ enum FeeType {
   YEARLY
 }
 
+type Invitation {
+  acceptedAt: DateTime
+  createdAt: DateTime!
+  email: String!
+  expiresAt: DateTime!
+  id: String!
+  invitedBy: String
+  lastSentAt: DateTime!
+  role: Roles!
+  sentCount: Float!
+  status: InviteStatus!
+  token: String!
+  updatedAt: DateTime!
+}
+
+type InvitationPreview {
+  email: String!
+  expiresAt: DateTime!
+  role: Roles!
+  status: InviteStatus!
+}
+
+enum InviteStatus {
+  ACCEPTED
+  EXPIRED
+  PENDING
+  REVOKED
+}
+
 type Invoice {
   checkoutSessionId: String
   createdAt: DateTime!
@@ -504,6 +546,7 @@ type MonthlyRevenue {
 }
 
 type Mutation {
+  acceptInvitation(input: AcceptInvitationInput!): AuthResponse!
   adminSignup(input: AdminSignupInput!): AuthResponse!
   archiveAnnouncement(announcementId: String!): Boolean!
   assignAdminRole(role: String!, targetId: String!): Admin!
@@ -524,6 +567,7 @@ type Mutation {
   createEvent(data: CreateEventInput!): Event!
   createExam(input: CreateExamInput!): Exam!
   createFeeStructure(input: CreateFeeStructureInput!): FeeStructure!
+  createInvitation(input: CreateInvitationInput!): Invitation!
   createLesson(classId: String!, createLessonInput: CreateLessonInput!, subjectId: String!): Lesson!
   createSubject(input: CreateSubjectInput!): Subject!
   createSubmission(input: CreateSubmissionInput!): Submission!
@@ -555,7 +599,9 @@ type Mutation {
   personalAnnouncementDelete(announcementId: String!): Boolean!
   publishResults(classId: String!, message: String, term: String!): [Result!]!
   refreshTokens(refreshToken: String!): TokenResponse!
+  resendInvitation(id: String!): Invitation!
   resetPassword(input: ResetPasswordInput!): AuthResponse!
+  revokeInvitation(id: String!): Invitation!
   startExam(input: StartExamInput!): StudentExam!
   studentSignup(input: StudentSignupInput!): AuthResponse!
   teacherSignup(input: TeacherSignupInput!): AuthResponse!
@@ -567,6 +613,7 @@ type Mutation {
   updateFeeStructure(id: String!, input: UpdateFeeStructureInput!): FeeStructure!
   updateParentProfile(input: UpdateProfileInput!): Parent!
   updateResult(input: UpdateResultInput!): Result!
+  updateSetupState(input: UpdateSetupStateInput!): SetupState!
   updateStudentProfile(input: UpdateProfileInput!): Student!
   updateSubject(input: UpdateSubjectInput!, subjectId: String!): Subject!
   updateTeacherProfile(input: UpdateProfileInput!): Teacher!
@@ -685,6 +732,8 @@ type Query {
   getResultHistory(academicYear: String, studentId: String!): [Result!]!
   getResultStatistics(className: String!): ResultStatistics!
   getSchoolAttendanceStats(endDate: DateTime!, startDate: DateTime!): SchoolAttendanceStats!
+  getSetupProgress: SetupProgress!
+  getSetupState: SetupState!
   getStudentById(studentId: String!): Student!
   getStudentExams(studentId: String): [StudentExam!]!
   getStudentResults(studentId: String!): [Result!]!
@@ -694,6 +743,8 @@ type Query {
   getTeacherById(teacherId: String!): Teacher!
   getUnreadAnnouncementsCount: Int!
   getUserById(id: String!): UserUnion
+  invitations(status: String): [Invitation!]!
+  validateInvitationToken(token: String!): InvitationPreview!
 }
 
 type Question {
@@ -781,6 +832,34 @@ type ScoreDistribution {
   above80: Int!
   above90: Int!
   below50: Int!
+}
+
+type SetupProgress {
+  completedSteps: Int!
+  completionPercentage: Float!
+  state: SetupState!
+  steps: [SetupStep!]!
+  totalSteps: Int!
+}
+
+type SetupState {
+  academicYearCurrent: String
+  academicYearNext: String
+  createdAt: DateTime!
+  currentTerm: Term
+  id: String!
+  schoolAddress: String
+  schoolEmail: String
+  schoolName: String
+  schoolPhone: String
+  updatedAt: DateTime!
+}
+
+type SetupStep {
+  completed: Boolean!
+  key: String!
+  label: String!
+  value: String!
 }
 
 enum Sex {
@@ -1014,6 +1093,16 @@ input UpdateResultInput {
   comments: String
   id: String!
   score: Float
+}
+
+input UpdateSetupStateInput {
+  academicYearCurrent: String
+  academicYearNext: String
+  currentTerm: Term
+  schoolAddress: String
+  schoolEmail: String
+  schoolName: String
+  schoolPhone: String
 }
 
 input UpdateSubjectInput {
