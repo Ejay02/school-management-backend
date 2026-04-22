@@ -24,8 +24,8 @@ export class Parent {
   @Field({ nullable: true })
   password: string;
 
-  @Field()
-  phone: string;
+  @Field({ nullable: true })
+  phone?: string;
 
   @Field({ nullable: true })
   address?: string;

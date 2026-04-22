@@ -48,7 +48,10 @@ export class InvitationResolver {
   @Query(() => [Invitation])
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  async invitations(@Args('status', { nullable: true }) status?: InviteStatus) {
+  async invitations(
+    @Args('status', { nullable: true, type: () => InviteStatus })
+    status?: InviteStatus,
+  ) {
     return this.invitationService.listInvitations(status);
   }
 

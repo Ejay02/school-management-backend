@@ -643,7 +643,7 @@ type Parent {
   image: String
   name: String!
   password: String
-  phone: String!
+  phone: String
   role: String!
   students: [Student!]!
   surname: String!
@@ -743,7 +743,7 @@ type Query {
   getTeacherById(teacherId: String!): Teacher!
   getUnreadAnnouncementsCount: Int!
   getUserById(id: String!): UserUnion
-  invitations(status: String): [Invitation!]!
+  invitations(status: InviteStatus): [Invitation!]!
   validateInvitationToken(token: String!): InvitationPreview!
 }
 
