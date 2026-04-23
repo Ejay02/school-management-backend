@@ -141,7 +141,12 @@ export class LessonService {
     return endDate.toISOString().slice(11, 16); // Return HH:mm format
   }
 
-  async getAllLessons(userId: string, role: Roles, params?: PaginationParams) {
+  async getAllLessons(
+    userId: string,
+    role: Roles,
+    params?: PaginationParams,
+    studentId?: string,
+  ) {
     try {
       const searchFields = ['name', 'description'];
       let baseQuery: any = {};
@@ -252,7 +257,10 @@ export class LessonService {
       // Parents get summary view of their children's lessons
       else if (role === Roles.PARENT) {
         const children = await this.prisma.student.findMany({
-          where: { parentId: userId },
+          where: {
+            parentId: userId,
+            ...(studentId ? { id: studentId } : {}),
+          },
           select: {
             id: true,
             classId: true,
@@ -260,7 +268,15 @@ export class LessonService {
         });
 
         if (!children.length) {
-          throw new NotFoundException('No children found for this parent');
+          return {
+            data: [],
+            meta: {
+              total: 0,
+              page: params?.page || 1,
+              lastPage: 1,
+              limit: params?.limit || 10,
+            },
+          };
         }
 
         const childrenClassIds = children.map((child) => child.classId);

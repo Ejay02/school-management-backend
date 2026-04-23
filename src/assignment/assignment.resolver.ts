@@ -28,11 +28,13 @@ export class AssignmentResolver {
   async getAllAssignments(
     @Context() context,
     @Args('params', { nullable: true }) params?: PaginationInput,
+    @Args('studentId', { nullable: true }) studentId?: string,
   ) {
     const result = await this.assignmentService.getAllAssignments(
       context.req.user.userId,
       context.req.user.role,
       params || {},
+      studentId,
     );
     return result.data;
   }

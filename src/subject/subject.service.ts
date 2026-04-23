@@ -117,6 +117,7 @@ export class SubjectService {
     userId: string,
     userRole: Roles,
     params?: PaginationParams,
+    studentId?: string,
   ) {
     try {
       const baseInclude = {
@@ -155,15 +156,27 @@ export class SubjectService {
         case Roles.PARENT: {
           // Parents see subjects their children are enrolled in
           const children = await this.prisma.student.findMany({
-            where: { parentId: userId },
+            where: {
+              parentId: userId,
+              ...(studentId ? { id: studentId } : {}),
+            },
             select: {
+              id: true,
               classId: true,
               result: { select: { id: true } },
             },
           });
 
           if (!children.length) {
-            throw new NotFoundException('No children found for this parent');
+            return {
+              data: [],
+              meta: {
+                total: 0,
+                page: params?.page || 1,
+                lastPage: 1,
+                limit: params?.limit || 10,
+              },
+            };
           }
 
           baseQuery.where = {

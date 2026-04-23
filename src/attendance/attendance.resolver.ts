@@ -23,10 +23,14 @@ export class AttendanceResolver {
     Roles.STUDENT,
     Roles.PARENT,
   )
-  async getAttendances(@Context() context) {
+  async getAttendances(
+    @Context() context,
+    @Args('studentId', { nullable: true }) studentId?: string,
+  ) {
     return await this.attendanceService.getAttendances(
       context.req.user.userId,
       context.req.user.role,
+      studentId,
     );
   }
 

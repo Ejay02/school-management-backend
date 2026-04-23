@@ -23,6 +23,7 @@ export class AttendanceService {
   async getAttendances(
     userId: string,
     userRole: Roles,
+    studentId?: string,
     searchQuery?: string,
   ): Promise<Attendance[]> {
     try {
@@ -91,9 +92,16 @@ export class AttendanceService {
           }
 
           const studentIds = parent.students.map((s) => s.id);
+          const scopedStudentIds = studentId
+            ? studentIds.filter((id) => id === studentId)
+            : studentIds;
+
+          if (!scopedStudentIds.length) {
+            return [];
+          }
 
           queryOptions.where = {
-            studentId: { in: studentIds },
+            studentId: { in: scopedStudentIds },
           };
           break;
 

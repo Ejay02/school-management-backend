@@ -85,12 +85,12 @@ export class ResultResolver {
     return result.data;
   }
 
-  @Query(() => Result)
-  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  @Query(() => [Result])
+  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN, Roles.PARENT)
   async getChildrenResults(
     @Context() context,
     @Args('parentId') parentId: string,
-    @Args('studentId') studentId: string,
+    @Args('studentId', { nullable: true }) studentId?: string,
     @Args('academicPeriod', { nullable: true }) academicPeriod?: string,
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
@@ -100,7 +100,7 @@ export class ResultResolver {
       academicPeriod,
       params ?? {},
     );
-    return result;
+    return result.data;
   }
 
   @Query(() => Result)

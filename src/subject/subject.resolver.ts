@@ -48,11 +48,13 @@ export class SubjectResolver {
   async getAllSubjects(
     @Context() context,
     @Args('params', { nullable: true }) params?: PaginationInput,
+    @Args('studentId', { nullable: true }) studentId?: string,
   ) {
     const result = await this.subjectService.getAllSubjects(
       context.req.user.userId,
       context.req.user.role,
       params || {},
+      studentId,
     );
     return result.data;
   }

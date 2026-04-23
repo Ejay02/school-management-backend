@@ -27,11 +27,13 @@ export class LessonResolver {
   async getAllLessons(
     @Context() context,
     @Args('params', { nullable: true }) params?: PaginationInput,
+    @Args('studentId', { nullable: true }) studentId?: string,
   ) {
     const result = await this.lessonService.getAllLessons(
       context.req.user.userId,
       context.req.user.role,
       params || {},
+      studentId,
     );
     return result.data;
   }

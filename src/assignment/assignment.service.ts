@@ -29,6 +29,7 @@ export class AssignmentService {
     userId: string,
     role: Roles,
     params: PaginationParams,
+    studentId?: string,
   ): Promise<PaginatedResponse<any>> {
     try {
       let baseQuery: any = {};
@@ -94,7 +95,10 @@ export class AssignmentService {
       // Parents can see limited assignment information for their children
       else if (role === Roles.PARENT) {
         const children = await this.prisma.student.findMany({
-          where: { parentId: userId },
+          where: {
+            parentId: userId,
+            ...(studentId ? { id: studentId } : {}),
+          },
           select: {
             id: true,
             classId: true,
@@ -102,7 +106,15 @@ export class AssignmentService {
         });
 
         if (!children.length) {
-          throw new NotFoundException('No children found for this parent');
+          return {
+            data: [],
+            meta: {
+              total: 0,
+              page: params?.page || 1,
+              lastPage: 1,
+              limit: params?.limit || 10,
+            },
+          };
         }
 
         const childrenClassIds = children.map((child) => child.classId);

@@ -697,22 +697,22 @@ type Query {
   getAllAdminUsers: AdminUsersResponse!
   getAllAdmins: [Admin!]!
   getAllAnnouncements(params: AnnouncementQueryInput): [Announcement!]!
-  getAllAssignments(params: PaginationInput): [Assignment!]!
+  getAllAssignments(params: PaginationInput, studentId: String): [Assignment!]!
   getAllClassSubmissions(classId: String!, params: PaginationInput): [Submission!]!
   getAllClasses(params: PaginationInput): [Class!]!
   getAllExams(params: PaginationInput): [Exam!]!
   getAllFeeStructures(params: PaginationInput): [FeeStructure!]!
-  getAllLessons(params: PaginationInput): [Lesson!]!
+  getAllLessons(params: PaginationInput, studentId: String): [Lesson!]!
   getAllParents(params: PaginationInput): [Parent!]!
   getAllPayments(params: PaginationInput): [StudentPayment!]!
   getAllStudents(params: PaginationInput): [Student!]!
-  getAllSubjects(params: PaginationInput): [Subject!]!
+  getAllSubjects(params: PaginationInput, studentId: String): [Subject!]!
   getAllTeachers(params: PaginationInput): [Teacher!]!
   getAnnouncementById(announcementId: String!): Announcement!
   getAssignmentById(assignmentId: String!): Assignment!
-  getAttendances: [Attendance!]!
+  getAttendances(studentId: String): [Attendance!]!
   getBillingReportDashboard: BillingReportDashboard!
-  getChildrenResults(academicPeriod: String, params: PaginationInput, parentId: String!, studentId: String!): Result!
+  getChildrenResults(academicPeriod: String, params: PaginationInput, parentId: String!, studentId: String): [Result!]!
   getClassById(id: String!): Class!
   getClassExams(classId: String!, params: PaginationInput): [Exam!]!
   getClassResults(academicPeriod: String, classId: String!, params: PaginationInput): Result!
