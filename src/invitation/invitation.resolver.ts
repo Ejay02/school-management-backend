@@ -6,10 +6,16 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Roles } from 'src/shared/enum/role';
 import { InvitationService } from './invitation.service';
 import { CreateInvitationInput } from './input/create.invitation.input';
-import { Invitation, InvitationPreview } from './types/invitation.types';
+import {
+  Invitation,
+  InvitationListResponse,
+  InvitationPreview,
+  InvitationSummary,
+} from './types/invitation.types';
 import { InviteStatus } from './enum/inviteStatus';
 import { AcceptInvitationInput } from './input/accept.invitation.input';
 import { AuthResponse } from 'src/shared/auth/response/auth.response';
+import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 
 @Resolver()
 export class InvitationResolver {
@@ -25,6 +31,7 @@ export class InvitationResolver {
     const invitedByUserId = context.req.user.userId;
     return this.invitationService.createInvitation(
       invitedByUserId,
+      input.name,
       input.email,
       input.role,
     );
@@ -45,14 +52,27 @@ export class InvitationResolver {
     return this.invitationService.revokeInvitation(id);
   }
 
-  @Query(() => [Invitation])
+  @Query(() => InvitationListResponse)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async invitations(
+    @Args('params', { nullable: true }) params?: PaginationInput,
     @Args('status', { nullable: true, type: () => InviteStatus })
     status?: InviteStatus,
+    @Args('role', { nullable: true, type: () => Roles })
+    role?: Roles,
   ) {
-    return this.invitationService.listInvitations(status);
+    return this.invitationService.listInvitations({ params, status, role });
+  }
+
+  @Query(() => InvitationSummary)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async invitationSummary(
+    @Args('role', { nullable: true, type: () => Roles })
+    role?: Roles,
+  ) {
+    return this.invitationService.getInvitationSummary(role);
   }
 
   @Query(() => InvitationPreview)

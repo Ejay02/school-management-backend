@@ -257,6 +257,7 @@ input CreateFeeStructureInput {
 
 input CreateInvitationInput {
   email: String!
+  name: String!
   role: Roles!
 }
 
@@ -463,11 +464,27 @@ type Invitation {
   id: String!
   invitedBy: String
   lastSentAt: DateTime!
+  name: String
+  revokedAt: DateTime
   role: Roles!
-  sentCount: Float!
+  sentAt: DateTime!
+  sentCount: Int!
   status: InviteStatus!
   token: String!
   updatedAt: DateTime!
+}
+
+type InvitationListResponse {
+  items: [Invitation!]!
+  pageInfo: InvitationPageInfo!
+}
+
+type InvitationPageInfo {
+  hasMore: Boolean!
+  limit: Int!
+  page: Int!
+  totalCount: Int!
+  totalPages: Int!
 }
 
 type InvitationPreview {
@@ -475,6 +492,28 @@ type InvitationPreview {
   expiresAt: DateTime!
   role: Roles!
   status: InviteStatus!
+}
+
+type InvitationRoleSummary {
+  accepted: Int!
+  activationLabel: String!
+  activationRate: Float!
+  expired: Int!
+  pending: Int!
+  revoked: Int!
+  role: Roles!
+  totalSent: Int!
+}
+
+type InvitationSummary {
+  accepted: Int!
+  activationLabel: String!
+  activationRate: Float!
+  expired: Int!
+  pending: Int!
+  revoked: Int!
+  roleBreakdown: [InvitationRoleSummary!]!
+  totalSent: Int!
 }
 
 enum InviteStatus {
@@ -743,7 +782,8 @@ type Query {
   getTeacherById(teacherId: String!): Teacher!
   getUnreadAnnouncementsCount: Int!
   getUserById(id: String!): UserUnion
-  invitations(status: InviteStatus): [Invitation!]!
+  invitationSummary(role: Roles): InvitationSummary!
+  invitations(params: PaginationInput, role: Roles, status: InviteStatus): InvitationListResponse!
   validateInvitationToken(token: String!): InvitationPreview!
 }
 

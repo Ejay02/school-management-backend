@@ -366,15 +366,18 @@ model RefreshToken {
 
 model Invitation {
   id         String       @id @default(uuid())
+  name       String?
   email      String
   role       Role
   token      String       @unique
   status     InviteStatus @default(PENDING)
   invitedBy  String?
+  sentAt     DateTime     @default(now())
   sentCount  Int          @default(1)
   lastSentAt DateTime     @default(now())
   expiresAt  DateTime
   acceptedAt DateTime?
+  revokedAt  DateTime?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
