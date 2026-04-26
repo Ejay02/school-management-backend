@@ -7,4 +7,3 @@ import { SetupResolver } from './setup.resolver';
   exports: [SetupService],
 })
 export class SetupModule {}
-

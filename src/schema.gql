@@ -658,6 +658,46 @@ type Mutation {
   updateTeacherProfile(input: UpdateProfileInput!): Teacher!
 }
 
+type OnboardingChecklist {
+  completedSteps: Int!
+  completionPercentage: Float!
+
+  """
+  Ordered list of onboarding checklist steps for rendering onboarding cards.
+  """
+  steps: [OnboardingChecklistStep!]!
+  totalSteps: Int!
+}
+
+type OnboardingChecklistStep {
+  complete: Boolean!
+  key: String!
+  label: String!
+
+  """Optional structured metadata for counts/ratios."""
+  meta: OnboardingChecklistStepMeta
+
+  """Short human-friendly summary for rendering onboarding cards."""
+  summary: String
+}
+
+type OnboardingChecklistStepMeta {
+  """Invitation count with ACCEPTED status."""
+  accepted: Int
+
+  """Generic count (e.g., number of classes or invites sent)."""
+  count: Int
+
+  """Invitation count with EXPIRED status."""
+  expired: Int
+
+  """Invitation count with PENDING status."""
+  pending: Int
+
+  """Generic total (e.g., total number of classes)."""
+  total: Int
+}
+
 type OutstandingPaymentsData {
   amount: Float!
   overdueCount: Int!
@@ -766,11 +806,20 @@ type Query {
   getMyInvoices(params: PaginationInput): [Invoice!]!
   getMyResults(academicPeriod: String, params: PaginationInput): Result!
   getMySubmissions(params: PaginationInput): [Submission!]!
+
+  """
+  Returns a structured onboarding checklist derived from real backend state (classes, subjects/teacher links, and invitations) for rendering onboarding cards.
+  """
+  getOnboardingChecklist: OnboardingChecklist!
   getParentById(parentId: String!): Parent!
   getPaymentById(paymentId: String!): StudentPayment!
   getResultHistory(academicYear: String, studentId: String!): [Result!]!
   getResultStatistics(className: String!): ResultStatistics!
   getSchoolAttendanceStats(endDate: DateTime!, startDate: DateTime!): SchoolAttendanceStats!
+
+  """
+  Returns a derived setup progress summary based on current database state (no manual flags).
+  """
   getSetupProgress: SetupProgress!
   getSetupState: SetupState!
   getStudentById(studentId: String!): Student!

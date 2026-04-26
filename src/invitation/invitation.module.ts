@@ -10,4 +10,3 @@ import { AuthModule } from 'src/shared/auth/auth.module';
   exports: [InvitationService],
 })
 export class InvitationModule {}
-

@@ -39,4 +39,3 @@ export class UpdateSetupStateInput {
   @IsEnum(Term)
   currentTerm?: Term;
 }
-

@@ -28,4 +28,3 @@ export class AcceptInvitationInput {
   @MinLength(8)
   password: string;
 }
-

@@ -6,7 +6,11 @@ import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
 import { Roles } from 'src/shared/enum/role';
 import { SetupService } from './setup.service';
 import { UpdateSetupStateInput } from './input/update.setup-state.input';
-import { SetupProgress, SetupState } from './types/setup.types';
+import {
+  OnboardingChecklist,
+  SetupProgress,
+  SetupState,
+} from './types/setup.types';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -19,10 +23,22 @@ export class SetupResolver {
     return this.setupService.getSetupState();
   }
 
-  @Query(() => SetupProgress)
+  @Query(() => SetupProgress, {
+    description:
+      'Returns a derived setup progress summary based on current database state (no manual flags).',
+  })
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async getSetupProgress() {
     return this.setupService.getSetupProgress();
+  }
+
+  @Query(() => OnboardingChecklist, {
+    description:
+      'Returns a structured onboarding checklist derived from real backend state (classes, subjects/teacher links, and invitations) for rendering onboarding cards.',
+  })
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getOnboardingChecklist() {
+    return this.setupService.getOnboardingChecklist();
   }
 
   @Mutation(() => SetupState)
@@ -31,4 +47,3 @@ export class SetupResolver {
     return this.setupService.updateSetupState(input);
   }
 }
-

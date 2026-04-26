@@ -71,30 +71,33 @@ ${userMessage}
     const model = process.env.HUGGINGFACE_MODEL || 'Qwen/Qwen2.5-7B-Instruct';
     const prompt = this.buildSchoolPrompt(message.trim());
 
-    const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      'https://router.huggingface.co/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are the Eduhub Portal assistant. Answer clearly and concisely using the provided school context. If a question is outside the known school context, suggest contacting the school office.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          max_tokens: 250,
+          temperature: 0.7,
+          top_p: 0.95,
+        }),
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are the Eduhub Portal assistant. Answer clearly and concisely using the provided school context. If a question is outside the known school context, suggest contacting the school office.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: 250,
-        temperature: 0.7,
-        top_p: 0.95,
-      }),
-    });
+    );
 
     let data: any = null;
     try {

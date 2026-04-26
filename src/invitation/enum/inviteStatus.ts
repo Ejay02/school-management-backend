@@ -10,4 +10,3 @@ export enum InviteStatus {
 registerEnumType(InviteStatus, {
   name: 'InviteStatus',
 });
-

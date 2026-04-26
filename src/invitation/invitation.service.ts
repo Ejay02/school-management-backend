@@ -33,23 +33,35 @@ export class InvitationService {
     const safeBase = baseUrl && baseUrl.length > 0 ? baseUrl : '';
     const path = `/accept-invite?token=${encodeURIComponent(token)}`;
     if (!safeBase) return path;
-    return safeBase.endsWith('/') ? `${safeBase.slice(0, -1)}${path}` : `${safeBase}${path}`;
+    return safeBase.endsWith('/')
+      ? `${safeBase.slice(0, -1)}${path}`
+      : `${safeBase}${path}`;
   }
 
   private assertRoleAllowed(role: Roles) {
     if (role !== Roles.TEACHER && role !== Roles.PARENT) {
-      throw new BadRequestException('Invites are only supported for TEACHER and PARENT');
+      throw new BadRequestException(
+        'Invites are only supported for TEACHER and PARENT',
+      );
     }
   }
 
   private async ensureEmailNotInUse(email: string, role: Roles) {
     if (role === Roles.TEACHER) {
-      const existing = await this.prisma.teacher.findFirst({ where: { email } });
-      if (existing) throw new BadRequestException('A TEACHER with this email already exists');
+      const existing = await this.prisma.teacher.findFirst({
+        where: { email },
+      });
+      if (existing)
+        throw new BadRequestException(
+          'A TEACHER with this email already exists',
+        );
     }
     if (role === Roles.PARENT) {
       const existing = await this.prisma.parent.findFirst({ where: { email } });
-      if (existing) throw new BadRequestException('A PARENT with this email already exists');
+      if (existing)
+        throw new BadRequestException(
+          'A PARENT with this email already exists',
+        );
     }
   }
 
@@ -60,7 +72,9 @@ export class InvitationService {
     token: string;
   }) {
     const link = this.getInviteLink(params.token);
-    const greeting = params.name ? `<p style="margin: 0 0 8px;">Hi ${params.name},</p>` : '';
+    const greeting = params.name
+      ? `<p style="margin: 0 0 8px;">Hi ${params.name},</p>`
+      : '';
     await this.mailService.sendMail({
       to: params.email,
       subject: 'You are invited to Eduhub',
@@ -120,7 +134,11 @@ export class InvitationService {
     return where;
   }
 
-  private formatActivationLabel(role: Roles | undefined, accepted: number, totalSent: number) {
+  private formatActivationLabel(
+    role: Roles | undefined,
+    accepted: number,
+    totalSent: number,
+  ) {
     if (role === Roles.TEACHER) {
       return `${accepted} of ${totalSent} teachers activated`;
     }
@@ -204,7 +222,9 @@ export class InvitationService {
       invite.status !== (InviteStatus.PENDING as any) &&
       invite.status !== (InviteStatus.EXPIRED as any)
     ) {
-      throw new BadRequestException('Only pending or expired invitations can be resent');
+      throw new BadRequestException(
+        'Only pending or expired invitations can be resent',
+      );
     }
 
     const now = new Date();
@@ -321,39 +341,46 @@ export class InvitationService {
 
     const roleBreakdown = await Promise.all(
       [Roles.TEACHER, Roles.PARENT].map(async (currentRole) => {
-        const [roleTotalSent, roleAccepted, rolePending, roleExpired, roleRevoked] =
-          await Promise.all([
-            this.prisma.invitation.count({
-              where: { role: currentRole as any },
-            }),
-            this.prisma.invitation.count({
-              where: {
-                role: currentRole as any,
-                status: InviteStatus.ACCEPTED as any,
-              },
-            }),
-            this.prisma.invitation.count({
-              where: {
-                role: currentRole as any,
-                status: InviteStatus.PENDING as any,
-              },
-            }),
-            this.prisma.invitation.count({
-              where: {
-                role: currentRole as any,
-                status: InviteStatus.EXPIRED as any,
-              },
-            }),
-            this.prisma.invitation.count({
-              where: {
-                role: currentRole as any,
-                status: InviteStatus.REVOKED as any,
-              },
-            }),
-          ]);
+        const [
+          roleTotalSent,
+          roleAccepted,
+          rolePending,
+          roleExpired,
+          roleRevoked,
+        ] = await Promise.all([
+          this.prisma.invitation.count({
+            where: { role: currentRole as any },
+          }),
+          this.prisma.invitation.count({
+            where: {
+              role: currentRole as any,
+              status: InviteStatus.ACCEPTED as any,
+            },
+          }),
+          this.prisma.invitation.count({
+            where: {
+              role: currentRole as any,
+              status: InviteStatus.PENDING as any,
+            },
+          }),
+          this.prisma.invitation.count({
+            where: {
+              role: currentRole as any,
+              status: InviteStatus.EXPIRED as any,
+            },
+          }),
+          this.prisma.invitation.count({
+            where: {
+              role: currentRole as any,
+              status: InviteStatus.REVOKED as any,
+            },
+          }),
+        ]);
 
         const roleActivationRate =
-          roleTotalSent === 0 ? 0 : Number(((roleAccepted / roleTotalSent) * 100).toFixed(2));
+          roleTotalSent === 0
+            ? 0
+            : Number(((roleAccepted / roleTotalSent) * 100).toFixed(2));
 
         return {
           role: currentRole,
@@ -390,7 +417,9 @@ export class InvitationService {
   }
 
   async validateInvitationToken(token: string) {
-    const invite = await this.prisma.invitation.findUnique({ where: { token } });
+    const invite = await this.prisma.invitation.findUnique({
+      where: { token },
+    });
     if (!invite) throw new NotFoundException('Invitation not found');
 
     const now = new Date();
