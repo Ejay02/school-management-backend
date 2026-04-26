@@ -3,11 +3,49 @@ import { SetupService } from './setup.service';
 describe('SetupService', () => {
   const createPrismaMock = () =>
     ({
-      setupState: { upsert: jest.fn() },
+      setupState: { upsert: jest.fn(), update: jest.fn() },
       class: { count: jest.fn() },
       subject: { count: jest.fn(), groupBy: jest.fn() },
       invitation: { groupBy: jest.fn() },
     }) as any;
+
+  describe('updateSetupState', () => {
+    it('persists school profile fields and academic configuration', async () => {
+      const prisma = createPrismaMock();
+      prisma.setupState.upsert.mockResolvedValue({ id: 'default' });
+      prisma.setupState.update.mockResolvedValue({ id: 'default' });
+
+      const service = new SetupService(prisma);
+      await service.updateSetupState({
+        schoolName: 'Test School',
+        schoolAddress: '123 Road',
+        schoolLogo: 'https://example.com/logo.png',
+        schoolContactName: 'Jane Admin',
+        schoolTimezone: 'Africa/Lagos',
+        schoolEmail: 'hello@test.com',
+        schoolPhone: '123',
+        academicYearCurrent: '2025',
+        academicYearNext: '2026',
+        currentTerm: 'FIRST' as any,
+      });
+
+      expect(prisma.setupState.update).toHaveBeenCalledWith({
+        where: { id: 'default' },
+        data: {
+          schoolName: 'Test School',
+          schoolEmail: 'hello@test.com',
+          schoolPhone: '123',
+          schoolAddress: '123 Road',
+          schoolLogo: 'https://example.com/logo.png',
+          schoolContactName: 'Jane Admin',
+          schoolTimezone: 'Africa/Lagos',
+          academicYearCurrent: '2025',
+          academicYearNext: '2026',
+          currentTerm: 'FIRST',
+        },
+      });
+    });
+  });
 
   describe('getOnboardingChecklist', () => {
     it('derives an incomplete checklist when there is no setup data', async () => {

@@ -392,6 +392,9 @@ model SetupState {
   schoolEmail         String?
   schoolPhone         String?
   schoolAddress       String?
+  schoolLogo          String?
+  schoolContactName   String?
+  schoolTimezone      String?
   academicYearCurrent String?
   academicYearNext    String?
   currentTerm         Term?

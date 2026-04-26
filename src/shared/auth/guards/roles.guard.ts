@@ -86,6 +86,7 @@ export class RolesGuard implements CanActivate {
       // Define allowed endpoints for teachers
       const allowedEndpoints = [
         'getUserById',
+        'getSetupState',
         'getAllTeachers',
         'getAllParents',
         'getAllStudents',
@@ -187,6 +188,7 @@ export class RolesGuard implements CanActivate {
       // If accessing getUserById endpoint
       if (
         (fieldName === 'getUserById' && args.id) ||
+        fieldName === 'getSetupState' ||
         fieldName === 'getAllTeachers'
       ) {
         return true; // Allow parents to access user information
@@ -308,6 +310,7 @@ export class RolesGuard implements CanActivate {
       const fieldName = ctx.getInfo().fieldName;
 
       const allowedEndpoints = ['getAllExams', 'getExamById'];
+      allowedEndpoints.push('getSetupState');
 
       //
       console.log('User access check - User:', user);

@@ -242,6 +242,12 @@ export class AuthService {
                 surname: adminInput.surname,
               },
             });
+
+            await tx.setupState.upsert({
+              where: { id: 'default' },
+              update: {},
+              create: { id: 'default' },
+            });
             break;
 
           case Roles.TEACHER:

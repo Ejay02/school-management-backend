@@ -27,6 +27,21 @@ export class UpdateSetupStateInput {
   @Field({ nullable: true })
   @IsOptional()
   @IsString()
+  schoolLogo?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  schoolContactName?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  schoolTimezone?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   academicYearCurrent?: string;
 
   @Field({ nullable: true })

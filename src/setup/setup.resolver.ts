@@ -18,7 +18,13 @@ export class SetupResolver {
   constructor(private readonly setupService: SetupService) {}
 
   @Query(() => SetupState)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(
+    Roles.ADMIN,
+    Roles.SUPER_ADMIN,
+    Roles.TEACHER,
+    Roles.STUDENT,
+    Roles.PARENT,
+  )
   async getSetupState() {
     return this.setupService.getSetupState();
   }

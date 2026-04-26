@@ -1,0 +1,5 @@
+ALTER TABLE "SetupState"
+ADD COLUMN IF NOT EXISTS "schoolLogo" TEXT,
+ADD COLUMN IF NOT EXISTS "schoolContactName" TEXT,
+ADD COLUMN IF NOT EXISTS "schoolTimezone" TEXT;
+

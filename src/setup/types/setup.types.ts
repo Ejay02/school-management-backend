@@ -19,6 +19,15 @@ export class SetupState {
   schoolAddress?: string;
 
   @Field(() => String, { nullable: true })
+  schoolLogo?: string;
+
+  @Field(() => String, { nullable: true })
+  schoolContactName?: string;
+
+  @Field(() => String, { nullable: true })
+  schoolTimezone?: string;
+
+  @Field(() => String, { nullable: true })
   academicYearCurrent?: string;
 
   @Field(() => String, { nullable: true })

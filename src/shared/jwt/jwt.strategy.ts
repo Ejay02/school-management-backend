@@ -63,7 +63,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         role: payload.role,
       };
     } catch (error) {
-      throw new Error(`Authentication failed:: ${error.message}`);
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      throw new UnauthorizedException(
+        `Authentication failed:: ${error?.message || 'Unauthorized access'}`,
+      );
     }
   }
 }

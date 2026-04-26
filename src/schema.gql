@@ -938,9 +938,12 @@ type SetupState {
   currentTerm: Term
   id: String!
   schoolAddress: String
+  schoolContactName: String
   schoolEmail: String
+  schoolLogo: String
   schoolName: String
   schoolPhone: String
+  schoolTimezone: String
   updatedAt: DateTime!
 }
 
@@ -1189,9 +1192,12 @@ input UpdateSetupStateInput {
   academicYearNext: String
   currentTerm: Term
   schoolAddress: String
+  schoolContactName: String
   schoolEmail: String
+  schoolLogo: String
   schoolName: String
   schoolPhone: String
+  schoolTimezone: String
 }
 
 input UpdateSubjectInput {

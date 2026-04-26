@@ -36,15 +36,18 @@ export class SetupService {
         schoolEmail: input.schoolEmail,
         schoolPhone: input.schoolPhone,
         schoolAddress: input.schoolAddress,
+        schoolLogo: input.schoolLogo,
+        schoolContactName: input.schoolContactName,
+        schoolTimezone: input.schoolTimezone,
         academicYearCurrent: input.academicYearCurrent,
         academicYearNext: input.academicYearNext,
         currentTerm: input.currentTerm,
-      },
+      } as any,
     });
   }
 
   async getSetupProgress(): Promise<SetupProgress> {
-    const state = await this.ensureSetupState();
+    const state = (await this.ensureSetupState()) as any;
 
     const [
       classCount,
@@ -73,7 +76,13 @@ export class SetupService {
     ]);
 
     const schoolProfileComplete = Boolean(
-      state.schoolName && state.schoolEmail && state.schoolPhone,
+      state.schoolName &&
+        state.schoolAddress &&
+        state.schoolLogo &&
+        state.schoolContactName &&
+        state.schoolEmail &&
+        state.schoolPhone &&
+        state.schoolTimezone,
     );
     const academicSetupComplete = Boolean(
       state.academicYearCurrent && state.academicYearNext && state.currentTerm,
@@ -88,7 +97,7 @@ export class SetupService {
         completed: schoolProfileComplete,
         value: schoolProfileComplete
           ? 'School profile saved'
-          : 'Add school name, email, and phone',
+          : 'Add school name, address, logo, contact name, timezone, email, and phone',
       },
       {
         key: 'academic_configuration',
@@ -154,7 +163,7 @@ export class SetupService {
   }
 
   async getOnboardingChecklist(): Promise<OnboardingChecklist> {
-    const state = await this.ensureSetupState();
+    const state = (await this.ensureSetupState()) as any;
 
     const [
       classCount,
@@ -184,7 +193,13 @@ export class SetupService {
     ]);
 
     const schoolProfileComplete = Boolean(
-      state.schoolName && state.schoolEmail && state.schoolPhone,
+      state.schoolName &&
+        state.schoolAddress &&
+        state.schoolLogo &&
+        state.schoolContactName &&
+        state.schoolEmail &&
+        state.schoolPhone &&
+        state.schoolTimezone,
     );
 
     const getInviteStats = (role: Roles) => {
@@ -220,7 +235,7 @@ export class SetupService {
         complete: schoolProfileComplete,
         summary: schoolProfileComplete
           ? 'School profile saved'
-          : 'Add school name, email, and phone',
+          : 'Add school name, address, logo, contact name, timezone, email, and phone',
       },
       {
         key: 'classes_created',

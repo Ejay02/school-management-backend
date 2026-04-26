@@ -20,7 +20,7 @@ export class PaymentResolver {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Query(() => [FeeStructure])
-  @HasRoles(Roles.SUPER_ADMIN)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async getAllFeeStructures(
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
@@ -29,7 +29,7 @@ export class PaymentResolver {
   }
 
   @Query(() => FeeStructure)
-  @HasRoles(Roles.SUPER_ADMIN)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async getFeeStructureById(@Args('feeStructureId') feeStructureId: string) {
     return await this.paymentService.getFeeStructureById(feeStructureId);
   }
@@ -41,7 +41,7 @@ export class PaymentResolver {
   }
 
   @Mutation(() => FeeStructure)
-  @HasRoles(Roles.SUPER_ADMIN)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async updateFeeStructure(
     @Args('id') id: string,
     @Args('input') input: UpdateFeeStructureInput,
