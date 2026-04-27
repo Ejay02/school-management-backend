@@ -52,4 +52,16 @@ export class AuthResponse {
 
   @Field({ nullable: true })
   classId?: string;
+
+  @Field({ nullable: true })
+  adminId?: string;
+
+  @Field({ nullable: true })
+  teacherId?: string;
+
+  @Field({ nullable: true })
+  studentId?: string;
+
+  @Field({ nullable: true })
+  institutionalEmail?: string;
 }

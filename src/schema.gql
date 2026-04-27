@@ -127,19 +127,23 @@ type Attendance {
 
 type AuthResponse {
   address: String
+  adminId: String
   bloodType: String
   classId: String
   dateOfBirth: String
   email: String!
   id: String
   image: String
+  institutionalEmail: String
   name: String
   parentId: String
   phone: String
   refreshToken: String!
   role: String
   sex: String
+  studentId: String
   surname: String
+  teacherId: String
   token: String!
   userId: String!
   username: String

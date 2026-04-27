@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import type { Admin } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BaseLoginInput } from './input/login.input';
 import { AuthResponse } from './response/auth.response';
@@ -70,6 +71,42 @@ export class AuthService {
 
     const users = await Promise.all(userPromises);
     return users.find((user) => user !== null);
+  }
+
+  private async findUserByUsername(
+    username: string,
+    role?: Roles,
+    client: any = this.prisma,
+  ) {
+    if (role) {
+      switch (role) {
+        case Roles.ADMIN:
+        case Roles.SUPER_ADMIN:
+          return client.admin.findUnique({ where: { username } });
+        case Roles.TEACHER:
+          return client.teacher.findUnique({ where: { username } });
+        case Roles.STUDENT:
+          return client.student.findUnique({ where: { username } });
+        case Roles.PARENT:
+          return client.parent.findUnique({ where: { username } });
+      }
+    }
+
+    const userPromises = [
+      client.admin.findUnique({ where: { username } }),
+      client.teacher.findUnique({ where: { username } }),
+      client.student.findUnique({ where: { username } }),
+      client.parent.findUnique({ where: { username } }),
+    ];
+
+    const users = await Promise.all(userPromises);
+    return users.find((user) => user !== null) ?? null;
+  }
+
+  private hasLoginRole(
+    input: BaseLoginInput,
+  ): input is BaseLoginInput & { role: Roles } {
+    return 'role' in input;
   }
 
   private async validateForeignKeys(tx: any, input: StudentSignupInput) {
@@ -182,24 +219,7 @@ export class AuthService {
         const { username, password, email, role } = input;
 
         // Check if the username already exists in the relevant model
-        let existingUser;
-        switch (role) {
-          case Roles.ADMIN:
-          case Roles.SUPER_ADMIN:
-            existingUser = await tx.admin.findUnique({
-              where: { username },
-            });
-            break;
-          case Roles.TEACHER:
-            existingUser = await tx.teacher.findUnique({ where: { username } });
-            break;
-          case Roles.STUDENT:
-            existingUser = await tx.student.findUnique({ where: { username } });
-            break;
-          case Roles.PARENT:
-            existingUser = await tx.parent.findUnique({ where: { username } });
-            break;
-        }
+        const existingUser = await this.findUserByUsername(username, role, tx);
 
         if (existingUser) {
           throw new ConflictException(
@@ -376,8 +396,10 @@ export class AuthService {
         }
 
         // Generate the token (if this fails, it should trigger rollback)
-        const token = this.generateAccessToken(newUser.id, effectiveRole);
-        const refreshToken = await this.generateRefreshToken(newUser.id);
+        const { token, refreshToken } = await this.issueTokens(
+          newUser.id,
+          effectiveRole,
+        );
 
         // Build the response object with all fields
         const authResponse: AuthResponse = {
@@ -395,6 +417,7 @@ export class AuthService {
           // sex: newUser.sex || null,
           parentId: newUser.parentId || null,
           classId: newUser.classId || null,
+          ...this.buildRoleIdentifiers(newUser),
         };
         return authResponse;
       });
@@ -410,7 +433,7 @@ export class AuthService {
             }),
           });
         } catch {
-          void 0;
+          // Email delivery should not fail signup.
         }
       }
 
@@ -439,6 +462,50 @@ export class AuthService {
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '');
+  }
+
+  private buildRoleIdentifiers(user: any) {
+    return {
+      adminId: user?.adminId ?? null,
+      teacherId: user?.teacherId ?? null,
+      studentId: user?.studentId ?? null,
+      institutionalEmail: user?.institutionalEmail ?? null,
+    };
+  }
+
+  private async issueTokens(userId: string, role: string) {
+    return {
+      token: this.generateAccessToken(userId, role),
+      refreshToken: await this.generateRefreshToken(userId),
+    };
+  }
+
+  private async ensureAdminIdentifier(user: any) {
+    if (
+      !user ||
+      (user.role !== Roles.ADMIN && user.role !== Roles.SUPER_ADMIN)
+    ) {
+      return user;
+    }
+
+    if (user.adminId) return user;
+
+    return this.prisma.$transaction(async (tx) => {
+      const currentAdmin = (await tx.admin.findUnique({
+        where: { id: user.id },
+      })) as (Admin & { adminId?: string | null }) | null;
+
+      if (!currentAdmin || currentAdmin.adminId) {
+        return currentAdmin ?? user;
+      }
+
+      const adminId = await this.generateAdminId(tx);
+
+      return tx.admin.update({
+        where: { id: user.id },
+        data: { adminId } as Partial<Admin>,
+      });
+    });
   }
 
   private async claimNextSequence(
@@ -535,34 +602,10 @@ export class AuthService {
     }
 
     // Find user based on role if provided
-    let user = null;
-    if ('role' in input) {
-      switch (input.role) {
-        case Roles.ADMIN:
-        case Roles.SUPER_ADMIN:
-          user = await this.prisma.admin.findUnique({ where: { username } });
-          break;
-        case Roles.TEACHER:
-          user = await this.prisma.teacher.findUnique({ where: { username } });
-          break;
-        case Roles.STUDENT:
-          user = await this.prisma.student.findUnique({ where: { username } });
-          break;
-        case Roles.PARENT:
-          user = await this.prisma.parent.findUnique({ where: { username } });
-          break;
-      }
-    } else {
-      // Fallback to checking all tables if role not specified
-      const userPromises = [
-        this.prisma.admin.findUnique({ where: { username } }),
-        this.prisma.teacher.findUnique({ where: { username } }),
-        this.prisma.student.findUnique({ where: { username } }),
-        this.prisma.parent.findUnique({ where: { username } }),
-      ];
-      const users = await Promise.all(userPromises);
-      user = users.find((u) => u !== null);
-    }
+    let user = await this.findUserByUsername(
+      username,
+      this.hasLoginRole(input) ? input.role : undefined,
+    );
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       // Only log failed login attempt if ipAddress is provided
@@ -572,9 +615,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Rest of the login method remains unchanged
-    const token = this.generateAccessToken(user.id, user.role);
-    const refreshToken = await this.generateRefreshToken(user.id);
+    user = await this.ensureAdminIdentifier(user);
+
+    const { token, refreshToken } = await this.issueTokens(user.id, user.role);
 
     const authResponse: AuthResponse = {
       token,
@@ -593,6 +636,7 @@ export class AuthService {
       sex: user.sex ?? null,
       parentId: user.parentId ?? null,
       classId: user.classId ?? null,
+      ...this.buildRoleIdentifiers(user),
     };
 
     return authResponse;
@@ -691,34 +735,7 @@ export class AuthService {
     role?: Roles,
   ): Promise<AuthResponse> {
     // Find user based on username and role
-    let user = null;
-    if (role) {
-      switch (role) {
-        case Roles.ADMIN:
-        case Roles.SUPER_ADMIN:
-          user = await this.prisma.admin.findUnique({ where: { username } });
-          break;
-        case Roles.TEACHER:
-          user = await this.prisma.teacher.findUnique({ where: { username } });
-          break;
-        case Roles.STUDENT:
-          user = await this.prisma.student.findUnique({ where: { username } });
-          break;
-        case Roles.PARENT:
-          user = await this.prisma.parent.findUnique({ where: { username } });
-          break;
-      }
-    } else {
-      // Check all tables if role not specified
-      const userPromises = [
-        this.prisma.admin.findUnique({ where: { username } }),
-        this.prisma.teacher.findUnique({ where: { username } }),
-        this.prisma.student.findUnique({ where: { username } }),
-        this.prisma.parent.findUnique({ where: { username } }),
-      ];
-      const users = await Promise.all(userPromises);
-      user = users.find((u) => u !== null);
-    }
+    const user = await this.findUserByUsername(username, role);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -758,8 +775,10 @@ export class AuthService {
     }
 
     // Generate new tokens
-    const token = this.generateAccessToken(updatedUser.id, updatedUser.role);
-    const refreshToken = await this.generateRefreshToken(updatedUser.id);
+    const { token, refreshToken } = await this.issueTokens(
+      updatedUser.id,
+      updatedUser.role,
+    );
 
     return {
       token,
