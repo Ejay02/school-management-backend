@@ -10,6 +10,9 @@ export class SetupState {
   schoolName?: string;
 
   @Field(() => String, { nullable: true })
+  schoolDomain?: string;
+
+  @Field(() => String, { nullable: true })
   schoolEmail?: string;
 
   @Field(() => String, { nullable: true })

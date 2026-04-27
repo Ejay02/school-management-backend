@@ -435,9 +435,9 @@ export class RolesGuard implements CanActivate {
 
         // Check target roles if specified
         if (args.targetRoles) {
-          const validRolesForTeacher = [Roles.STUDENT, Roles.PARENT];
+          const validRolesForTeacher = new Set([Roles.STUDENT, Roles.PARENT]);
           const areRolesValid = args.targetRoles.every((role: string) =>
-            validRolesForTeacher.includes(role as Roles),
+            validRolesForTeacher.has(role as Roles),
           );
 
           if (!areRolesValid) {

@@ -89,6 +89,21 @@ export class AdminService {
 
       // Create new admin record
       return this.prisma.$transaction(async (tx) => {
+        await tx.setupState.upsert({
+          where: { id: 'default' },
+          update: {},
+          create: { id: 'default' },
+        });
+        const updatedSetupState = (await tx.setupState.update({
+          where: { id: 'default' },
+          data: { nextAdminSequence: { increment: 1 } },
+          select: { nextAdminSequence: true },
+        } as any)) as any;
+        const sequence = updatedSetupState.nextAdminSequence - 1;
+        const adminIdValue = `ADM-${new Date().getFullYear()}-${String(
+          sequence,
+        ).padStart(4, '0')}`;
+
         // Delete from original table
         if (teacher) await tx.teacher.delete({ where: { id: targetId } });
         if (student) await tx.student.delete({ where: { id: targetId } });
@@ -98,11 +113,12 @@ export class AdminService {
         return tx.admin.create({
           data: {
             id: targetId,
+            adminId: adminIdValue,
             username: target.username,
             email: target.email,
             password: target.password,
             role: Roles.ADMIN,
-          },
+          } as any,
         });
       });
     }

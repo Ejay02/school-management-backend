@@ -226,45 +226,59 @@ export class AuthService {
         // Hash the password before saving
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        const setupState = await tx.setupState.upsert({
+          where: { id: 'default' },
+          update: {},
+          create: { id: 'default' },
+        });
+        const schoolDomain = this.normalizeSchoolDomain(
+          (setupState as any).schoolDomain,
+        );
+
         // Create the user based on the role
         let newUser;
         switch (effectiveRole) {
           case Roles.ADMIN:
           case Roles.SUPER_ADMIN:
             const adminInput = input as AdminSignupInput;
+            const adminId = await this.generateAdminId(tx);
             newUser = await tx.admin.create({
               data: {
+                adminId,
                 username,
                 password: hashedPassword,
                 email,
                 role: effectiveRole,
                 name: adminInput.name,
                 surname: adminInput.surname,
-              },
-            });
-
-            await tx.setupState.upsert({
-              where: { id: 'default' },
-              update: {},
-              create: { id: 'default' },
+              } as any,
             });
             break;
 
           case Roles.TEACHER:
             const teacherInput = input as TeacherSignupInput;
+            const teacherId = await this.generateTeacherId(tx);
+            const institutionalEmail = await this.generateInstitutionalEmail(
+              tx,
+              teacherInput.name,
+              teacherInput.surname,
+              schoolDomain,
+            );
             newUser = await tx.teacher.create({
               data: {
+                teacherId,
                 username,
                 password: hashedPassword,
                 email,
-                role,
+                institutionalEmail,
+                role: effectiveRole,
                 name: teacherInput.name,
                 surname: teacherInput.surname,
                 // address: teacherInput.address,
                 // bloodType: teacherInput.bloodType,
                 // sex: teacherInput.sex,
                 // phone: teacherInput.phone,
-              },
+              } as any,
             });
             break;
 
@@ -319,18 +333,27 @@ export class AuthService {
                 },
               });
 
+              const studentId = await this.generateStudentId(tx);
+              const institutionalEmail = await this.generateInstitutionalEmail(
+                tx,
+                studentInput.name,
+                studentInput.surname,
+                schoolDomain,
+              );
               newUser = await tx.student.create({
                 data: {
+                  studentId,
                   username,
                   password: hashedPassword,
                   email,
+                  institutionalEmail,
                   role,
                   name: studentInput.name,
                   surname: studentInput.surname,
 
                   parentId: studentInput.parentId,
                   classId: classRecord.id,
-                },
+                } as any,
               });
             }
             break;
@@ -353,7 +376,7 @@ export class AuthService {
         }
 
         // Generate the token (if this fails, it should trigger rollback)
-        const token = this.generateAccessToken(newUser.id, role);
+        const token = this.generateAccessToken(newUser.id, effectiveRole);
         const refreshToken = await this.generateRefreshToken(newUser.id);
 
         // Build the response object with all fields
@@ -402,6 +425,100 @@ export class AuthService {
       }
       throw new Error(`Signup Error: ${error}`);
     }
+  }
+
+  private normalizeSchoolDomain(value: unknown): string | null {
+    const base = typeof value === 'string' ? value : '';
+    const trimmed = base.trim().toLowerCase().replace(/^@/, '');
+    return trimmed.length ? trimmed : null;
+  }
+
+  private normalizeNamePart(value: unknown): string {
+    const base = typeof value === 'string' ? value : '';
+    return base
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  private async claimNextSequence(
+    tx: any,
+    field: 'nextStudentSequence' | 'nextTeacherSequence' | 'nextAdminSequence',
+  ): Promise<number> {
+    const updated = await tx.setupState.update({
+      where: { id: 'default' },
+      data: { [field]: { increment: 1 } },
+      select: { [field]: true } as any,
+    });
+
+    const value = Number(updated[field]);
+    return value - 1;
+  }
+
+  private async generateStudentId(tx: any): Promise<string> {
+    const year = new Date().getFullYear();
+    const sequence = await this.claimNextSequence(tx, 'nextStudentSequence');
+    return `STU-${year}-${String(sequence).padStart(4, '0')}`;
+  }
+
+  private async generateTeacherId(tx: any): Promise<string> {
+    const year = new Date().getFullYear();
+    const sequence = await this.claimNextSequence(tx, 'nextTeacherSequence');
+    return `TCH-${year}-${String(sequence).padStart(4, '0')}`;
+  }
+
+  private async generateAdminId(tx: any): Promise<string> {
+    const year = new Date().getFullYear();
+    const sequence = await this.claimNextSequence(tx, 'nextAdminSequence');
+    return `ADM-${year}-${String(sequence).padStart(4, '0')}`;
+  }
+
+  private async generateInstitutionalEmail(
+    tx: any,
+    name: string,
+    surname: string,
+    schoolDomain: string | null,
+  ): Promise<string | null> {
+    if (!schoolDomain) return null;
+
+    const firstToken = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)[0];
+    const lastToken = String(surname || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(-1)[0];
+
+    const firstInitial = this.normalizeNamePart(firstToken).slice(0, 1);
+    const lastName = this.normalizeNamePart(lastToken);
+    if (!firstInitial || !lastName) return null;
+
+    const base = `${firstInitial}.${lastName}`;
+    for (let n = 0; n < 1000; n++) {
+      const suffix = n === 0 ? '' : String(n);
+      const candidate = `${base}${suffix}@${schoolDomain}`;
+
+      const [teacher, student] = await Promise.all([
+        tx.teacher.findFirst({
+          where: {
+            OR: [{ institutionalEmail: candidate }, { email: candidate }],
+          },
+          select: { id: true },
+        }),
+        tx.student.findFirst({
+          where: {
+            OR: [{ institutionalEmail: candidate }, { email: candidate }],
+          },
+          select: { id: true },
+        }),
+      ]);
+
+      if (!teacher && !student) return candidate;
+    }
+
+    throw new ConflictException('Unable to generate a unique email address');
   }
 
   async login(

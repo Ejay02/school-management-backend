@@ -29,10 +29,18 @@ export class SetupService {
   async updateSetupState(input: UpdateSetupStateInput) {
     await this.ensureSetupState();
 
+    const normalizedSchoolDomain = (() => {
+      const value =
+        typeof input.schoolDomain === 'string' ? input.schoolDomain : '';
+      const trimmed = value.trim().toLowerCase().replace(/^@/, '');
+      return trimmed.length ? trimmed : null;
+    })();
+
     return this.prisma.setupState.update({
       where: { id: 'default' },
       data: {
         schoolName: input.schoolName,
+        schoolDomain: normalizedSchoolDomain,
         schoolEmail: input.schoolEmail,
         schoolPhone: input.schoolPhone,
         schoolAddress: input.schoolAddress,

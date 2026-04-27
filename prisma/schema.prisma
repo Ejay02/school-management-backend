@@ -10,6 +10,7 @@ datasource db {
 
 model Admin {
   id              String        @id @default(uuid())
+  adminId         String?       @unique
   username        String        @unique
   name            String?  
   surname         String?  
@@ -25,11 +26,13 @@ model Admin {
 
 model Student {
   id              String        @id @default(uuid())
+  studentId       String?       @unique
   username        String        @unique
   role            Role
   name            String  
   surname         String  
   email           String?       @unique
+  institutionalEmail String?    @unique
   password        String
   phone           String?       @unique
   address         String?
@@ -55,11 +58,13 @@ model Student {
 
 model Teacher{
   id              String        @id @default(uuid())
+  teacherId       String?       @unique
   username        String        @unique
   role            Role
   name            String  
   surname         String  
   email           String?       @unique
+  institutionalEmail String?    @unique
   password        String
   phone           String?       @unique
   address         String?
@@ -389,6 +394,7 @@ model Invitation {
 model SetupState {
   id                  String   @id @default("default")
   schoolName          String?
+  schoolDomain        String?
   schoolEmail         String?
   schoolPhone         String?
   schoolAddress       String?
@@ -398,6 +404,9 @@ model SetupState {
   academicYearCurrent String?
   academicYearNext    String?
   currentTerm         Term?
+  nextStudentSequence Int      @default(1)
+  nextTeacherSequence Int      @default(1)
+  nextAdminSequence   Int      @default(1)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }

@@ -9,8 +9,8 @@ import { AuthService } from '../auth/auth.service';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private prisma: PrismaService,
-    private authService: AuthService,
+    private readonly prisma: PrismaService,
+    private readonly authService: AuthService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

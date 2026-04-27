@@ -8,6 +8,9 @@ export class Teacher {
   @Field(() => ID)
   id: string;
 
+  @Field({ nullable: true })
+  teacherId?: string;
+
   @Field()
   username: string;
 
@@ -22,6 +25,9 @@ export class Teacher {
 
   @Field({ nullable: true })
   email?: string;
+
+  @Field({ nullable: true })
+  institutionalEmail?: string;
 
   @Field({ nullable: true })
   password: string;

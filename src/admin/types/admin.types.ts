@@ -7,6 +7,9 @@ export class Admin {
   id: string;
 
   @Field({ nullable: true })
+  adminId?: string;
+
+  @Field({ nullable: true })
   name?: string;
 
   @Field({ nullable: true })

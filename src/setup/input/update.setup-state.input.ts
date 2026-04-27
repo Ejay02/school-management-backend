@@ -11,6 +11,11 @@ export class UpdateSetupStateInput {
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsString()
+  schoolDomain?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
   @IsEmail()
   schoolEmail?: string;
 

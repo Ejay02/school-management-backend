@@ -11,6 +11,9 @@ export class Student {
   @Field(() => ID)
   id: string;
 
+  @Field({ nullable: true })
+  studentId?: string;
+
   @Field()
   username: string;
 
@@ -25,6 +28,9 @@ export class Student {
 
   @Field({ nullable: true })
   email?: string;
+
+  @Field({ nullable: true })
+  institutionalEmail?: string;
 
   @Field({ nullable: true }) // Don't expose password in GraphQL responses
   password?: string;
