@@ -1178,4 +1178,33 @@ export class PaymentService {
       topClassesByRevenue,
     };
   }
+
+  async getInvoicesDueThisWeek() {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(now);
+    const daysUntilSunday = (7 - end.getDay()) % 7;
+    end.setDate(end.getDate() + daysUntilSunday);
+    end.setHours(23, 59, 59, 999);
+
+    return this.prisma.invoice.findMany({
+      where: {
+        dueDate: {
+          gte: start,
+          lte: end,
+        },
+        status: {
+          in: [InvoiceStatus.PENDING, InvoiceStatus.PARTIAL],
+        },
+      },
+      include: {
+        payments: true,
+      },
+      orderBy: {
+        dueDate: 'asc',
+      },
+    });
+  }
 }

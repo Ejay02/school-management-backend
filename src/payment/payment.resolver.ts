@@ -120,4 +120,10 @@ export class PaymentResolver {
   async getBillingReportDashboard() {
     return await this.paymentService.getBillingReportDashboard();
   }
+
+  @Query(() => [Invoice])
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  async invoicesDueThisWeek() {
+    return await this.paymentService.getInvoicesDueThisWeek();
+  }
 }

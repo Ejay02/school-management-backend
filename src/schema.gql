@@ -838,6 +838,7 @@ type Query {
   getUserById(id: String!): UserUnion
   invitationSummary(role: Roles): InvitationSummary!
   invitations(params: PaginationInput, role: Roles, status: InviteStatus): InvitationListResponse!
+  invoicesDueThisWeek: [Invoice!]!
   validateInvitationToken(token: String!): InvitationPreview!
 }
 
