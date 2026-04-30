@@ -213,11 +213,10 @@ export class AttendanceService {
     // Verify teacher has access to this lesson
     if (
       userRole !== Roles.TEACHER &&
-      userRole !== Roles.ADMIN &&
       userRole !== Roles.SUPER_ADMIN
     ) {
       throw new ForbiddenException(
-        'Only teachers and admins can mark attendance',
+        'Only teachers can mark attendance',
       );
     }
 

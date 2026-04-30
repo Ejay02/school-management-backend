@@ -48,7 +48,7 @@ export class AttendanceResolver {
   }
 
   @Mutation(() => [Attendance])
-  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
+  @HasRoles(Roles.TEACHER, Roles.SUPER_ADMIN)
   async markAttendance(
     @Args('lessonId') lessonId: string,
     @Args('attendanceData', { type: () => [MarkAttendanceInput] })
