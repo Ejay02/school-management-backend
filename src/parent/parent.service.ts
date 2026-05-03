@@ -185,12 +185,26 @@ export class ParentService {
         }
 
         // Update parent profile
+        const updateData: any = {};
+
+        if (typeof input.name !== 'undefined') updateData.name = input.name;
+        if (typeof input.surname !== 'undefined') updateData.surname = input.surname;
+        if (typeof input.username !== 'undefined')
+          updateData.username = input.username;
+        if (typeof input.email !== 'undefined') updateData.email = input.email;
+        if (typeof input.phone !== 'undefined') updateData.phone = input.phone;
+        if (typeof input.address !== 'undefined') updateData.address = input.address;
+        if (typeof input.aboutMe !== 'undefined') updateData.aboutMe = input.aboutMe;
+        if (typeof input.dateOfBirth !== 'undefined')
+          updateData.dateOfBirth = input.dateOfBirth;
+
+        if ((passwordData as any).password) updateData.password = (passwordData as any).password;
+        if (typeof imageUrl !== 'undefined') updateData.image = imageUrl;
+
         return tx.parent.update({
           where: { id },
           data: {
-            ...input,
-            ...passwordData,
-            image: imageUrl,
+            ...updateData,
           },
         });
       });
