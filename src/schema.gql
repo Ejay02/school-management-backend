@@ -125,6 +125,12 @@ type Attendance {
   updatedAt: DateTime!
 }
 
+type AttendanceSessionToken {
+  expiresAt: DateTime!
+  qrPayload: String!
+  token: String!
+}
+
 type AuthResponse {
   address: String
   adminId: String
@@ -604,9 +610,11 @@ type Mutation {
   assignSubjectsToClass(input: AssignSubjectsInput!): AssignSubjectsResponse!
   calculateOverallResult(academicPeriod: String!, studentId: String!): Result!
   cancelEvent(id: String!, reason: String!): Event!
+  checkInAttendance(token: String!): Attendance!
   completeExam(input: CompleteExamInput!): StudentExam!
   createAnnouncement(classId: String, content: String!, targetRoles: [String!], title: String!): Announcement!
   createAssignment(createAssignmentInput: CreateAssignmentInput!): Assignment!
+  createAttendanceSession(date: DateTime!, lessonId: String!): AttendanceSessionToken!
   createClass(input: CreateClassInput!): Class!
   createEvent(data: CreateEventInput!): Event!
   createExam(input: CreateExamInput!): Exam!

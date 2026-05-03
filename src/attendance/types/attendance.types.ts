@@ -38,3 +38,15 @@ export class Attendance {
   @Field()
   updatedAt: Date;
 }
+
+@ObjectType()
+export class AttendanceSessionToken {
+  @Field()
+  token: string;
+
+  @Field()
+  expiresAt: Date;
+
+  @Field()
+  qrPayload: string;
+}

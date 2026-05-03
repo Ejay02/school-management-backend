@@ -9,6 +9,8 @@ import { Roles } from '../shared/enum/role';
 import { MarkAttendanceInput } from './input/attendance.input';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
+import * as jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Attendance } from './types/attendance.types';
 
@@ -19,6 +21,149 @@ export class AttendanceService {
   private readonly server: Server;
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async createAttendanceSession(
+    lessonId: string,
+    date: Date,
+    userId: string,
+    userRole: Roles,
+  ) {
+    if (userRole !== Roles.TEACHER) {
+      throw new ForbiddenException(
+        'Only teachers can start attendance sessions',
+      );
+    }
+
+    const lesson = await this.prisma.lesson.findFirst({
+      where: {
+        id: lessonId,
+        teacherId: userId,
+      },
+      select: { id: true },
+    });
+
+    if (!lesson) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new InternalServerErrorException('JWT secret is not configured');
+    }
+
+    const dateKey = new Date(date).toISOString().slice(0, 10);
+    const ttlSeconds = 30;
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+    const token = jwt.sign(
+      {
+        typ: 'attendance_session',
+        lessonId,
+        date: dateKey,
+        teacherId: userId,
+        jti: uuidv4(),
+      },
+      secret,
+      { expiresIn: ttlSeconds },
+    );
+
+    return {
+      token,
+      expiresAt,
+      qrPayload: `eduhub:v1:attendance_session:${token}`,
+    };
+  }
+
+  async checkInAttendance(token: string, userId: string, userRole: Roles) {
+    if (userRole !== Roles.STUDENT) {
+      throw new ForbiddenException('Only students can check in attendance');
+    }
+
+    const rawToken = String(token || '')
+      .trim()
+      .startsWith('eduhub:v1:attendance_session:')
+      ? String(token || '')
+          .trim()
+          .replace('eduhub:v1:attendance_session:', '')
+          .trim()
+      : String(token || '').trim();
+
+    if (!rawToken) {
+      throw new ForbiddenException('Invalid session token');
+    }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new InternalServerErrorException('JWT secret is not configured');
+    }
+
+    let payload: any;
+    try {
+      payload = jwt.verify(rawToken, secret);
+    } catch (e) {
+      throw new ForbiddenException('Invalid or expired session token');
+    }
+
+    if (!payload || payload.typ !== 'attendance_session') {
+      throw new ForbiddenException('Invalid session token');
+    }
+
+    const lessonId = String(payload.lessonId || '').trim();
+    const dateKey = String(payload.date || '').trim();
+    if (!lessonId || !dateKey) {
+      throw new ForbiddenException('Invalid session token');
+    }
+
+    const lesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { id: true, classId: true },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    const student = await this.prisma.student.findFirst({
+      where: { id: userId, classId: lesson.classId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    const attendance = await this.prisma.attendance.upsert({
+      where: {
+        lessonId_studentId_date: {
+          lessonId,
+          studentId: userId,
+          date: new Date(dateKey),
+        },
+      },
+      update: {
+        present: true,
+      },
+      create: {
+        lessonId,
+        studentId: userId,
+        date: new Date(dateKey),
+        present: true,
+        classId: lesson.classId,
+      },
+      include: {
+        student: true,
+        lesson: true,
+        class: true,
+      },
+    });
+
+    this.server.emit('markAttendance', {
+      message: 'Attendance has been marked!',
+      attendance: [attendance],
+    });
+
+    return attendance as unknown as Attendance;
+  }
 
   async getAttendances(
     userId: string,
@@ -211,12 +356,8 @@ export class AttendanceService {
     userRole: Roles,
   ) {
     // Verify teacher has access to this lesson
-    if (
-      userRole !== Roles.TEACHER
-    ) {
-      throw new ForbiddenException(
-        'Only teachers can mark attendance',
-      );
+    if (userRole !== Roles.TEACHER) {
+      throw new ForbiddenException('Only teachers can mark attendance');
     }
 
     if (userRole === Roles.TEACHER) {
@@ -256,10 +397,14 @@ export class AttendanceService {
     });
 
     const validStudentIdSet = new Set(validStudents.map((s) => s.id));
-    const invalidStudentIds = studentIds.filter((id) => !validStudentIdSet.has(id));
+    const invalidStudentIds = studentIds.filter(
+      (id) => !validStudentIdSet.has(id),
+    );
 
     if (invalidStudentIds.length) {
-      throw new ForbiddenException('One or more students are not in this class');
+      throw new ForbiddenException(
+        'One or more students are not in this class',
+      );
     }
 
     // Create attendance records

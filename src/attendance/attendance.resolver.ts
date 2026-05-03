@@ -5,7 +5,7 @@ import { RolesGuard } from '../shared/auth/guards/roles.guard';
 import { UseGuards } from '@nestjs/common';
 import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 import { Roles } from '../shared/enum/role';
-import { Attendance } from './types/attendance.types';
+import { Attendance, AttendanceSessionToken } from './types/attendance.types';
 import { MarkAttendanceInput } from './input/attendance.input';
 
 import { SchoolAttendanceStats } from './types/attendance.stat.types';
@@ -58,6 +58,31 @@ export class AttendanceResolver {
     return await this.attendanceService.markAttendance(
       lessonId,
       attendanceData,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Mutation(() => AttendanceSessionToken)
+  @HasRoles(Roles.TEACHER)
+  async createAttendanceSession(
+    @Args('lessonId') lessonId: string,
+    @Args('date') date: Date,
+    @Context() context,
+  ) {
+    return await this.attendanceService.createAttendanceSession(
+      lessonId,
+      date,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Mutation(() => Attendance)
+  @HasRoles(Roles.STUDENT)
+  async checkInAttendance(@Args('token') token: string, @Context() context) {
+    return await this.attendanceService.checkInAttendance(
+      token,
       context.req.user.userId,
       context.req.user.role,
     );
