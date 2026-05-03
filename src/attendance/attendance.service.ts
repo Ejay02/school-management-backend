@@ -239,6 +239,29 @@ export class AttendanceService {
       throw new NotFoundException('Lesson not found');
     }
 
+    const studentIds = Array.from(
+      new Set(attendanceData.map((data) => data.studentId).filter(Boolean)),
+    );
+
+    if (studentIds.length === 0) {
+      return [];
+    }
+
+    const validStudents = await this.prisma.student.findMany({
+      where: {
+        id: { in: studentIds },
+        classId: lesson.classId,
+      },
+      select: { id: true },
+    });
+
+    const validStudentIdSet = new Set(validStudents.map((s) => s.id));
+    const invalidStudentIds = studentIds.filter((id) => !validStudentIdSet.has(id));
+
+    if (invalidStudentIds.length) {
+      throw new ForbiddenException('One or more students are not in this class');
+    }
+
     // Create attendance records
     const attendanceRecords = await Promise.all(
       attendanceData.map(async (data) => {
