@@ -467,6 +467,14 @@ enum FeeType {
   YEARLY
 }
 
+type FinanceOverview {
+  income: [Float!]!
+  months: [String!]!
+  outstanding: [Float!]!
+  totalIncome: Float!
+  totalOutstanding: Float!
+}
+
 type Invitation {
   acceptedAt: DateTime
   createdAt: DateTime!
@@ -813,6 +821,7 @@ type Query {
   getEvents(filter: EventFilter!, params: PaginationInput): [Event!]!
   getExamById(examId: String!): Exam!
   getFeeStructureById(feeStructureId: String!): FeeStructure!
+  getFinanceOverview: FinanceOverview!
   getHello: String!
   getIncomeGraphData: MonthlyRevenue!
   getLessonById(id: String!): Lesson!

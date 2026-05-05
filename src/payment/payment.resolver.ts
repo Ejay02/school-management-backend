@@ -12,7 +12,10 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 import { StudentPayment } from './types/student.payment.type';
-import { BillingReportDashboard } from './types/billing.report.dashboard.type';
+import {
+  BillingReportDashboard,
+  FinanceOverview,
+} from './types/billing.report.dashboard.type';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -119,6 +122,12 @@ export class PaymentResolver {
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async getBillingReportDashboard() {
     return await this.paymentService.getBillingReportDashboard();
+  }
+
+  @Query(() => FinanceOverview)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  async getFinanceOverview() {
+    return await this.paymentService.getFinanceOverview();
   }
 
   @Query(() => [Invoice])

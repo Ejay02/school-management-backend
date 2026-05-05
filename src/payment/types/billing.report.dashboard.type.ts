@@ -92,3 +92,21 @@ export class BillingReportDashboard {
   @Field(() => [TopClassByRevenue])
   topClassesByRevenue: TopClassByRevenue[];
 }
+
+@ObjectType()
+export class FinanceOverview {
+  @Field(() => [String])
+  months: string[];
+
+  @Field(() => [Float])
+  income: number[];
+
+  @Field(() => [Float])
+  outstanding: number[];
+
+  @Field(() => Float)
+  totalIncome: number;
+
+  @Field(() => Float)
+  totalOutstanding: number;
+}

@@ -1179,6 +1179,89 @@ export class PaymentService {
     };
   }
 
+  async getFinanceOverview() {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const isBeforeSeptember = now.getMonth() < 8;
+    const academicYearStart = new Date(
+      isBeforeSeptember ? currentYear - 1 : currentYear,
+      8,
+      1,
+    );
+    const academicYearEnd = new Date(
+      isBeforeSeptember ? currentYear : currentYear + 1,
+      7,
+      31,
+      23,
+      59,
+      59,
+      999,
+    );
+
+    const months = [
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+    ];
+
+    const income = Array(months.length).fill(0);
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        status: PaymentStatus.COMPLETED,
+        createdAt: { gte: academicYearStart, lte: academicYearEnd },
+      },
+      select: { amount: true, createdAt: true },
+    });
+    payments.forEach((payment) => {
+      const date = payment.createdAt;
+      let monthIndex = date.getMonth() - 8;
+      if (monthIndex < 0) monthIndex += 12;
+      if (monthIndex >= 0 && monthIndex < months.length) {
+        income[monthIndex] += payment.amount;
+      }
+    });
+
+    const outstanding = Array(months.length).fill(0);
+    const invoices = await this.prisma.invoice.findMany({
+      where: {
+        status: { in: [InvoiceStatus.PENDING, InvoiceStatus.PARTIAL] },
+        dueDate: { gte: academicYearStart, lte: academicYearEnd },
+      },
+      select: { totalAmount: true, paidAmount: true, dueDate: true },
+    });
+    invoices.forEach((invoice) => {
+      const date = invoice.dueDate;
+      let monthIndex = date.getMonth() - 8;
+      if (monthIndex < 0) monthIndex += 12;
+      if (monthIndex >= 0 && monthIndex < months.length) {
+        const remaining = Math.max(
+          0,
+          (invoice.totalAmount ?? 0) - (invoice.paidAmount ?? 0),
+        );
+        outstanding[monthIndex] += remaining;
+      }
+    });
+
+    const totalIncome = income.reduce((sum, v) => sum + v, 0);
+    const totalOutstanding = outstanding.reduce((sum, v) => sum + v, 0);
+
+    return {
+      months,
+      income,
+      outstanding,
+      totalIncome,
+      totalOutstanding,
+    };
+  }
+
   async getInvoicesDueThisWeek() {
     const now = new Date();
     const start = new Date(now);
