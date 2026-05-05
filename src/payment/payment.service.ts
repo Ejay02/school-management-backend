@@ -1210,6 +1210,7 @@ export class PaymentService {
       'May',
       'Jun',
       'Jul',
+      'Aug',
     ];
 
     const income = Array(months.length).fill(0);
