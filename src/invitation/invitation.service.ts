@@ -39,14 +39,21 @@ export class InvitationService {
   }
 
   private assertRoleAllowed(role: Roles) {
-    if (role !== Roles.TEACHER && role !== Roles.PARENT) {
+    if (role !== Roles.TEACHER && role !== Roles.PARENT && role !== Roles.ADMIN) {
       throw new BadRequestException(
-        'Invites are only supported for TEACHER and PARENT',
+        'Invites are only supported for ADMIN, TEACHER, and PARENT',
       );
     }
   }
 
   private async ensureEmailNotInUse(email: string, role: Roles) {
+    if (role === Roles.ADMIN || role === Roles.SUPER_ADMIN) {
+      const existing = await this.prisma.admin.findFirst({ where: { email } });
+      if (existing)
+        throw new BadRequestException(
+          'An ADMIN with this email already exists',
+        );
+    }
     if (role === Roles.TEACHER) {
       const existing = await this.prisma.teacher.findFirst({
         where: { email },
@@ -139,6 +146,10 @@ export class InvitationService {
     accepted: number,
     totalSent: number,
   ) {
+    if (role === Roles.ADMIN) {
+      return `${accepted} of ${totalSent} admins activated`;
+    }
+
     if (role === Roles.TEACHER) {
       return `${accepted} of ${totalSent} teachers activated`;
     }
@@ -340,7 +351,7 @@ export class InvitationService {
     ]);
 
     const roleBreakdown = await Promise.all(
-      [Roles.TEACHER, Roles.PARENT].map(async (currentRole) => {
+      [Roles.ADMIN, Roles.TEACHER, Roles.PARENT].map(async (currentRole) => {
         const [
           roleTotalSent,
           roleAccepted,
