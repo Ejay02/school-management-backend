@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import Stripe from 'stripe';
-import { InvoiceStatus, PaymentStatus } from '@prisma/client';
+import { InvoiceStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { CreateFeeStructureInput } from './input/create.fee.structure.input';
 import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
@@ -1213,43 +1213,58 @@ export class PaymentService {
       'Aug',
     ];
 
+    const monthToIndex: Record<number, number> = {
+      9: 0,
+      10: 1,
+      11: 2,
+      12: 3,
+      1: 4,
+      2: 5,
+      3: 6,
+      4: 7,
+      5: 8,
+      6: 9,
+      7: 10,
+      8: 11,
+    };
+
     const income = Array(months.length).fill(0);
-    const payments = await this.prisma.payment.findMany({
-      where: {
-        status: PaymentStatus.COMPLETED,
-        createdAt: { gte: academicYearStart, lte: academicYearEnd },
-      },
-      select: { amount: true, createdAt: true },
-    });
-    payments.forEach((payment) => {
-      const date = payment.createdAt;
-      let monthIndex = date.getMonth() - 8;
-      if (monthIndex < 0) monthIndex += 12;
-      if (monthIndex >= 0 && monthIndex < months.length) {
-        income[monthIndex] += payment.amount;
-      }
-    });
+    const paymentRows = await this.prisma.$queryRaw<
+      Array<{ month: number; total: number }>
+    >(Prisma.sql`
+      SELECT
+        EXTRACT(MONTH FROM "createdAt")::int AS month,
+        COALESCE(SUM("amount"), 0)::float AS total
+      FROM "Payment"
+      WHERE
+        "status" = ${PaymentStatus.COMPLETED}
+        AND "createdAt" >= ${academicYearStart}
+        AND "createdAt" <= ${academicYearEnd}
+      GROUP BY 1
+    `);
+    for (const row of paymentRows) {
+      const idx = monthToIndex[Number(row.month)];
+      if (typeof idx === 'number') income[idx] = Number(row.total) || 0;
+    }
 
     const outstanding = Array(months.length).fill(0);
-    const invoices = await this.prisma.invoice.findMany({
-      where: {
-        status: { in: [InvoiceStatus.PENDING, InvoiceStatus.PARTIAL] },
-        dueDate: { gte: academicYearStart, lte: academicYearEnd },
-      },
-      select: { totalAmount: true, paidAmount: true, dueDate: true },
-    });
-    invoices.forEach((invoice) => {
-      const date = invoice.dueDate;
-      let monthIndex = date.getMonth() - 8;
-      if (monthIndex < 0) monthIndex += 12;
-      if (monthIndex >= 0 && monthIndex < months.length) {
-        const remaining = Math.max(
-          0,
-          (invoice.totalAmount ?? 0) - (invoice.paidAmount ?? 0),
-        );
-        outstanding[monthIndex] += remaining;
-      }
-    });
+    const outstandingRows = await this.prisma.$queryRaw<
+      Array<{ month: number; total: number }>
+    >(Prisma.sql`
+      SELECT
+        EXTRACT(MONTH FROM "dueDate")::int AS month,
+        COALESCE(SUM(GREATEST("totalAmount" - COALESCE("paidAmount", 0), 0)), 0)::float AS total
+      FROM "Invoice"
+      WHERE
+        "status" IN (${InvoiceStatus.PENDING}, ${InvoiceStatus.PARTIAL})
+        AND "dueDate" >= ${academicYearStart}
+        AND "dueDate" <= ${academicYearEnd}
+      GROUP BY 1
+    `);
+    for (const row of outstandingRows) {
+      const idx = monthToIndex[Number(row.month)];
+      if (typeof idx === 'number') outstanding[idx] = Number(row.total) || 0;
+    }
 
     const totalIncome = income.reduce((sum, v) => sum + v, 0);
     const totalOutstanding = outstanding.reduce((sum, v) => sum + v, 0);

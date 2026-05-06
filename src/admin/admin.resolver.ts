@@ -4,7 +4,10 @@ import { UseGuards } from '@nestjs/common';
 
 import { Admin } from './types/admin.types';
 
-import { DashboardSummary } from './types/dashboard.summary.type';
+import {
+  AdminDashboardOverview,
+  DashboardSummary,
+} from './types/dashboard.summary.type';
 import { MonthlyRevenue } from './types/income.graph.type';
 import { AdminUsersResponse } from './response/admin.users.response';
 import { RolesGuard } from '../shared/auth/guards/roles.guard';
@@ -12,11 +15,19 @@ import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
 import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 import { Roles } from '../shared/enum/role';
 import { UpdateProfileInput } from '../shared/inputs/profile-update.input';
+import { SetupService } from '../setup/setup.service';
+import { InvitationService } from '../invitation/invitation.service';
+import { PaymentService } from '../payment/payment.service';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminResolver {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly setupService: SetupService,
+    private readonly invitationService: InvitationService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
   @Query(() => [Admin])
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
@@ -68,6 +79,34 @@ export class AdminResolver {
     return await this.adminService.getDashboardUserCardSummary(
       context.req.user.role,
     );
+  }
+
+  @Query(() => AdminDashboardOverview)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getAdminDashboardOverview(@Context() context) {
+    const role = context.req.user.role;
+
+    const [
+      dashboardSummary,
+      onboardingChecklist,
+      invitationSummary,
+      invoicesDueThisWeek,
+      financeOverview,
+    ] = await Promise.all([
+      this.adminService.getDashboardUserCardSummary(role),
+      this.setupService.getOnboardingChecklist(),
+      this.invitationService.getInvitationSummary(),
+      this.paymentService.getInvoicesDueThisWeek(),
+      this.paymentService.getFinanceOverview(),
+    ]);
+
+    return {
+      dashboardSummary,
+      onboardingChecklist,
+      invitationSummary,
+      invoicesDueThisWeek,
+      financeOverview,
+    };
   }
 
   @Query(() => MonthlyRevenue)

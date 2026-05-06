@@ -30,6 +30,14 @@ type Admin {
   username: String!
 }
 
+type AdminDashboardOverview {
+  dashboardSummary: DashboardSummary!
+  financeOverview: FinanceOverview!
+  invitationSummary: InvitationSummary!
+  invoicesDueThisWeek: [Invoice!]!
+  onboardingChecklist: OnboardingChecklist!
+}
+
 input AdminSignupInput {
   email: String
   name: String!
@@ -794,6 +802,7 @@ type Query {
 
   """Calculate final Result for a student in a class"""
   calculateFinalResult(classId: String!, studentId: String!, term: Term!): Float!
+  getAdminDashboardOverview: AdminDashboardOverview!
   getAllAdminUsers: AdminUsersResponse!
   getAllAdmins: [Admin!]!
   getAllAnnouncements(params: AnnouncementQueryInput): [Announcement!]!
