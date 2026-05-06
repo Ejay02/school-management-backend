@@ -37,6 +37,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('Unauthorized access');
       }
 
+      if ((user as any).isActive === false) {
+        throw new UnauthorizedException('Account is deactivated');
+      }
+
       // Check if token is about to expire
       const tokenExp = payload.exp * 1000; // Convert to milliseconds
       const now = Date.now();

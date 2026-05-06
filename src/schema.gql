@@ -20,9 +20,11 @@ type Admin {
   adminId: String
   createdAt: DateTime!
   dateOfBirth: DateTime
+  deactivatedAt: DateTime
   email: String
   id: ID!
   image: String
+  isActive: Boolean!
   name: String
   role: Roles!
   surname: String
@@ -670,6 +672,7 @@ type Mutation {
   resendInvitation(id: String!): Invitation!
   resetPassword(input: ResetPasswordInput!): AuthResponse!
   revokeInvitation(id: String!): Invitation!
+  setUserActiveStatus(isActive: Boolean!, targetId: String!): UserUnion!
   startExam(input: StartExamInput!): StudentExam!
   studentSignup(input: StudentSignupInput!): AuthResponse!
   teacherSignup(input: TeacherSignupInput!): AuthResponse!
@@ -746,9 +749,11 @@ type Parent {
   address: String
   createdAt: DateTime!
   dateOfBirth: DateTime
+  deactivatedAt: DateTime
   email: String
   id: ID!
   image: String
+  isActive: Boolean!
   name: String!
   password: String
   phone: String
@@ -1011,11 +1016,13 @@ type Student {
   classId: String!
   createdAt: DateTime!
   dateOfBirth: DateTime
+  deactivatedAt: DateTime
   email: String
   exams: [StudentExam]
   id: ID!
   image: String
   institutionalEmail: String
+  isActive: Boolean!
   name: String!
   parent: Parent
   parentId: String!
@@ -1118,10 +1125,12 @@ type Teacher {
   classes: [Class!]!
   createdAt: DateTime!
   dateOfBirth: DateTime
+  deactivatedAt: DateTime
   email: String
   id: ID!
   image: String
   institutionalEmail: String
+  isActive: Boolean!
   lessons: [Lesson!]!
   name: String!
   password: String

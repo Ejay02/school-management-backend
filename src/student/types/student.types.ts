@@ -57,6 +57,12 @@ export class Student {
   aboutMe?: string;
 
   @Field()
+  isActive: boolean;
+
+  @Field({ nullable: true })
+  deactivatedAt?: Date;
+
+  @Field()
   parentId: string;
 
   @Field(() => Parent, { nullable: true })

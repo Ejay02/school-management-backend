@@ -39,6 +39,12 @@ export class Parent {
   @Field({ nullable: true })
   dateOfBirth?: Date;
 
+  @Field()
+  isActive: boolean;
+
+  @Field({ nullable: true })
+  deactivatedAt?: Date;
+
   @Field(() => [Student])
   students: Student[];
 

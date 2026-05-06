@@ -53,6 +53,12 @@ export class Teacher {
   @Field({ nullable: true })
   dateOfBirth?: Date;
 
+  @Field()
+  isActive: boolean;
+
+  @Field({ nullable: true })
+  deactivatedAt?: Date;
+
   @Field(() => [Subject])
   subjects: Subject[];
 

@@ -19,6 +19,8 @@ model Admin {
   image           String?
   dateOfBirth     DateTime?
   aboutMe         String? 
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -40,6 +42,8 @@ model Student {
   sex             Sex?
   dateOfBirth     DateTime?
   aboutMe         String? 
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
   parentId        String
   parent          Parent        @relation(fields: [parentId], references: [id] )
   classId         String
@@ -72,6 +76,8 @@ model Teacher{
   sex             Sex?
   aboutMe         String?
   dateOfBirth     DateTime? 
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
   exams           Exam[]
   subjects        Subject[]
   lessons         Lesson[]
@@ -94,6 +100,8 @@ model Parent {
   image           String?
   dateOfBirth     DateTime? 
   aboutMe         String?
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
   students        Student[]
   invoices        Invoice[]
   payments        Payment[]

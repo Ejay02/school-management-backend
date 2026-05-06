@@ -615,6 +615,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if ((user as any).isActive === false) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
     user = await this.ensureAdminIdentifier(user);
 
     const { token, refreshToken } = await this.issueTokens(user.id, user.role);
@@ -706,6 +710,13 @@ export class AuthService {
         where: { token: refreshToken },
       });
       throw new UnauthorizedException('User no longer exists');
+    }
+
+    if ((user as any).isActive === false) {
+      await this.prisma.refreshToken.delete({
+        where: { token: refreshToken },
+      });
+      throw new UnauthorizedException('Account is deactivated');
     }
 
     // Generate new tokens

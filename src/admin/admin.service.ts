@@ -251,15 +251,18 @@ export class AdminService {
       const updateData: any = {};
 
       if (typeof input.name !== 'undefined') updateData.name = input.name;
-      if (typeof input.surname !== 'undefined') updateData.surname = input.surname;
+      if (typeof input.surname !== 'undefined')
+        updateData.surname = input.surname;
       if (typeof input.username !== 'undefined')
         updateData.username = input.username;
       if (typeof input.email !== 'undefined') updateData.email = input.email;
-      if (typeof input.aboutMe !== 'undefined') updateData.aboutMe = input.aboutMe;
+      if (typeof input.aboutMe !== 'undefined')
+        updateData.aboutMe = input.aboutMe;
       if (typeof input.dateOfBirth !== 'undefined')
         updateData.dateOfBirth = input.dateOfBirth;
 
-      if ((passwordData as any).password) updateData.password = (passwordData as any).password;
+      if ((passwordData as any).password)
+        updateData.password = (passwordData as any).password;
       if (typeof imageUrl !== 'undefined') updateData.image = imageUrl;
 
       return this.prisma.admin.update({
@@ -467,5 +470,82 @@ export class AdminService {
       if (error instanceof ForbiddenException) throw error;
       throw new UnauthorizedException('User is not authorized as admin');
     }
+  }
+
+  async setUserActiveStatus(
+    requesterId: string,
+    targetId: string,
+    isActive: boolean,
+  ) {
+    const requester = await this.prisma.admin.findUnique({
+      where: { id: requesterId },
+    });
+    if (
+      !requester ||
+      (requester.role !== Roles.ADMIN && requester.role !== Roles.SUPER_ADMIN)
+    ) {
+      throw new UnauthorizedException('User is not authorized as admin');
+    }
+
+    if (requesterId === targetId) {
+      throw new ForbiddenException('Cannot change your own account status');
+    }
+
+    const [teacher, student, parent, admin] = await Promise.all([
+      this.prisma.teacher.findUnique({ where: { id: targetId } }),
+      this.prisma.student.findUnique({ where: { id: targetId } }),
+      this.prisma.parent.findUnique({ where: { id: targetId } }),
+      this.prisma.admin.findUnique({ where: { id: targetId } }),
+    ]);
+
+    if (!teacher && !student && !parent && !admin) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (admin) {
+      if (admin.role === Roles.SUPER_ADMIN) {
+        throw new ForbiddenException('Cannot deactivate super admin');
+      }
+      if (requester.role !== Roles.SUPER_ADMIN) {
+        throw new ForbiddenException(
+          'Only super admin can modify admin accounts',
+        );
+      }
+    }
+
+    if (requester.role === Roles.ADMIN && admin) {
+      throw new ForbiddenException('Admins cannot modify admin accounts');
+    }
+
+    const updateData: any = {
+      isActive,
+      deactivatedAt: isActive ? null : new Date(),
+    };
+
+    const updatedUser = teacher
+      ? await this.prisma.teacher.update({
+          where: { id: targetId },
+          data: updateData,
+        })
+      : student
+        ? await this.prisma.student.update({
+            where: { id: targetId },
+            data: updateData,
+          })
+        : parent
+          ? await this.prisma.parent.update({
+              where: { id: targetId },
+              data: updateData,
+            })
+          : await this.prisma.admin.update({
+              where: { id: targetId },
+              data: updateData,
+            });
+
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId: targetId },
+    });
+
+    return updatedUser;
   }
 }

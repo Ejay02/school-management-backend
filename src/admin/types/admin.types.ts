@@ -34,6 +34,12 @@ export class Admin {
   aboutMe?: string;
 
   @Field()
+  isActive: boolean;
+
+  @Field({ nullable: true })
+  deactivatedAt?: Date;
+
+  @Field()
   createdAt: Date;
 
   @Field()

@@ -18,6 +18,7 @@ import { UpdateProfileInput } from '../shared/inputs/profile-update.input';
 import { SetupService } from '../setup/setup.service';
 import { InvitationService } from '../invitation/invitation.service';
 import { PaymentService } from '../payment/payment.service';
+import { UserUnion } from '../shared/user/types/user.union';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -69,6 +70,20 @@ export class AdminResolver {
     return await this.adminService.deleteUser(
       context.req.user.userId,
       targetId,
+    );
+  }
+
+  @Mutation(() => UserUnion)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async setUserActiveStatus(
+    @Context() context,
+    @Args('targetId') targetId: string,
+    @Args('isActive') isActive: boolean,
+  ) {
+    return this.adminService.setUserActiveStatus(
+      context.req.user.userId,
+      targetId,
+      isActive,
     );
   }
 
