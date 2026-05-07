@@ -39,7 +39,11 @@ export class InvitationService {
   }
 
   private assertRoleAllowed(role: Roles) {
-    if (role !== Roles.TEACHER && role !== Roles.PARENT && role !== Roles.ADMIN) {
+    if (
+      role !== Roles.TEACHER &&
+      role !== Roles.PARENT &&
+      role !== Roles.ADMIN
+    ) {
       throw new BadRequestException(
         'Invites are only supported for ADMIN, TEACHER, and PARENT',
       );
@@ -187,13 +191,47 @@ export class InvitationService {
     });
 
     if (existing) {
-      return this.prisma.invitation.update({
+      const token = uuidv4();
+      const updated = await this.prisma.invitation.update({
         where: { id: existing.id },
         data: {
           name: normalizedName,
           invitedBy: invitedByUserId,
+          token,
+          status: InviteStatus.PENDING as any,
+          sentCount: { increment: 1 },
+          lastSentAt: now,
+          expiresAt,
+          revokedAt: null,
         },
       });
+
+      try {
+        await this.sendInvitationEmail({
+          email: normalizedEmail,
+          name: normalizedName,
+          role,
+          token,
+        });
+      } catch (error) {
+        await this.prisma.invitation.update({
+          where: { id: existing.id },
+          data: {
+            name: existing.name,
+            invitedBy: existing.invitedBy,
+            token: existing.token,
+            status: existing.status as any,
+            sentCount: existing.sentCount,
+            lastSentAt: existing.lastSentAt,
+            expiresAt: existing.expiresAt,
+            revokedAt: existing.revokedAt,
+          },
+        });
+
+        throw new BadRequestException('Unable to send invitation email');
+      }
+
+      return updated;
     }
 
     const token = uuidv4();
@@ -212,12 +250,17 @@ export class InvitationService {
       },
     });
 
-    await this.sendInvitationEmail({
-      email: normalizedEmail,
-      name: normalizedName,
-      role,
-      token,
-    });
+    try {
+      await this.sendInvitationEmail({
+        email: normalizedEmail,
+        name: normalizedName,
+        role,
+        token,
+      });
+    } catch (error) {
+      await this.prisma.invitation.delete({ where: { id: invite.id } });
+      throw new BadRequestException('Unable to send invitation email');
+    }
 
     return invite;
   }
@@ -257,12 +300,28 @@ export class InvitationService {
       },
     });
 
-    await this.sendInvitationEmail({
-      email: updated.email,
-      name: updated.name,
-      role: updated.role as any,
-      token: updated.token,
-    });
+    try {
+      await this.sendInvitationEmail({
+        email: updated.email,
+        name: updated.name,
+        role: updated.role as any,
+        token: updated.token,
+      });
+    } catch (error) {
+      await this.prisma.invitation.update({
+        where: { id: invitationId },
+        data: {
+          token: invite.token,
+          invitedBy: invite.invitedBy,
+          status: invite.status as any,
+          sentCount: invite.sentCount,
+          lastSentAt: invite.lastSentAt,
+          expiresAt: invite.expiresAt,
+          revokedAt: invite.revokedAt,
+        },
+      });
+      throw new BadRequestException('Unable to send invitation email');
+    }
 
     return updated;
   }
