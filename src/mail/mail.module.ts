@@ -5,27 +5,40 @@ import { JwtService } from '@nestjs/jwt';
 import { join } from 'path';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    MailerModule.forRoot({
-      transport: {
-        host: process.env.MAIL_HOST,
-        secure: false,
-        auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASSWORD,
-        },
-      },
-      defaults: {
-        from: '"Eduhub Portal" <no-reply@eduhub.com>',
-      },
-      template: {
-        dir: join(__dirname, '..', 'mail', 'templates'),
-        adapter: new HandlebarsAdapter(),
-        options: {
-          strict: true,
-        },
+    ConfigModule,
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const host = configService.get<string>('MAIL_HOST');
+        const port = Number(configService.get<string>('MAIL_PORT') ?? 587);
+        const user = configService.get<string>('MAIL_USER');
+
+        return {
+          transport: {
+            host,
+            port,
+            secure: false,
+            auth: {
+              user,
+              pass: configService.get<string>('MAIL_PASSWORD'),
+            },
+          },
+          defaults: {
+            from: '"Eduhub Portal" <no-reply@eduhub.com>',
+          },
+          template: {
+            dir: join(__dirname, '..', 'mail', 'templates'),
+            adapter: new HandlebarsAdapter(),
+            options: {
+              strict: true,
+            },
+          },
+        };
       },
     }),
   ],
