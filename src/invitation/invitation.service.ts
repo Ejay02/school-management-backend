@@ -20,6 +20,80 @@ export class InvitationService {
     private readonly authService: AuthService,
   ) {}
 
+  private escapeHtml(value: string) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private escapeHtmlAttribute(value: string) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private formatPersonName(value: string | null | undefined) {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    if (!raw) return null;
+
+    const tokens = raw.split(/\s+/g).filter(Boolean);
+    const toTitleWord = (word: string) => {
+      const lower = word.toLowerCase();
+      return lower.replace(/(^|[-'’])[a-z]/g, (match) => match.toUpperCase());
+    };
+
+    return toTitleWord(tokens[0]);
+  }
+
+  private normalizePublicImageUrl(value: string | null | undefined) {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    if (!raw) return null;
+
+    const withProtocol = (() => {
+      if (/^https?:\/\//i.test(raw)) return raw;
+      if (/^\/\//.test(raw)) return `https:${raw}`;
+      if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(raw)) return `https://${raw}`;
+      return null;
+    })();
+
+    if (!withProtocol) return null;
+
+    try {
+      const url = new URL(withProtocol);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+      return url.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  private async getSchoolBranding() {
+    const state = await this.prisma.setupState.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+
+    return {
+      schoolName: state.schoolName?.trim() || null,
+      schoolAddress: state.schoolAddress?.trim() || null,
+      schoolLogo: state.schoolLogo?.trim() || null,
+    };
+  }
+
+  private roleLabel(role: Roles) {
+    if (role === Roles.ADMIN) return 'Administrator';
+    if (role === Roles.TEACHER) return 'Teacher';
+    if (role === Roles.PARENT) return 'Parent / Guardian';
+    return 'User';
+  }
+
   private normalizeEmail(email: string) {
     return email.trim().toLowerCase();
   }
@@ -83,24 +157,226 @@ export class InvitationService {
     token: string;
   }) {
     const link = this.getInviteLink(params.token);
-    const greeting = params.name
-      ? `<p style="margin: 0 0 8px;">Hi ${params.name},</p>`
-      : '';
+    const { schoolAddress, schoolLogo, schoolName } =
+      await this.getSchoolBranding();
+
+    const roleLabel = this.roleLabel(params.role);
+    const safeRoleLabel = this.escapeHtml(roleLabel);
+    const inviteeName = this.formatPersonName(params.name) || 'there';
+    const safeInviteeName = this.escapeHtml(inviteeName);
+    const safeSchoolName = this.escapeHtml(schoolName || 'your school');
+    const safeSchoolAddress = schoolAddress
+      ? this.escapeHtml(schoolAddress)
+      : null;
+    const safeLink = this.escapeHtml(link);
+    const logoUrl = this.normalizePublicImageUrl(schoolLogo);
+    const safeLogoUrl = logoUrl ? this.escapeHtmlAttribute(logoUrl) : null;
+
+    const isTeacherInvite = params.role === Roles.TEACHER;
+
+    const subject = isTeacherInvite
+      ? `You're Invited to Join ${schoolName || 'your school'} as a Teacher 🎓`
+      : `You're Invited to Join ${schoolName || 'your school'}`;
+
+    const preheader = isTeacherInvite
+      ? `You're invited to join ${schoolName || 'your school'} as a Teacher.`
+      : `You're invited to join ${schoolName || 'your school'} as a ${roleLabel}.`;
+
+    const safePreheader = this.escapeHtml(preheader);
+    const frontendBase = (() => {
+      const raw = process.env.FRONTEND_URL?.trim();
+      if (!raw) return null;
+      const normalized = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+      return normalized.length ? this.escapeHtml(normalized) : null;
+    })();
+
+    const teacherHtml = `
+      <!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <meta name="x-apple-disable-message-reformatting" />
+          <title>${subject}</title>
+        </head>
+        <body style="margin:0; padding:0; background-color:#f3f1ff;">
+          <div style="display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;">
+            ${safePreheader}
+          </div>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f3f1ff; padding:24px 12px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e8e6ff;">
+                  <tr>
+                    <td style="background-color:#efedff; padding:22px 22px 18px; text-align:center;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <td align="center" style="padding-bottom:10px;">
+                            ${
+                              safeLogoUrl
+                                ? `<img src="${safeLogoUrl}" width="44" height="44" alt="${safeSchoolName}" style="display:block; width:44px; height:44px; border-radius:10px; object-fit:cover;" />`
+                                : `<div style="width:44px; height:44px; border-radius:10px; background-color:#3b2fa3; display:inline-block;"></div>`
+                            }
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#2a2457; font-size:20px; font-weight:700; letter-spacing:0.2px;">
+                            ${safeSchoolName}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="padding-top:12px;">
+                            <span style="display:inline-block; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-size:12px; font-weight:600; color:#2a2457; background-color:#dcd8ff; padding:6px 10px; border-radius:999px;">
+                              ${safeRoleLabel}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="padding-top:18px; font-family: ui-serif, Georgia, 'Times New Roman', serif; color:#17123a; font-size:30px; line-height:36px; font-weight:700;">
+                            You're invited to teach at ${safeSchoolName}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="padding-top:10px; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#4b4675; font-size:15px; line-height:22px;">
+                            Join a community of educators making a real difference.
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:22px; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#17123a; font-size:15px; line-height:22px;">
+                      <p style="margin:0 0 12px; font-weight:700;">Hi ${safeInviteeName},</p>
+                      <p style="margin:0 0 14px; color:#2f2a5e;">
+                        We're excited to have you on board. You've been invited to join <strong>${safeSchoolName}</strong> as a <strong>Teacher</strong>.
+                      </p>
+
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:14px 0 18px;">
+                        <tr>
+                          <td style="padding:0;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                              <tr>
+                                <td style="padding:10px 10px 0 0;" width="50%">
+                                  <div style="background-color:#f8f7ff; border:1px solid #eceaff; border-radius:12px; padding:12px; color:#2f2a5e; font-size:13px; line-height:18px;">
+                                    Manage classes &amp; assignments
+                                  </div>
+                                </td>
+                                <td style="padding:10px 0 0 10px;" width="50%">
+                                  <div style="background-color:#f8f7ff; border:1px solid #eceaff; border-radius:12px; padding:12px; color:#2f2a5e; font-size:13px; line-height:18px;">
+                                    Track student progress
+                                  </div>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style="padding:10px 10px 0 0;" width="50%">
+                                  <div style="background-color:#f8f7ff; border:1px solid #eceaff; border-radius:12px; padding:12px; color:#2f2a5e; font-size:13px; line-height:18px;">
+                                    Message parents &amp; admins
+                                  </div>
+                                </td>
+                                <td style="padding:10px 0 0 10px;" width="50%">
+                                  <div style="background-color:#f8f7ff; border:1px solid #eceaff; border-radius:12px; padding:12px; color:#2f2a5e; font-size:13px; line-height:18px;">
+                                    Schedule &amp; lesson planning
+                                  </div>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 12px;">
+                        <tr>
+                          <td align="center" bgcolor="#3b2fa3" style="border-radius:12px;">
+                            <a href="${safeLink}" style="display:inline-block; padding:14px 20px; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-size:15px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:12px;">
+                              Accept invitation
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <div style="border-top:1px solid #f0effa; margin:18px 0 14px;"></div>
+
+                      <p style="margin:0 0 10px; color:#4b4675; font-size:13px; line-height:18px;">
+                        Button not working? Copy and paste this link into your browser:
+                      </p>
+                      <p style="margin:0 0 14px; font-size:13px; line-height:18px;">
+                        <a href="${safeLink}" style="color:#3b2fa3; text-decoration:underline; word-break:break-word;">${safeLink}</a>
+                      </p>
+                      <p style="margin:0; color:#4b4675; font-size:13px; line-height:18px;">
+                        If you weren't expecting this invitation or believe it was sent in error, you can safely ignore this email — no action will be taken.
+                      </p>
+                      <p style="margin:14px 0 0; color:#2f2a5e;">
+                        Welcome to <strong>${safeSchoolName}</strong>. We can't wait to see the impact you'll make.
+                      </p>
+                      <p style="margin:12px 0 0; color:#2f2a5e;">
+                        Warm regards,<br />
+                        The <strong>${safeSchoolName}</strong> Team
+                      </p>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:18px 22px 22px; background-color:#ffffff; border-top:1px solid #f0effa; text-align:center; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#7a769a; font-size:12px; line-height:18px;">
+                      <div style="margin:0 0 6px;">© ${new Date().getFullYear()} ${safeSchoolName}</div>
+                      ${
+                        frontendBase
+                          ? `<div style="margin:0 0 6px;">
+                              <a href="${frontendBase}/privacy-policy" style="color:#7a769a; text-decoration:underline;">Privacy Policy</a>
+                              <span style="padding:0 6px;">·</span>
+                              <a href="${frontendBase}/unsubscribe" style="color:#7a769a; text-decoration:underline;">Unsubscribe</a>
+                              <span style="padding:0 6px;">·</span>
+                              <a href="${frontendBase}" style="color:#7a769a; text-decoration:underline;">Website</a>
+                            </div>`
+                          : ``
+                      }
+                      ${
+                        safeSchoolAddress
+                          ? `<div style="margin:0;">${safeSchoolAddress}</div>`
+                          : `<div style="margin:0;">${safeSchoolName}</div>`
+                      }
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `.trim();
+
+    const fallbackGreeting = inviteeName ? `Hi ${inviteeName},` : 'Hi,';
+
+    const text = isTeacherInvite
+      ? `${fallbackGreeting}\n\nYou're invited to join ${schoolName || 'your school'} as a Teacher.\n\nAccept invitation: ${link}\n\nIf you weren't expecting this invitation, you can safely ignore this email — no action will be taken.\n\n— The ${schoolName || 'School'} Team`
+      : `${fallbackGreeting}\n\nYou’ve been invited to join ${schoolName || 'your school'} as a ${roleLabel}.\n\nAccept: ${link}\n\nIf you didn’t expect this, you can ignore this email.`;
+
     await this.mailService.sendMail({
       to: params.email,
-      subject: 'You are invited to Eduhub',
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-          <h2 style="margin: 0 0 12px;">Eduhub Invitation</h2>
-          ${greeting}
-          <p style="margin: 0 0 8px;">You’ve been invited to join Eduhub as a ${params.role}.</p>
-          <p style="margin: 0 0 8px;">
-            Click to accept: <a href="${link}">${link}</a>
-          </p>
-          <p style="margin: 0;">If you didn’t expect this, you can ignore this email.</p>
-        </div>
-      `.trim(),
-      text: `You’ve been invited to join Eduhub as a ${params.role}. Accept: ${link}`,
+      subject,
+      mailType: 'onboarding',
+      html: isTeacherInvite ? teacherHtml : undefined,
+      text,
+      ...(isTeacherInvite
+        ? {}
+        : {
+            html: `
+              <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+                <h2 style="margin: 0 0 12px;">${safeSchoolName} Invitation</h2>
+                ${
+                  params.name
+                    ? `<p style="margin: 0 0 8px;">Hi ${safeInviteeName},</p>`
+                    : ''
+                }
+                <p style="margin: 0 0 8px;">You’ve been invited to join ${safeSchoolName} as a ${safeRoleLabel}.</p>
+                <p style="margin: 0 0 8px;">
+                  Click to accept: <a href="${safeLink}">${safeLink}</a>
+                </p>
+                <p style="margin: 0;">If you didn’t expect this, you can ignore this email.</p>
+              </div>
+            `.trim(),
+          }),
     });
   }
 

@@ -427,6 +427,7 @@ export class AuthService {
           await this.mailService.sendMail({
             to: result.email,
             subject: 'Welcome to Eduhub',
+            mailType: 'onboarding',
             html: this.buildWelcomeEmailHtml({
               username: result.username,
               role: result.role,

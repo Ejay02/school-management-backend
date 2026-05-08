@@ -28,9 +28,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
               pass: configService.get<string>('MAIL_PASSWORD'),
             },
           },
-          defaults: {
-            from: '"Eduhub Portal" <no-reply@eduhub.com>',
-          },
           template: {
             dir: join(__dirname, '..', 'mail', 'templates'),
             adapter: new HandlebarsAdapter(),
