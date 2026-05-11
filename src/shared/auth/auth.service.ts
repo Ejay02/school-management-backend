@@ -24,6 +24,7 @@ import { SubjectService } from 'src/subject/subject.service';
 import { LessonService } from 'src/lesson/lesson.service';
 import { SecurityService } from '../security/security.service';
 import { MailService } from 'src/mail/mail.service';
+import { formatFirstName } from 'src/shared/utils/name.utils';
 
 type SignupInputType =
   | AdminSignupInput
@@ -42,23 +43,369 @@ export class AuthService {
     private readonly mailService: MailService,
   ) {}
 
-  private buildWelcomeEmailHtml(params: {
-    username: string;
-    role?: string;
-  }): string {
-    const { username, role } = params;
-    return `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <h2 style="margin: 0 0 12px;">Welcome to Eduhub</h2>
-        <p style="margin: 0 0 8px;">Hi ${username},</p>
-        <p style="margin: 0 0 8px;">
-          Your ${role ?? 'user'} account has been created successfully.
-        </p>
-        <p style="margin: 0;">
-          You can now sign in to the portal and complete your profile.
-        </p>
-      </div>
+  private escapeHtml(value: string) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private escapeHtmlAttribute(value: string) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private normalizePublicImageUrl(value: string | null | undefined) {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    if (!raw) return null;
+
+    const withProtocol = (() => {
+      if (/^https?:\/\//i.test(raw)) return raw;
+      if (/^\/\//.test(raw)) return `https:${raw}`;
+      if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(raw)) return `https://${raw}`;
+      return null;
+    })();
+
+    if (!withProtocol) return null;
+
+    try {
+      const url = new URL(withProtocol);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+      return url.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  private roleLabel(role: Roles) {
+    if (role === Roles.ADMIN || role === Roles.SUPER_ADMIN)
+      return 'Administrator';
+    if (role === Roles.TEACHER) return 'Teacher';
+    if (role === Roles.STUDENT) return 'Student';
+    if (role === Roles.PARENT) return 'Parent / Guardian';
+    return 'User';
+  }
+
+  private roleTheme(role: Roles) {
+    if (role === Roles.ADMIN || role === Roles.SUPER_ADMIN) {
+      return {
+        headerBg: '#e7f7f1',
+        badgeBg: '#c6f0df',
+        text: '#0b3b2d',
+        primary: '#0b6b4d',
+        cardBg: '#f1fbf7',
+      };
+    }
+
+    if (role === Roles.PARENT) {
+      return {
+        headerBg: '#fbf2e3',
+        badgeBg: '#f5d7a6',
+        text: '#3b2a12',
+        primary: '#8a5a1e',
+        cardBg: '#fff7ea',
+      };
+    }
+
+    if (role === Roles.STUDENT) {
+      return {
+        headerBg: '#eaf4ff',
+        badgeBg: '#cfe6ff',
+        text: '#14284a',
+        primary: '#1a5fb4',
+        cardBg: '#f3f8ff',
+      };
+    }
+
+    return {
+      headerBg: '#efedff',
+      badgeBg: '#dcd8ff',
+      text: '#2a2457',
+      primary: '#3b2fa3',
+      cardBg: '#f8f7ff',
+    };
+  }
+
+  private rolePath(role: Roles) {
+    if (role === Roles.ADMIN || role === Roles.SUPER_ADMIN) return '/admin';
+    if (role === Roles.PARENT) return '/parent';
+    if (role === Roles.STUDENT) return '/student';
+    return '/login';
+  }
+
+  private buildAppUrl(pathname: string) {
+    const raw = process.env.FRONTEND_URL?.trim();
+    if (!raw) return pathname;
+    const base = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+    return `${base}${pathname}`;
+  }
+
+  private async buildWelcomeEmailHtml(params: {
+    name?: string | null;
+    role: Roles;
+  }): Promise<{ subject: string; html: string; text: string }> {
+    const state = await this.prisma.setupState.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+      select: { schoolName: true, schoolAddress: true, schoolLogo: true },
+    });
+
+    const schoolName =
+      typeof state.schoolName === 'string' && state.schoolName.trim().length
+        ? state.schoolName.trim()
+        : 'your school';
+    const schoolAddress =
+      typeof state.schoolAddress === 'string' &&
+      state.schoolAddress.trim().length
+        ? state.schoolAddress.trim()
+        : null;
+    const schoolLogo = this.normalizePublicImageUrl(state.schoolLogo);
+
+    const firstName = formatFirstName(params.name) || 'there';
+    const safeFirstName = this.escapeHtml(firstName);
+    const safeSchoolName = this.escapeHtml(schoolName);
+    const safeSchoolAddress = schoolAddress
+      ? this.escapeHtml(schoolAddress)
+      : null;
+    const safeLogoUrl = schoolLogo
+      ? this.escapeHtmlAttribute(schoolLogo)
+      : null;
+
+    const theme = this.roleTheme(params.role);
+    const roleLabel = this.roleLabel(params.role);
+    const safeRoleLabel = this.escapeHtml(roleLabel);
+
+    const ctaUrl = this.buildAppUrl(this.rolePath(params.role));
+    const safeCtaUrl = this.escapeHtmlAttribute(ctaUrl);
+
+    const headline =
+      params.role === Roles.ADMIN || params.role === Roles.SUPER_ADMIN
+        ? `Welcome aboard, ${firstName}!`
+        : `Welcome to ${schoolName}, ${firstName}!`;
+
+    const safeHeadline = this.escapeHtml(headline);
+
+    const subhead = (() => {
+      if (params.role === Roles.ADMIN || params.role === Roles.SUPER_ADMIN) {
+        return `Your admin account is live. Your school's workspace is ready to configure.`;
+      }
+      if (params.role === Roles.TEACHER) {
+        return `Your account is ready. Let's get your classroom set up.`;
+      }
+      if (params.role === Roles.STUDENT) {
+        return `Your student account is ready. Time to start learning.`;
+      }
+      if (params.role === Roles.PARENT) {
+        return `Your account is ready. Stay close to your child's education.`;
+      }
+      return `Your account is ready.`;
+    })();
+
+    const safeSubhead = this.escapeHtml(subhead);
+
+    const steps = (() => {
+      if (params.role === Roles.ADMIN || params.role === Roles.SUPER_ADMIN) {
+        return [
+          'Sign in & secure your account',
+          'Configure school settings',
+          'Invite teachers & parents',
+          'Review your dashboard',
+        ];
+      }
+      if (params.role === Roles.TEACHER) {
+        return [
+          'Sign in to your portal',
+          'Complete your profile',
+          'Set up your first class',
+        ];
+      }
+      if (params.role === Roles.STUDENT) {
+        return [
+          'Log in for the first time',
+          'Set up your profile',
+          'Explore your classes',
+        ];
+      }
+      if (params.role === Roles.PARENT) {
+        return [
+          'Sign in to your account',
+          "Link your child's profile",
+          'Turn on notifications',
+        ];
+      }
+      return [
+        'Sign in to your account',
+        'Complete your profile',
+        'Get started',
+      ];
+    })();
+
+    const ctaText = (() => {
+      if (params.role === Roles.ADMIN || params.role === Roles.SUPER_ADMIN)
+        return 'Go to admin dashboard';
+      if (params.role === Roles.TEACHER) return 'Go to my portal';
+      if (params.role === Roles.STUDENT) return 'Go to my classes';
+      if (params.role === Roles.PARENT) return 'Go to my account';
+      return 'Go to my account';
+    })();
+
+    const safeCtaText = this.escapeHtml(ctaText);
+
+    const frontendBase = (() => {
+      const raw = process.env.FRONTEND_URL?.trim();
+      if (!raw) return null;
+      const base = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+      return base.length ? this.escapeHtmlAttribute(base) : null;
+    })();
+
+    const subject =
+      params.role === Roles.ADMIN || params.role === Roles.SUPER_ADMIN
+        ? `Welcome aboard — ${schoolName}`
+        : `Welcome to ${schoolName}`;
+
+    const text = [
+      `Hi ${firstName},`,
+      '',
+      `Your ${roleLabel} account for ${schoolName} is ready.`,
+      `Sign in: ${ctaUrl}`,
+      ...(schoolAddress ? ['', schoolAddress] : []),
+    ].join('\n');
+
+    const html = `
+      <!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <meta name="x-apple-disable-message-reformatting" />
+          <title>${safeSchoolName}</title>
+        </head>
+        <body style="margin:0; padding:0; background-color:${theme.headerBg};">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:${theme.headerBg}; padding:24px 12px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden; border:1px solid rgba(0,0,0,0.06);">
+                  <tr>
+                    <td style="background-color:${theme.headerBg}; padding:22px 22px 18px; text-align:center;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <td align="center" style="padding-bottom:10px;">
+                            ${
+                              safeLogoUrl
+                                ? `<img src="${safeLogoUrl}" width="44" height="44" alt="${safeSchoolName}" style="display:block; width:44px; height:44px; border-radius:10px; object-fit:cover;" />`
+                                : `<div style="width:44px; height:44px; border-radius:10px; background-color:${theme.primary}; display:inline-block;"></div>`
+                            }
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:${theme.text}; font-size:18px; font-weight:800;">
+                            ${safeSchoolName}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="padding-top:12px;">
+                            <span style="display:inline-block; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-size:12px; font-weight:700; color:${theme.text}; background-color:${theme.badgeBg}; padding:6px 10px; border-radius:999px;">
+                              ${safeRoleLabel} account
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="padding-top:16px; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#14121f; font-size:28px; line-height:34px; font-weight:900;">
+                            ${safeHeadline}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="padding-top:10px; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#4b4675; font-size:15px; line-height:22px;">
+                            ${safeSubhead}
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:22px; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#14121f; font-size:15px; line-height:22px;">
+                      <p style="margin:0 0 12px; font-weight:800;">Hi ${safeFirstName},</p>
+                      <p style="margin:0 0 16px; color:#2f2a5e;">
+                        Your account has been created successfully. Use the button below to sign in and get started.
+                      </p>
+
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 18px;">
+                        ${steps
+                          .map(
+                            (label, index) => `
+                              <tr>
+                                <td style="padding:8px 0;">
+                                  <div style="background-color:${theme.cardBg}; border:1px solid rgba(0,0,0,0.05); border-radius:14px; padding:14px 14px; color:#2f2a5e;">
+                                    <span style="display:inline-block; width:28px; height:28px; border-radius:999px; background-color:${theme.primary}; color:#ffffff; text-align:center; line-height:28px; font-weight:800; margin-right:10px;">
+                                      ${index + 1}
+                                    </span>
+                                    <span style="font-weight:800; color:#14121f;">${this.escapeHtml(label)}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            `,
+                          )
+                          .join('')}
+                      </table>
+
+                      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 12px;">
+                        <tr>
+                          <td align="center" bgcolor="${theme.primary}" style="border-radius:12px;">
+                            <a href="${safeCtaUrl}" style="display:inline-block; padding:14px 20px; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-size:15px; font-weight:800; color:#ffffff; text-decoration:none; border-radius:12px;">
+                              ${safeCtaText}
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <div style="border-top:1px solid rgba(0,0,0,0.06); margin:18px 0 14px;"></div>
+
+                      <p style="margin:0 0 10px; color:#4b4675; font-size:13px; line-height:18px;">
+                        Button not working? Copy and paste this link into your browser:
+                      </p>
+                      <p style="margin:0; font-size:13px; line-height:18px;">
+                        <a href="${safeCtaUrl}" style="color:${theme.primary}; text-decoration:underline; word-break:break-word;">${this.escapeHtml(
+                          ctaUrl,
+                        )}</a>
+                      </p>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:18px 22px 22px; background-color:#ffffff; border-top:1px solid rgba(0,0,0,0.06); text-align:center; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#7a769a; font-size:12px; line-height:18px;">
+                      ${
+                        frontendBase
+                          ? `<div style="margin:0 0 6px;">
+                              <a href="${frontendBase}/privacy-policy" style="color:#7a769a; text-decoration:underline;">Privacy Policy</a>
+                              <span style="padding:0 6px;">·</span>
+                              <a href="${frontendBase}/unsubscribe" style="color:#7a769a; text-decoration:underline;">Unsubscribe</a>
+                            </div>`
+                          : ''
+                      }
+                      ${
+                        safeSchoolAddress
+                          ? `<div style="margin:0;">${safeSchoolAddress}</div>`
+                          : `<div style="margin:0;">${safeSchoolName}</div>`
+                      }
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
     `.trim();
+
+    return { subject, html, text };
   }
 
   private async findUserById(userId: string) {
@@ -424,14 +771,16 @@ export class AuthService {
 
       if (result.email) {
         try {
+          const welcome = await this.buildWelcomeEmailHtml({
+            name: result.name,
+            role: result.role as any,
+          });
           await this.mailService.sendMail({
             to: result.email,
-            subject: 'Welcome to Eduhub',
+            subject: welcome.subject,
             mailType: 'onboarding',
-            html: this.buildWelcomeEmailHtml({
-              username: result.username,
-              role: result.role,
-            }),
+            html: welcome.html,
+            text: welcome.text,
           });
         } catch {
           // Email delivery should not fail signup.
