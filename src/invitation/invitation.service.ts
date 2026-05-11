@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/shared/enum/role';
+import { formatFirstName } from 'src/shared/utils/name.utils';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/mail/mail.service';
 import { InviteStatus } from './enum/inviteStatus';
@@ -36,19 +37,6 @@ export class InvitationService {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
-  }
-
-  private formatPersonName(value: string | null | undefined) {
-    const raw = typeof value === 'string' ? value.trim() : '';
-    if (!raw) return null;
-
-    const tokens = raw.split(/\s+/g).filter(Boolean);
-    const toTitleWord = (word: string) => {
-      const lower = word.toLowerCase();
-      return lower.replace(/(^|[-'’])[a-z]/g, (match) => match.toUpperCase());
-    };
-
-    return toTitleWord(tokens[0]);
   }
 
   private normalizePublicImageUrl(value: string | null | undefined) {
@@ -162,7 +150,7 @@ export class InvitationService {
 
     const roleLabel = this.roleLabel(params.role);
     const safeRoleLabel = this.escapeHtml(roleLabel);
-    const inviteeName = this.formatPersonName(params.name) || 'there';
+    const inviteeName = formatFirstName(params.name) || 'there';
     const safeInviteeName = this.escapeHtml(inviteeName);
     const safeSchoolName = this.escapeHtml(schoolName || 'your school');
     const safeSchoolAddress = schoolAddress
