@@ -4,20 +4,43 @@ import {
   InternalServerErrorException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class AiService {
-  private buildSchoolPrompt(userMessage: string) {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private async getSchoolContext() {
+    const state = await this.prisma.setupState.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+      select: { schoolName: true, schoolAddress: true },
+    });
+
+    const schoolName =
+      typeof state.schoolName === 'string' && state.schoolName.trim().length
+        ? state.schoolName.trim()
+        : 'My School';
+    const schoolAddress =
+      typeof state.schoolAddress === 'string' &&
+      state.schoolAddress.trim().length
+        ? state.schoolAddress.trim()
+        : null;
+
+    return { schoolName, schoolAddress };
+  }
+
+  private async buildSchoolPrompt(userMessage: string) {
+    const { schoolName, schoolAddress } = await this.getSchoolContext();
     return `
-You are an AI assistant for Eduhub Portal.
+You are an AI assistant for the school portal.
 Provide accurate, concise information based on the school's profile.
 If the query is not clearly answerable, suggest contacting the school office.
 
 School Context:
-- Name: Eduhub Portal
-- Location: 123 School Street
-- Grades: Primary 1-6, Junior Secondary 1 to Senior Secondary 3
-- Total Students: 360
+- Name: ${schoolName}
+${schoolAddress ? `- Address: ${schoolAddress}` : ''}
 
 User Query:
 ${userMessage}
@@ -69,7 +92,8 @@ ${userMessage}
     }
 
     const model = process.env.HUGGINGFACE_MODEL || 'Qwen/Qwen2.5-7B-Instruct';
-    const prompt = this.buildSchoolPrompt(message.trim());
+    const prompt = await this.buildSchoolPrompt(message.trim());
+    const { schoolName } = await this.getSchoolContext();
 
     const response = await fetch(
       'https://router.huggingface.co/v1/chat/completions',
@@ -84,8 +108,7 @@ ${userMessage}
           messages: [
             {
               role: 'system',
-              content:
-                'You are the Eduhub Portal assistant. Answer clearly and concisely using the provided school context. If a question is outside the known school context, suggest contacting the school office.',
+              content: `You are the ${schoolName} assistant. Answer clearly and concisely using the provided school context. If a question is outside the known school context, suggest contacting the school office.`,
             },
             {
               role: 'user',

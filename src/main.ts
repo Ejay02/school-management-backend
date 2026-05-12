@@ -66,10 +66,7 @@ async function bootstrap() {
 
   // Configure CORS
   app.enableCors({
-    origin:
-      process.env.NODE_ENV === 'production'
-        ? ['https://eduhub-portal.netlify.app']
-        : '*',
+    origin: process.env.FRONTEND_URL?.trim() || '*',
     credentials: true,
   });
 

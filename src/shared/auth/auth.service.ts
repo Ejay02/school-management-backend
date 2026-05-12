@@ -408,6 +408,13 @@ export class AuthService {
     return { subject, html, text };
   }
 
+  async welcomeEmailPreview(params: { role: Roles; name?: string | null }) {
+    return this.buildWelcomeEmailHtml({
+      role: params.role,
+      name: params.name ?? null,
+    });
+  }
+
   private async findUserById(userId: string) {
     const userPromises = [
       this.prisma.admin.findUnique({ where: { id: userId } }),

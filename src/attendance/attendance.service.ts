@@ -70,7 +70,7 @@ export class AttendanceService {
     return {
       token,
       expiresAt,
-      qrPayload: `eduhub:v1:attendance_session:${token}`,
+      qrPayload: `school:v1:attendance_session:${token}`,
     };
   }
 
@@ -81,10 +81,10 @@ export class AttendanceService {
 
     const rawToken = String(token || '')
       .trim()
-      .startsWith('eduhub:v1:attendance_session:')
+      .startsWith('school:v1:attendance_session:')
       ? String(token || '')
           .trim()
-          .replace('eduhub:v1:attendance_session:', '')
+          .replace('school:v1:attendance_session:', '')
           .trim()
       : String(token || '').trim();
 
