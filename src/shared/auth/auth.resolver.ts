@@ -1,5 +1,4 @@
-import { Resolver, Mutation, Args, Context, Query } from '@nestjs/graphql';
-import { UseGuards } from '@nestjs/common';
+import { Resolver, Mutation, Args, Context } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
 import { AuthResponse } from './response/auth.response';
 import { BaseLoginInput } from './input/login.input';
@@ -11,25 +10,10 @@ import {
 } from './input/signup.input';
 import { TokenResponse } from './response/token.response';
 import { ResetPasswordInput } from './input/reset.password.input';
-import GraphQLJSON from 'graphql-type-json';
-import { JwtAuthGuard } from './guards/jwtAuth.guard';
-import { RolesGuard } from './guards/roles.guard';
-import { HasRoles } from './decorators/roles.decorator';
-import { Roles } from '../enum/role';
 
 @Resolver()
 export class AuthResolver {
   constructor(private readonly authService: AuthService) {}
-
-  @Query(() => GraphQLJSON)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
-  async welcomeEmailPreview(
-    @Args('role', { type: () => Roles }) role: Roles,
-    @Args('name', { nullable: true }) name?: string,
-  ) {
-    return this.authService.welcomeEmailPreview({ role, name });
-  }
 
   @Mutation(() => AuthResponse)
   async adminSignup(
