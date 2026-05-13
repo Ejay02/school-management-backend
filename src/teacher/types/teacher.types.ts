@@ -2,6 +2,7 @@ import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { Subject } from '../../subject/types/subject.types';
 import { Lesson } from '../../lesson/types/lesson.types';
 import { Class } from '../../class/types/class.types';
+import { Roles } from '../../shared/enum/role';
 
 @ObjectType()
 export class Teacher {
@@ -14,8 +15,8 @@ export class Teacher {
   @Field()
   username: string;
 
-  @Field()
-  role: string;
+  @Field(() => Roles)
+  role: Roles;
 
   @Field()
   name: string;

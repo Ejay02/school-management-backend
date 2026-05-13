@@ -672,7 +672,7 @@ type Mutation {
   resendInvitation(id: String!): Invitation!
   resetPassword(input: ResetPasswordInput!): AuthResponse!
   revokeInvitation(id: String!): Invitation!
-  setUserActiveStatus(isActive: Boolean!, targetId: String!): UserUnion!
+  setUserActiveStatus(isActive: Boolean!, reason: String, targetId: String!): UserUnion!
   startExam(input: StartExamInput!): StudentExam!
   studentSignup(input: StudentSignupInput!): AuthResponse!
   teacherSignup(input: TeacherSignupInput!): AuthResponse!
@@ -757,7 +757,7 @@ type Parent {
   name: String!
   password: String
   phone: String
-  role: String!
+  role: Roles!
   students: [Student!]!
   surname: String!
   updatedAt: DateTime!
@@ -1030,7 +1030,7 @@ type Student {
   phone: String
   result: [Result]
   resultId: String!
-  role: String!
+  role: Roles!
   sex: String
   studentId: String
   surname: String!
@@ -1135,7 +1135,7 @@ type Teacher {
   name: String!
   password: String
   phone: String
-  role: String!
+  role: Roles!
   sex: String
   subjects: [Subject!]!
   surname: String!

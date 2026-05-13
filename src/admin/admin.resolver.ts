@@ -79,11 +79,21 @@ export class AdminResolver {
     @Context() context,
     @Args('targetId') targetId: string,
     @Args('isActive') isActive: boolean,
+    @Args('reason', { nullable: true }) reason?: string,
   ) {
+    const ipAddress =
+      String(context?.req?.headers?.['x-forwarded-for'] || '')
+        .split(',')[0]
+        .trim() ||
+      String(context?.req?.ip || '') ||
+      'unknown';
+
     return this.adminService.setUserActiveStatus(
       context.req.user.userId,
       targetId,
       isActive,
+      reason,
+      ipAddress,
     );
   }
 

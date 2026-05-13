@@ -18,12 +18,16 @@ import { Term } from '../payment/enum/term';
 import { PaymentStatus } from '../payment/enum/payment.status';
 import { FeeType } from '../payment/enum/fee.type';
 import { UpdateProfileInput } from '../shared/inputs/profile-update.input';
+import { MailService } from '../mail/mail.service';
+import { AnnouncementGateway } from '../announcement/gateway/announcement.gateway';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly mailService: MailService,
+    private readonly announcementGateway: AnnouncementGateway,
   ) {}
 
   async verifyAdmin(userId: string) {
@@ -476,6 +480,8 @@ export class AdminService {
     requesterId: string,
     targetId: string,
     isActive: boolean,
+    reason?: string,
+    ipAddress?: string,
   ) {
     const requester = await this.prisma.admin.findUnique({
       where: { id: requesterId },
@@ -544,6 +550,49 @@ export class AdminService {
 
     await this.prisma.refreshToken.deleteMany({
       where: { userId: targetId },
+    });
+
+    if (!isActive && updatedUser.email) {
+      try {
+        const setup = await this.prisma.setupState.findUnique({
+          where: { id: 'default' },
+        });
+        await this.mailService.sendMail({
+          to: updatedUser.email,
+          subject: 'Account Suspended',
+          template: 'user.suspension.hbs',
+          context: {
+            userName: updatedUser.name || updatedUser.username,
+            schoolName: setup?.schoolName || 'the school',
+            reason: reason ? String(reason).trim() : null,
+          },
+        });
+      } catch (e) {
+        console.error('Failed to send suspension email:', e);
+      }
+    }
+
+    if (!isActive) {
+      this.announcementGateway.forceLogoutUser(targetId, {
+        reason: reason ? String(reason).trim() : undefined,
+      });
+    }
+
+    await this.prisma.securityLog.create({
+      data: {
+        action: isActive ? 'USER_ACTIVATED' : 'USER_SUSPENDED',
+        username: requester?.username || null,
+        ipAddress: ipAddress || 'unknown',
+        details: JSON.stringify({
+          performedById: requesterId,
+          performedByRole: requester?.role,
+          targetId,
+          targetRole: (teacher || student || parent || admin)?.role,
+          reason: reason ? String(reason).trim() : null,
+          occurredAt: new Date().toISOString(),
+        }),
+        timestamp: new Date(),
+      },
     });
 
     return updatedUser;

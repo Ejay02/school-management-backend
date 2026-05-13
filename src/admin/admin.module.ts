@@ -7,8 +7,18 @@ import { SetupModule } from '../setup/setup.module';
 import { InvitationModule } from '../invitation/invitation.module';
 import { PaymentModule } from '../payment/payment.module';
 
+import { MailModule } from '../mail/mail.module';
+import { AnnouncementModule } from '../announcement/announcement.module';
+
 @Module({
-  imports: [CloudinaryModule, SetupModule, InvitationModule, PaymentModule],
+  imports: [
+    CloudinaryModule,
+    SetupModule,
+    InvitationModule,
+    PaymentModule,
+    MailModule,
+    AnnouncementModule,
+  ],
   providers: [AdminService, JwtService, AdminResolver],
   exports: [AdminService],
 })

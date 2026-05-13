@@ -966,7 +966,9 @@ export class AuthService {
     }
 
     if ((user as any).isActive === false) {
-      throw new UnauthorizedException('Account is deactivated');
+      throw new UnauthorizedException(
+        '⚠️Account has been suspended, contact your admin for more info',
+      );
     }
 
     user = await this.ensureAdminIdentifier(user);
@@ -1066,7 +1068,9 @@ export class AuthService {
       await this.prisma.refreshToken.delete({
         where: { token: refreshToken },
       });
-      throw new UnauthorizedException('Account is deactivated');
+      throw new UnauthorizedException(
+        '⚠️Account has been suspended, contact your admin for more info',
+      );
     }
 
     // Generate new tokens

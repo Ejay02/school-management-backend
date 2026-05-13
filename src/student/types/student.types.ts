@@ -5,6 +5,7 @@ import { Class } from '../../class/types/class.types';
 import { Attendance } from '../../attendance/types/attendance.types';
 import { Result } from '../../result/types/result.types';
 import { StudentExam } from '../../exam/types/student-exam.types';
+import { Roles } from '../../shared/enum/role';
 
 @ObjectType()
 export class Student {
@@ -17,8 +18,8 @@ export class Student {
   @Field()
   username: string;
 
-  @Field()
-  role: string;
+  @Field(() => Roles)
+  role: Roles;
 
   @Field()
   name: string;

@@ -1,0 +1,19 @@
+<html>
+  <body>
+    <h2>Account Suspended</h2>
+    <p>Hello {{userName}},</p>
+    <p>Your account at <strong>{{schoolName}}</strong> has been suspended.</p>
+
+    {{#if reason}}
+      <div
+        style='margin-top: 15px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #f44336;'
+      >
+        <p><strong>Reason for suspension:</strong></p>
+        <p>{{reason}}</p>
+      </div>
+    {{/if}}
+
+    <p style='margin-top: 20px;'>If you believe this is a mistake, please
+      contact the school administration.</p>
+  </body>
+</html>

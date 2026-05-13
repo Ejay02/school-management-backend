@@ -38,7 +38,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
 
       if ((user as any).isActive === false) {
-        throw new UnauthorizedException('Account is deactivated');
+        throw new UnauthorizedException(
+          '⚠️Account has been suspended, contact your admin for more info',
+        );
       }
 
       // Check if token is about to expire

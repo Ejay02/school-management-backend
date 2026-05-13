@@ -180,6 +180,16 @@ export class AnnouncementGateway
     this.server.to(`user-${userId}`).emit('unreadCount', { count });
   }
 
+  forceLogoutUser(userId: string, payload?: { reason?: string }) {
+    const room = `user-${userId}`;
+    this.server.to(room).emit('forceLogout', {
+      userId,
+      reason: payload?.reason ?? null,
+      timestamp: new Date().toISOString(),
+    });
+    this.server.in(room).disconnectSockets(true);
+  }
+
   emitToAll(announcement: any) {
     this.server.emit('newAnnouncement', announcement);
   }

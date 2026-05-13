@@ -13,6 +13,6 @@ import { AuthModule } from 'src/shared/auth/auth.module';
     AnnouncementResolver,
     AnnouncementGateway,
   ],
-  exports: [AnnouncementService],
+  exports: [AnnouncementService, AnnouncementGateway],
 })
 export class AnnouncementModule {}

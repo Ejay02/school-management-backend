@@ -1,5 +1,6 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { Student } from '../../student/types/student.types';
+import { Roles } from '../../shared/enum/role';
 
 @ObjectType()
 export class Parent {
@@ -9,8 +10,8 @@ export class Parent {
   @Field()
   username: string;
 
-  @Field()
-  role: string;
+  @Field(() => Roles)
+  role: Roles;
 
   @Field()
   name: string;
