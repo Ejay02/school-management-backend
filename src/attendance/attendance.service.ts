@@ -202,11 +202,7 @@ export class AttendanceService {
           });
 
           // Check if teacher exists and has classes
-          if (
-            !teacherClasses ||
-            !teacherClasses.classes ||
-            teacherClasses.classes.length === 0
-          ) {
+          if (teacherClasses?.classes?.length === 0) {
             return []; // Return empty array if teacher has no classes
           }
 
