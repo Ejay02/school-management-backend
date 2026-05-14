@@ -870,6 +870,7 @@ type Query {
   invitationSummary(role: Roles): InvitationSummary!
   invitations(params: PaginationInput, role: Roles, status: InviteStatus): InvitationListResponse!
   invoicesDueThisWeek: [Invoice!]!
+  securityLogs(action: String, ipAddress: String, params: PaginationInput, username: String): SecurityLogListResponse!
   validateInvitationToken(token: String!): InvitationPreview!
 }
 
@@ -958,6 +959,28 @@ type ScoreDistribution {
   above80: Int!
   above90: Int!
   below50: Int!
+}
+
+type SecurityLogEntry {
+  action: String!
+  details: String
+  id: String!
+  ipAddress: String!
+  timestamp: DateTime!
+  username: String
+}
+
+type SecurityLogListResponse {
+  items: [SecurityLogEntry!]!
+  pageInfo: SecurityLogPageInfo!
+}
+
+type SecurityLogPageInfo {
+  hasMore: Boolean!
+  limit: Int!
+  page: Int!
+  totalCount: Int!
+  totalPages: Int!
 }
 
 type SetupProgress {

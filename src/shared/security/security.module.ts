@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SecurityService } from './security.service';
 import { CustomThrottlerGuard } from './custom-throttler.guard';
+import { SecurityResolver } from './security.resolver';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CustomThrottlerGuard } from './custom-throttler.guard';
   ],
   providers: [
     SecurityService,
+    SecurityResolver,
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,

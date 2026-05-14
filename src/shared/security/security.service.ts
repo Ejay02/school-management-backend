@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PaginationInput } from '../pagination/input/pagination.input';
 
 @Injectable()
 export class SecurityService {
@@ -112,5 +113,64 @@ export class SecurityService {
     }
 
     return record.count >= this.MAX_SIGNUPS_PER_DAY;
+  }
+
+  async getSecurityLogs(
+    params: PaginationInput,
+    filters: { action?: string; username?: string; ipAddress?: string } = {},
+  ) {
+    const page = Math.max(1, Number(params?.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(params?.limit ?? 20)));
+    const skip = (page - 1) * limit;
+
+    const search = String(params?.search ?? '').trim();
+    const action = String(filters.action ?? '').trim();
+    const username = String(filters.username ?? '').trim();
+    const ipAddress = String(filters.ipAddress ?? '').trim();
+
+    const where: any = {};
+
+    if (action) {
+      where.action = { contains: action, mode: 'insensitive' };
+    }
+    if (username) {
+      where.username = { contains: username, mode: 'insensitive' };
+    }
+    if (ipAddress) {
+      where.ipAddress = { contains: ipAddress, mode: 'insensitive' };
+    }
+
+    if (search) {
+      where.OR = [
+        { action: { contains: search, mode: 'insensitive' } },
+        { username: { contains: search, mode: 'insensitive' } },
+        { ipAddress: { contains: search, mode: 'insensitive' } },
+        { details: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, totalCount] = await Promise.all([
+      this.prisma.securityLog.findMany({
+        where,
+        orderBy: { timestamp: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.securityLog.count({ where }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+    const hasMore = page < totalPages;
+
+    return {
+      items,
+      pageInfo: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasMore,
+      },
+    };
   }
 }
