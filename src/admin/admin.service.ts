@@ -557,12 +557,16 @@ export class AdminService {
         const setup = await this.prisma.setupState.findUnique({
           where: { id: 'default' },
         });
+        const fullName = [updatedUser.name, (updatedUser as any).surname]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
         await this.mailService.sendMail({
           to: updatedUser.email,
           subject: 'Account Suspended',
           template: 'user.suspension.hbs',
           context: {
-            userName: updatedUser.name || updatedUser.username,
+            userName: fullName || updatedUser.username,
             schoolName: setup?.schoolName || 'the school',
             reason: reason ? String(reason).trim() : null,
           },
@@ -578,16 +582,33 @@ export class AdminService {
       });
     }
 
+    const targetEmail =
+      (updatedUser as any).email ||
+      (updatedUser as any).institutionalEmail ||
+      null;
+
     await this.prisma.securityLog.create({
       data: {
         action: isActive ? 'USER_ACTIVATED' : 'USER_SUSPENDED',
         username: requester?.username || null,
         ipAddress: ipAddress || 'unknown',
         details: JSON.stringify({
-          performedById: requesterId,
-          performedByRole: requester?.role,
-          targetId,
-          targetRole: (teacher || student || parent || admin)?.role,
+          performedBy: {
+            id: requesterId,
+            username: requester?.username || null,
+            role: requester?.role || null,
+            name: requester?.name || null,
+            surname: (requester as any)?.surname || null,
+            email: requester?.email || null,
+          },
+          target: {
+            id: targetId,
+            role: (updatedUser as any)?.role || null,
+            name: (updatedUser as any)?.name || null,
+            surname: (updatedUser as any)?.surname || null,
+            email: targetEmail,
+            username: (updatedUser as any)?.username || null,
+          },
           reason: reason ? String(reason).trim() : null,
           occurredAt: new Date().toISOString(),
         }),

@@ -159,11 +159,172 @@ export class SecurityService {
       this.prisma.securityLog.count({ where }),
     ]);
 
+    const parsedByLogId = new Map<string, any>();
+    const targetIdsNeedingEnrichment = new Set<string>();
+    const performedByIdsNeedingEnrichment = new Set<string>();
+
+    for (const item of items) {
+      if (!item.details) continue;
+      try {
+        const parsed = JSON.parse(item.details);
+        parsedByLogId.set(item.id, parsed);
+
+        if (parsed?.targetId && !parsed?.target) {
+          targetIdsNeedingEnrichment.add(String(parsed.targetId));
+        }
+        if (parsed?.performedById && !parsed?.performedBy) {
+          performedByIdsNeedingEnrichment.add(String(parsed.performedById));
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    const targetIds = Array.from(targetIdsNeedingEnrichment);
+    const performedByIds = Array.from(performedByIdsNeedingEnrichment);
+
+    const targetUserById = new Map<
+      string,
+      {
+        id: string;
+        role: any;
+        name?: string | null;
+        surname?: string | null;
+        email?: string | null;
+        username?: string | null;
+      }
+    >();
+
+    if (targetIds.length) {
+      const [teachers, students, parents, admins] = await Promise.all([
+        this.prisma.teacher.findMany({
+          where: { id: { in: targetIds } },
+          select: {
+            id: true,
+            role: true,
+            name: true,
+            surname: true,
+            email: true,
+            institutionalEmail: true,
+            username: true,
+          },
+        }),
+        this.prisma.student.findMany({
+          where: { id: { in: targetIds } },
+          select: {
+            id: true,
+            role: true,
+            name: true,
+            surname: true,
+            email: true,
+            institutionalEmail: true,
+            username: true,
+          },
+        }),
+        this.prisma.parent.findMany({
+          where: { id: { in: targetIds } },
+          select: {
+            id: true,
+            role: true,
+            name: true,
+            surname: true,
+            email: true,
+            username: true,
+          },
+        }),
+        this.prisma.admin.findMany({
+          where: { id: { in: targetIds } },
+          select: {
+            id: true,
+            role: true,
+            name: true,
+            surname: true,
+            email: true,
+            username: true,
+          },
+        }),
+      ]);
+
+      for (const user of [
+        ...teachers,
+        ...students,
+        ...parents,
+        ...admins,
+      ] as any[]) {
+        targetUserById.set(user.id, {
+          id: user.id,
+          role: user.role,
+          name: user.name ?? null,
+          surname: user.surname ?? null,
+          email: (user.email ?? user.institutionalEmail ?? null) as any,
+          username: user.username ?? null,
+        });
+      }
+    }
+
+    const performedByUserById = new Map<
+      string,
+      {
+        id: string;
+        role: any;
+        name?: string | null;
+        surname?: string | null;
+        email?: string | null;
+        username?: string | null;
+      }
+    >();
+
+    if (performedByIds.length) {
+      const admins = await this.prisma.admin.findMany({
+        where: { id: { in: performedByIds } },
+        select: {
+          id: true,
+          role: true,
+          name: true,
+          surname: true,
+          email: true,
+          username: true,
+        },
+      });
+      for (const admin of admins) {
+        performedByUserById.set(admin.id, {
+          id: admin.id,
+          role: admin.role,
+          name: admin.name ?? null,
+          surname: admin.surname ?? null,
+          email: admin.email ?? null,
+          username: admin.username ?? null,
+        });
+      }
+    }
+
+    const enrichedItems = items.map((item) => {
+      const parsed = parsedByLogId.get(item.id);
+      if (!parsed) return item;
+
+      if (parsed?.targetId && !parsed?.target) {
+        const target = targetUserById.get(String(parsed.targetId));
+        if (target) parsed.target = target;
+      }
+
+      if (parsed?.performedById && !parsed?.performedBy) {
+        const performedBy = performedByUserById.get(
+          String(parsed.performedById),
+        );
+        if (performedBy) parsed.performedBy = performedBy;
+      }
+
+      return {
+        ...item,
+        details: JSON.stringify(parsed),
+      };
+    });
+
     const totalPages = Math.max(1, Math.ceil(totalCount / limit));
     const hasMore = page < totalPages;
 
     return {
-      items,
+      items: enrichedItems,
       pageInfo: {
         page,
         limit,
