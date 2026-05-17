@@ -36,6 +36,9 @@ import { InvitationModule } from './invitation/invitation.module';
 import { SetupModule } from './setup/setup.module';
 import { AiModule } from './ai/ai.module';
 import { ContactModule } from './contact/contact.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditContextInterceptor } from './shared/audit/audit-context.interceptor';
+import { AuditModule } from './shared/audit/audit.module';
 
 @Module({
   imports: [
@@ -82,8 +85,13 @@ import { ContactModule } from './contact/contact.module';
     SetupModule,
     AiModule,
     ContactModule,
+    AuditModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AppResolver],
+  providers: [
+    AppService,
+    AppResolver,
+    { provide: APP_INTERCEPTOR, useClass: AuditContextInterceptor },
+  ],
 })
 export class AppModule {}

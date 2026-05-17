@@ -141,6 +141,42 @@ type AttendanceSessionToken {
   token: String!
 }
 
+type AuditLogChange {
+  after: String
+  before: String
+  field: String!
+}
+
+type AuditLogEntry {
+  action: String!
+  actorEmail: String
+  actorId: String
+  actorName: String
+  actorRole: Roles
+  actorSurname: String
+  actorUsername: String
+  changes: [AuditLogChange!]
+  entityId: String
+  entityLabel: String
+  entityType: String!
+  id: String!
+  ipAddress: String
+  timestamp: DateTime!
+}
+
+type AuditLogListResponse {
+  items: [AuditLogEntry!]!
+  pageInfo: AuditLogPageInfo!
+}
+
+type AuditLogPageInfo {
+  hasMore: Boolean!
+  limit: Int!
+  page: Int!
+  totalCount: Int!
+  totalPages: Int!
+}
+
 type AuthResponse {
   address: String
   adminId: String
@@ -804,6 +840,7 @@ type PaymentStatusDistributionData {
 type Query {
   attendanceByLesson(lessonId: String!): Attendance!
   attendanceStats(endDate: DateTime!, startDate: DateTime!, studentId: String!): Attendance!
+  auditLogs(actor: String, endDate: DateTime, entityType: String, params: PaginationInput, startDate: DateTime): AuditLogListResponse!
 
   """Calculate final Result for a student in a class"""
   calculateFinalResult(classId: String!, studentId: String!, term: Term!): Float!

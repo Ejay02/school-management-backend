@@ -491,6 +491,30 @@ model SecurityLog {
   @@index([timestamp])
 }
 
+model AuditLog {
+  id            String   @id @default(uuid())
+  action        String
+  entityType    String
+  entityId      String?
+  entityLabel   String?
+  actorId       String?
+  actorUsername String?
+  actorName     String?
+  actorSurname  String?
+  actorEmail    String?
+  actorRole     Role?
+  ipAddress     String?
+  timestamp     DateTime @default(now())
+  changes       Json?
+  before        Json?
+  after         Json?
+
+  @@index([timestamp])
+  @@index([entityType])
+  @@index([actorId])
+  @@index([actorUsername])
+}
+
 model Question {
   id              String        @id @default(uuid())
   examId          String?

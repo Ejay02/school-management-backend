@@ -8,7 +8,7 @@
   "scripts": {
     "migrate:deploy": "npx prisma migrate deploy",
     "prisma:generate": "node -e \"process.env.PRISMA_CLI_QUERY_ENGINE_TYPE='binary';require('child_process').execSync('npx prisma generate',{stdio:'inherit'})\"",
-    "build": "tsc -p tsconfig.build.json && npm run prisma:generate",
+    "build": "npm run prisma:generate && tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npm run migrate:deploy && npm run build && node start.js",
     "start:dev": "npm run migrate:deploy && nest start --watch",
