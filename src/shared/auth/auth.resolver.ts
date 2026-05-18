@@ -15,13 +15,16 @@ import { ResetPasswordInput } from './input/reset.password.input';
 export class AuthResolver {
   constructor(private readonly authService: AuthService) {}
 
+  private getIpAddress(context?: any): string | undefined {
+    return context?.req?.ip || context?.req?.connection?.remoteAddress;
+  }
+
   @Mutation(() => AuthResponse)
   async adminSignup(
     @Args('input') input: AdminSignupInput,
     @Context() context?: any,
   ): Promise<AuthResponse> {
-    const ipAddress =
-      context?.req?.ip || context?.req?.connection?.remoteAddress;
+    const ipAddress = this.getIpAddress(context);
     return await this.authService.signup(input, ipAddress);
   }
 
@@ -30,8 +33,7 @@ export class AuthResolver {
     @Args('input') input: TeacherSignupInput,
     @Context() context?: any,
   ): Promise<AuthResponse> {
-    const ipAddress =
-      context?.req?.ip || context?.req?.connection?.remoteAddress;
+    const ipAddress = this.getIpAddress(context);
     return await this.authService.signup(input, ipAddress);
   }
 
@@ -40,8 +42,7 @@ export class AuthResolver {
     @Args('input') input: StudentSignupInput,
     @Context() context?: any,
   ): Promise<AuthResponse> {
-    const ipAddress =
-      context?.req?.ip || context?.req?.connection?.remoteAddress;
+    const ipAddress = this.getIpAddress(context);
     return await this.authService.signup(input, ipAddress);
   }
 
@@ -50,8 +51,7 @@ export class AuthResolver {
     @Args('input') input: ParentSignupInput,
     @Context() context?: any,
   ): Promise<AuthResponse> {
-    const ipAddress =
-      context?.req?.ip || context?.req?.connection?.remoteAddress;
+    const ipAddress = this.getIpAddress(context);
     return await this.authService.signup(input, ipAddress);
   }
 
@@ -60,11 +60,7 @@ export class AuthResolver {
     @Args('input') input: BaseLoginInput,
     @Context() context?: any,
   ): Promise<AuthResponse> {
-    // If context exists and has request info, extract IP
-    const ipAddress =
-      context?.req?.ip || context?.req?.connection?.remoteAddress;
-
-    // Pass IP if available, otherwise just pass the input
+    const ipAddress = this.getIpAddress(context);
     return await this.authService.login(input, ipAddress);
   }
 
