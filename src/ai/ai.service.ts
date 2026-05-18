@@ -59,13 +59,8 @@ ${userMessage}
             return item;
           }
 
-          if (
-            item &&
-            typeof item === 'object' &&
-            'type' in item &&
-            (item as any).type === 'text'
-          ) {
-            return (item as any).text || '';
+          if (this.isTextContentPart(item)) {
+            return typeof item.text === 'string' ? item.text : '';
           }
 
           return '';
@@ -77,6 +72,38 @@ ${userMessage}
     }
 
     return null;
+  }
+
+  private isTextContentPart(
+    value: unknown,
+  ): value is { type: 'text'; text?: unknown } {
+    if (!value || typeof value !== 'object') return false;
+    const record = value as Record<string, unknown>;
+    return record.type === 'text' && 'text' in record;
+  }
+
+  private getUpstreamErrorMessage(data: unknown): string {
+    if (!data || typeof data !== 'object') return 'AI assistant request failed';
+    const record = data as Record<string, unknown>;
+    const error = record.error;
+    const message = record.message;
+    if (typeof error === 'string' && error.trim().length) return error;
+    if (typeof message === 'string' && message.trim().length) return message;
+    return 'AI assistant request failed';
+  }
+
+  private getAssistantMessageContent(data: unknown): unknown {
+    if (!data || typeof data !== 'object') return undefined;
+    const record = data as Record<string, unknown>;
+    const choices = record.choices;
+    if (!Array.isArray(choices) || choices.length === 0) return undefined;
+    const firstChoice = choices[0];
+    if (!firstChoice || typeof firstChoice !== 'object') return undefined;
+    const choiceRecord = firstChoice as Record<string, unknown>;
+    const message = choiceRecord.message;
+    if (!message || typeof message !== 'object') return undefined;
+    const messageRecord = message as Record<string, unknown>;
+    return messageRecord.content;
   }
 
   async chat(message: string) {
@@ -122,7 +149,7 @@ ${userMessage}
       },
     );
 
-    let data: any = null;
+    let data: unknown = null;
     try {
       data = await response.json();
     } catch {
@@ -132,13 +159,11 @@ ${userMessage}
     }
 
     if (!response.ok) {
-      const upstreamMessage =
-        data?.error || data?.message || 'AI assistant request failed';
-      throw new BadGatewayException(upstreamMessage);
+      throw new BadGatewayException(this.getUpstreamErrorMessage(data));
     }
 
     const generatedText = this.extractAssistantText(
-      data?.choices?.[0]?.message?.content,
+      this.getAssistantMessageContent(data),
     );
 
     if (!generatedText || typeof generatedText !== 'string') {

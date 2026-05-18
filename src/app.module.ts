@@ -28,7 +28,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 
 import { SchedulingModule } from './shared/task/scheduling.module';
 import { SecurityModule } from './shared/security/security.module';
-import { join } from 'path';
+import { join } from 'node:path';
 import { QuestionModule } from './shared/question/question.module';
 import GraphQLJSON from 'graphql-type-json';
 import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
@@ -39,6 +39,7 @@ import { ContactModule } from './contact/contact.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditContextInterceptor } from './shared/audit/audit-context.interceptor';
 import { AuditModule } from './shared/audit/audit.module';
+import type { GraphQLFormattedError } from 'graphql';
 
 @Module({
   imports: [
@@ -57,6 +58,44 @@ import { AuditModule } from './shared/audit/audit.module';
         },
       },
       resolvers: { JSON: GraphQLJSON },
+      formatError: (
+        formattedError: GraphQLFormattedError,
+        error: unknown,
+      ): GraphQLFormattedError => {
+        const code = (formattedError.extensions as any)?.code;
+        const rootPath = Array.isArray(formattedError.path)
+          ? String(formattedError.path[0] ?? '')
+          : '';
+
+        if (code === 'INTERNAL_SERVER_ERROR') {
+          let message = 'Something went wrong. Please try again.';
+          if (rootPath === 'login') message = 'Failed to Login.';
+          if (rootPath === 'signup') message = 'Failed to sign up';
+
+          return {
+            message,
+            locations: formattedError.locations,
+            path: formattedError.path,
+            extensions: { code },
+          };
+        }
+
+        if (
+          error instanceof Error &&
+          /cannot read properties|undefined|typeerror|syntaxerror/i.test(
+            error.message,
+          )
+        ) {
+          return {
+            message: 'Something went wrong. Please try again.',
+            locations: formattedError.locations,
+            path: formattedError.path,
+            extensions: { code: code || 'INTERNAL_SERVER_ERROR' },
+          };
+        }
+
+        return formattedError;
+      },
     }),
     AdminModule,
     TeacherModule,

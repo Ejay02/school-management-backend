@@ -11,6 +11,7 @@ import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import type { Prisma } from '@prisma/client';
 
 import { Attendance } from './types/attendance.types';
 
@@ -21,6 +22,18 @@ export class AttendanceService {
   private readonly server: Server;
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private isAttendanceSessionPayload(
+    value: unknown,
+  ): value is { typ: 'attendance_session'; lessonId: unknown; date: unknown } {
+    if (!value || typeof value !== 'object') return false;
+    const record = value as Record<string, unknown>;
+    return (
+      record.typ === 'attendance_session' &&
+      'lessonId' in record &&
+      'date' in record
+    );
+  }
 
   async createAttendanceSession(
     lessonId: string,
@@ -97,14 +110,14 @@ export class AttendanceService {
       throw new InternalServerErrorException('JWT secret is not configured');
     }
 
-    let payload: any;
+    let payload: unknown;
     try {
       payload = jwt.verify(rawToken, secret);
-    } catch (e) {
+    } catch {
       throw new ForbiddenException('Invalid or expired session token');
     }
 
-    if (!payload || payload.typ !== 'attendance_session') {
+    if (!this.isAttendanceSessionPayload(payload)) {
       throw new ForbiddenException('Invalid session token');
     }
 
@@ -173,7 +186,7 @@ export class AttendanceService {
   ): Promise<Attendance[]> {
     try {
       // Always include these relations to match the GraphQL type
-      const queryOptions: any = {
+      const queryOptions: Prisma.AttendanceFindManyArgs = {
         include: {
           student: true,
           class: true,
@@ -202,7 +215,7 @@ export class AttendanceService {
           });
 
           // Check if teacher exists and has classes
-          if (teacherClasses?.classes?.length === 0) {
+          if (!teacherClasses || teacherClasses.classes.length === 0) {
             return []; // Return empty array if teacher has no classes
           }
 
@@ -228,7 +241,7 @@ export class AttendanceService {
           });
 
           // Check if parent exists and has students
-          if (!parent || !parent.students || parent.students.length === 0) {
+          if (!parent?.students || parent.students.length === 0) {
             return []; // Return empty array if parent has no students
           }
 
@@ -253,10 +266,9 @@ export class AttendanceService {
       // Add search functionality
       if (searchQuery && searchQuery.trim() !== '') {
         const searchTerm = searchQuery.trim();
-        // const searchFields = ['student.name', 'lesson.subject.name'];
 
         // Create search conditions
-        const searchConditions = {
+        const searchConditions: Prisma.AttendanceWhereInput = {
           OR: [
             {
               student: {
@@ -279,10 +291,8 @@ export class AttendanceService {
           ],
         };
 
-        // Merge search conditions with existing where clause
         queryOptions.where = {
-          ...queryOptions.where,
-          ...searchConditions,
+          AND: [queryOptions.where ?? {}, searchConditions],
         };
       }
 

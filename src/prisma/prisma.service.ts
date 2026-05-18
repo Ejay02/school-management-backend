@@ -19,8 +19,6 @@ export class PrismaService
     super({ adapter });
     this.pool = pool;
 
-    const rawClient = this;
-
     const toSerializable = (value: any): any => {
       if (value === undefined) return null;
       if (value === null) return null;
@@ -112,7 +110,7 @@ export class PrismaService
       'Invitation',
     ]);
 
-    const extended = rawClient.$extends({
+    const extended = this.$extends({
       query: {
         $allModels: {
           $allOperations: async ({ model, operation, args, query }) => {
@@ -133,7 +131,7 @@ export class PrismaService
             const entityId = typeof whereId === 'string' ? whereId : undefined;
 
             const delegateName = `${modelName.charAt(0).toLowerCase()}${modelName.slice(1)}`;
-            const delegate = (rawClient as any)[delegateName];
+            const delegate = (extended as any)[delegateName];
 
             let before: any = null;
             let after: any = null;
@@ -165,7 +163,7 @@ export class PrismaService
             const actor = ctx?.actor;
             const ipAddress = ctx?.ipAddress;
 
-            await (rawClient as any).auditLog.create({
+            await (extended as any).auditLog.create({
               data: {
                 action: op.toUpperCase(),
                 entityType: modelName,
@@ -178,9 +176,9 @@ export class PrismaService
                 actorEmail: actor?.email || null,
                 actorRole: actor?.role || null,
                 ipAddress: ipAddress || null,
-                changes: changes.length ? (changes as any) : null,
-                before: before ? (toSerializable(before) as any) : null,
-                after: after ? (toSerializable(after) as any) : null,
+                changes: changes.length ? changes : null,
+                before: before ? toSerializable(before) : null,
+                after: after ? toSerializable(after) : null,
               },
             });
 
@@ -189,17 +187,26 @@ export class PrismaService
         },
       },
     });
-
-    (extended as any).onModuleInit = async () => {
-      await extended.$connect();
-    };
-
-    (extended as any).onModuleDestroy = async () => {
-      await extended.$disconnect();
-      await pool.end();
-    };
-
-    return extended as any;
+    const reservedClientKeys = new Set([
+      'pool',
+      'constructor',
+      '__proto__',
+      'prototype',
+    ]);
+    for (const key of Reflect.ownKeys(extended as any)) {
+      if (typeof key === 'string' && reservedClientKeys.has(key)) continue;
+      if (
+        typeof key === 'string' &&
+        !key.startsWith('$') &&
+        !key.startsWith('_')
+      ) {
+        continue;
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(extended as any, key);
+      if (descriptor) {
+        Object.defineProperty(this as any, key, descriptor);
+      }
+    }
   }
 
   async onModuleInit() {

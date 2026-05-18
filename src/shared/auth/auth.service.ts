@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -45,20 +46,15 @@ export class AuthService {
 
   private escapeHtml(value: string) {
     return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
   private escapeHtmlAttribute(value: string) {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+    return this.escapeHtml(value);
   }
 
   private normalizePublicImageUrl(value: string | null | undefined) {
@@ -67,7 +63,7 @@ export class AuthService {
 
     const withProtocol = (() => {
       if (/^https?:\/\//i.test(raw)) return raw;
-      if (/^\/\//.test(raw)) return `https:${raw}`;
+      if (raw.startsWith('//')) return `https:${raw}`;
       if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(raw)) return `https://${raw}`;
       return null;
     })();
@@ -90,6 +86,34 @@ export class AuthService {
     if (role === Roles.STUDENT) return 'Student';
     if (role === Roles.PARENT) return 'Parent / Guardian';
     return 'User';
+  }
+
+  private toRole(value: string | null | undefined): Roles {
+    switch (value) {
+      case Roles.ADMIN:
+        return Roles.ADMIN;
+      case Roles.SUPER_ADMIN:
+        return Roles.SUPER_ADMIN;
+      case Roles.TEACHER:
+        return Roles.TEACHER;
+      case Roles.STUDENT:
+        return Roles.STUDENT;
+      case Roles.PARENT:
+        return Roles.PARENT;
+      default:
+        return Roles.STUDENT;
+    }
+  }
+
+  private isStudentSignupInput(
+    input: SignupInputType,
+  ): input is StudentSignupInput {
+    const record = input as unknown as Record<string, unknown>;
+    return (
+      typeof record.parentId === 'string' &&
+      record.parentId.trim().length > 0 &&
+      'classId' in record
+    );
   }
 
   private roleTheme(role: Roles) {
@@ -425,6 +449,15 @@ export class AuthService {
     role?: Roles,
     client: any = this.prisma,
   ) {
+    if (
+      !client?.admin?.findUnique ||
+      !client?.teacher?.findUnique ||
+      !client?.student?.findUnique ||
+      !client?.parent?.findUnique
+    ) {
+      throw new InternalServerErrorException('Database client is not ready');
+    }
+
     if (role) {
       switch (role) {
         case Roles.ADMIN:
@@ -599,15 +632,14 @@ export class AuthService {
           create: { id: 'default' },
         });
         const schoolDomain = this.normalizeSchoolDomain(
-          (setupState as any).schoolDomain,
+          setupState.schoolDomain,
         );
 
         // Create the user based on the role
         let newUser;
         switch (effectiveRole) {
           case Roles.ADMIN:
-          case Roles.SUPER_ADMIN:
-            const adminInput = input as AdminSignupInput;
+          case Roles.SUPER_ADMIN: {
             const adminId = await this.generateAdminId(tx);
             newUser = await tx.admin.create({
               data: {
@@ -616,19 +648,19 @@ export class AuthService {
                 password: hashedPassword,
                 email,
                 role: effectiveRole,
-                name: adminInput.name,
-                surname: adminInput.surname,
-              } as any,
+                name: input.name,
+                surname: input.surname,
+              },
             });
             break;
+          }
 
-          case Roles.TEACHER:
-            const teacherInput = input as TeacherSignupInput;
+          case Roles.TEACHER: {
             const teacherId = await this.generateTeacherId(tx);
             const institutionalEmail = await this.generateInstitutionalEmail(
               tx,
-              teacherInput.name,
-              teacherInput.surname,
+              input.name,
+              input.surname,
               schoolDomain,
             );
             newUser = await tx.teacher.create({
@@ -639,18 +671,18 @@ export class AuthService {
                 email,
                 institutionalEmail,
                 role: effectiveRole,
-                name: teacherInput.name,
-                surname: teacherInput.surname,
-                // address: teacherInput.address,
-                // bloodType: teacherInput.bloodType,
-                // sex: teacherInput.sex,
-                // phone: teacherInput.phone,
-              } as any,
+                name: input.name,
+                surname: input.surname,
+              },
             });
             break;
+          }
 
-          case Roles.STUDENT:
-            const studentInput = input as StudentSignupInput;
+          case Roles.STUDENT: {
+            if (!this.isStudentSignupInput(input)) {
+              throw new BadRequestException('Invalid signup input');
+            }
+            const studentInput = input;
 
             await this.validateForeignKeys(tx, studentInput);
 
@@ -720,26 +752,25 @@ export class AuthService {
 
                   parentId: studentInput.parentId,
                   classId: classRecord.id,
-                } as any,
+                },
               });
             }
             break;
+          }
 
-          case Roles.PARENT:
-            const parentInput = input as ParentSignupInput;
+          case Roles.PARENT: {
             newUser = await tx.parent.create({
               data: {
                 username,
                 password: hashedPassword,
                 email,
                 role,
-                name: parentInput.name,
-                surname: parentInput.surname,
-                // phone: parentInput.phone,
-                // address: parentInput.address,
+                name: input.name,
+                surname: input.surname,
               },
             });
             break;
+          }
         }
 
         // Generate the token (if this fails, it should trigger rollback)
@@ -773,7 +804,7 @@ export class AuthService {
         try {
           const welcome = await this.buildWelcomeEmailHtml({
             name: result.name,
-            role: result.role as any,
+            role: this.toRole(result.role),
           });
           await this.mailService.sendMail({
             to: result.email,
@@ -901,12 +932,12 @@ export class AuthService {
     const firstToken = String(name || '')
       .trim()
       .split(/\s+/)
-      .filter(Boolean)[0];
+      .find(Boolean);
     const lastToken = String(surname || '')
       .trim()
       .split(/\s+/)
       .filter(Boolean)
-      .slice(-1)[0];
+      .pop();
 
     const firstInitial = this.normalizeNamePart(firstToken).slice(0, 1);
     const lastName = this.normalizeNamePart(lastToken);
@@ -965,7 +996,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if ((user as any).isActive === false) {
+    if (user?.isActive === false) {
       throw new UnauthorizedException(
         '⚠️Account has been suspended, contact your admin for more info',
       );
@@ -999,22 +1030,16 @@ export class AuthService {
   }
 
   private generateAccessToken(userId: string, role: string): string {
-    try {
-      return this.jwtService.sign(
-        {
-          sub: userId,
-          role,
-        },
-
-        {
-          secret: process.env.JWT_SECRET,
-          expiresIn: '48h',
-        },
-      );
-    } catch (error) {
-      // Throw the error to propagate it to the transaction
-      throw new Error('Failed to generate token');
-    }
+    return this.jwtService.sign(
+      {
+        sub: userId,
+        role,
+      },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: '48h',
+      },
+    );
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
@@ -1064,7 +1089,7 @@ export class AuthService {
       throw new UnauthorizedException('User no longer exists');
     }
 
-    if ((user as any).isActive === false) {
+    if (user.isActive === false) {
       await this.prisma.refreshToken.delete({
         where: { token: refreshToken },
       });
