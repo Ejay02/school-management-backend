@@ -112,7 +112,7 @@ export class AttendanceResolver {
   }
 
   @Query(() => SchoolAttendanceStats)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
   async getSchoolAttendanceStats(
     @Args('startDate') startDate: Date,
     @Args('endDate') endDate: Date,

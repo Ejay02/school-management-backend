@@ -509,13 +509,35 @@ export class AttendanceService {
     userId: string,
     userRole: Roles,
   ) {
-    // Only allow admins or super-admins to access school-wide stats
-    if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const empty = {
+      labels,
+      present: labels.map(() => 0),
+      absent: labels.map(() => 0),
+      studentCount: 0,
+    };
+
+    let classIds: string[] | null = null;
+    if (userRole === Roles.TEACHER) {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: userId },
+        select: { classes: { select: { id: true } } },
+      });
+
+      if (!teacher || teacher.classes.length === 0) {
+        return empty;
+      }
+
+      classIds = teacher.classes.map((c) => c.id);
+    } else if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN) {
       throw new ForbiddenException('Unauthorized');
     }
 
-    // Get the total number of students (more relevant for attendance stats)
-    const studentCount = await this.prisma.student.count();
+    const studentCount = classIds
+      ? await this.prisma.student.count({
+          where: { classId: { in: classIds } },
+        })
+      : await this.prisma.student.count();
 
     // Initialize an object for weekdays Monday to Friday
     const stats = {
@@ -533,6 +555,7 @@ export class AttendanceService {
           gte: startDate,
           lte: endDate,
         },
+        ...(classIds ? { classId: { in: classIds } } : {}),
       },
       include: {
         lesson: {
@@ -593,7 +616,6 @@ export class AttendanceService {
     }
 
     // Transform the stats to a format that fits frontend needs
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     const present = labels.map((day) => stats[day].present);
     const absent = labels.map((day) => stats[day].absent);
 

@@ -94,7 +94,30 @@ import type { GraphQLFormattedError } from 'graphql';
           };
         }
 
-        return formattedError;
+        if (code === 'FORBIDDEN') {
+          return {
+            message: 'You do not have permission to do that.',
+            locations: formattedError.locations,
+            path: formattedError.path,
+            extensions: { code },
+          };
+        }
+
+        if (code === 'UNAUTHENTICATED') {
+          return {
+            message: 'Please log in again.',
+            locations: formattedError.locations,
+            path: formattedError.path,
+            extensions: { code },
+          };
+        }
+
+        return {
+          message: formattedError.message,
+          locations: formattedError.locations,
+          path: formattedError.path,
+          extensions: code ? { code } : undefined,
+        };
       },
     }),
     AdminModule,
