@@ -1,7 +1,7 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { TeacherService } from './teacher.service';
 import { UseGuards } from '@nestjs/common';
-import { Teacher } from './types/teacher.types';
+import { Teacher, TeacherTodayOverview } from './types/teacher.types';
 
 import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 import { Roles } from '../shared/enum/role';
@@ -43,6 +43,12 @@ export class TeacherResolver {
       params || {},
     );
     return result.data;
+  }
+
+  @Query(() => TeacherTodayOverview)
+  @HasRoles(Roles.TEACHER)
+  async getTeacherTodayOverview(@Context() context) {
+    return this.teacherService.getTeacherTodayOverview(context.req.user.userId);
   }
 
   @Mutation(() => Teacher)

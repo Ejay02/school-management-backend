@@ -104,6 +104,100 @@ export class TeacherService {
     }
   }
 
+  async getTeacherTodayOverview(teacherId: string) {
+    const now = new Date();
+    const dayIndex = now.getDay();
+    const dayMap: Record<number, string> = {
+      1: 'Monday',
+      2: 'Tuesday',
+      3: 'Wednesday',
+      4: 'Thursday',
+      5: 'Friday',
+    };
+
+    const today = dayMap[dayIndex];
+    if (!today) {
+      return {
+        nextClasses: [],
+        attendanceDueCount: 0,
+        assignmentsToGradeCount: 0,
+      };
+    }
+
+    const parseMinutes = (value: string) => {
+      const [h, m] = String(value || '').split(':');
+      const hours = Number(h);
+      const minutes = Number(m);
+      if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+      return hours * 60 + minutes;
+    };
+
+    const lessonsToday = await this.prisma.lesson.findMany({
+      where: {
+        teacherId,
+        day: today,
+      },
+      include: {
+        class: { select: { name: true } },
+        subject: { select: { name: true } },
+      },
+      orderBy: { startTime: 'asc' },
+    });
+
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const upcoming = lessonsToday
+      .map((lesson) => {
+        const startMinutes = parseMinutes(lesson.startTime);
+        return { lesson, startMinutes };
+      })
+      .filter((item) => item.startMinutes !== null)
+      .filter((item) => (item.startMinutes as number) >= nowMinutes)
+      .slice(0, 3)
+      .map(({ lesson }) => ({
+        id: lesson.id,
+        name: lesson.name,
+        className: lesson.class?.name ?? null,
+        subjectName: lesson.subject?.name ?? null,
+        startTime: lesson.startTime,
+        endTime: lesson.endTime,
+      }));
+
+    const lessonIds = lessonsToday.map((l) => l.id).filter(Boolean);
+    let attendanceDueCount = 0;
+    if (lessonIds.length) {
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const markedLessons = await this.prisma.attendance.findMany({
+        where: {
+          lessonId: { in: lessonIds },
+          date: { gte: startOfDay, lte: endOfDay },
+        },
+        distinct: ['lessonId'],
+        select: { lessonId: true },
+      });
+
+      attendanceDueCount = Math.max(0, lessonIds.length - markedLessons.length);
+    }
+
+    const assignmentsToGradeCount = await this.prisma.submission.count({
+      where: {
+        status: 'SUBMITTED',
+        assignment: {
+          teacherId,
+        },
+      },
+    });
+
+    return {
+      nextClasses: upcoming,
+      attendanceDueCount,
+      assignmentsToGradeCount,
+    };
+  }
+
   async updateTeacherProfile(
     id: string,
     input: UpdateProfileInput,

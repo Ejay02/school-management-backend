@@ -1,4 +1,4 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { Subject } from '../../subject/types/subject.types';
 import { Lesson } from '../../lesson/types/lesson.types';
 import { Class } from '../../class/types/class.types';
@@ -74,4 +74,37 @@ export class Teacher {
 
   @Field()
   updatedAt: Date;
+}
+
+@ObjectType()
+export class TeacherTodayClass {
+  @Field(() => String)
+  id: string;
+
+  @Field(() => String)
+  name: string;
+
+  @Field(() => String, { nullable: true })
+  className?: string | null;
+
+  @Field(() => String, { nullable: true })
+  subjectName?: string | null;
+
+  @Field(() => String)
+  startTime: string;
+
+  @Field(() => String)
+  endTime: string;
+}
+
+@ObjectType()
+export class TeacherTodayOverview {
+  @Field(() => [TeacherTodayClass])
+  nextClasses: TeacherTodayClass[];
+
+  @Field(() => Int)
+  attendanceDueCount: number;
+
+  @Field(() => Int)
+  assignmentsToGradeCount: number;
 }

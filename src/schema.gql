@@ -902,6 +902,7 @@ type Query {
   getSubjectById(id: String!): Subject!
   getSubmissionsByAssignment(assignmentId: String!, params: PaginationInput): [Submission!]!
   getTeacherById(teacherId: String!): Teacher!
+  getTeacherTodayOverview: TeacherTodayOverview!
   getUnreadAnnouncementsCount: Int!
   getUserById(id: String!): UserUnion
   invitationSummary(role: Roles): InvitationSummary!
@@ -1211,6 +1212,21 @@ input TeacherSignupInput {
   role: Roles! = TEACHER
   surname: String!
   username: String!
+}
+
+type TeacherTodayClass {
+  className: String
+  endTime: String!
+  id: String!
+  name: String!
+  startTime: String!
+  subjectName: String
+}
+
+type TeacherTodayOverview {
+  assignmentsToGradeCount: Int!
+  attendanceDueCount: Int!
+  nextClasses: [TeacherTodayClass!]!
 }
 
 enum Term {
