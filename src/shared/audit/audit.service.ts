@@ -64,14 +64,21 @@ export class AuditService {
       ];
     }
 
+    const auditDelegate = (this.prisma as any).auditLog;
+    if (!auditDelegate?.findMany || !auditDelegate?.count) {
+      throw new Error(
+        'AuditLog Prisma delegate not found. Run `npm run prisma:generate` and restart the server.',
+      );
+    }
+
     const [items, totalCount] = await Promise.all([
-      (this.prisma as any).auditLog.findMany({
+      auditDelegate.findMany({
         where,
         orderBy: { timestamp: 'desc' },
         skip,
         take: limit,
       }),
-      (this.prisma as any).auditLog.count({ where }),
+      auditDelegate.count({ where }),
     ]);
 
     const mappedItems = (items as any[]).map((item) => ({
