@@ -163,24 +163,29 @@ export class PrismaService
             const actor = ctx?.actor;
             const ipAddress = ctx?.ipAddress;
 
-            await (extended as any).auditLog.create({
-              data: {
-                action: op.toUpperCase(),
-                entityType: modelName,
-                entityId: entityId || (after as any)?.id || null,
-                entityLabel: getEntityLabel(after) || getEntityLabel(before),
-                actorId: actor?.id || null,
-                actorUsername: actor?.username || null,
-                actorName: actor?.name || null,
-                actorSurname: actor?.surname || null,
-                actorEmail: actor?.email || null,
-                actorRole: actor?.role || null,
-                ipAddress: ipAddress || null,
-                changes: changes.length ? changes : null,
-                before: before ? toSerializable(before) : null,
-                after: after ? toSerializable(after) : null,
-              },
-            });
+            const auditDelegate = (extended as any).auditLog;
+            if (auditDelegate?.create) {
+              await auditDelegate
+                .create({
+                  data: {
+                    action: op.toUpperCase(),
+                    entityType: modelName,
+                    entityId: entityId || (after as any)?.id || null,
+                    entityLabel: getEntityLabel(after) || getEntityLabel(before),
+                    actorId: actor?.id || null,
+                    actorUsername: actor?.username || null,
+                    actorName: actor?.name || null,
+                    actorSurname: actor?.surname || null,
+                    actorEmail: actor?.email || null,
+                    actorRole: actor?.role || null,
+                    ipAddress: ipAddress || null,
+                    changes: changes.length ? changes : null,
+                    before: before ? toSerializable(before) : null,
+                    after: after ? toSerializable(after) : null,
+                  },
+                })
+                .catch(() => undefined);
+            }
 
             return result;
           },

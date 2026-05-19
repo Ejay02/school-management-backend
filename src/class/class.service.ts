@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -226,9 +227,32 @@ export class ClassService {
         });
       });
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to update class: ${error.message}`,
-      );
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      const prismaCode = (error as any)?.code;
+      if (prismaCode === 'P2002') {
+        throw new ConflictException('A class with this name already exists');
+      }
+      if (prismaCode === 'P2003') {
+        throw new BadRequestException('Selected supervisor does not exist');
+      }
+      if (prismaCode === 'P2025') {
+        throw new NotFoundException('Class not found');
+      }
+
+      console.error('Failed to update class', {
+        classId,
+        prismaCode,
+        message: (error as any)?.message,
+      });
+      throw new InternalServerErrorException('Failed to update class');
     }
   }
 
