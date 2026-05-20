@@ -22,6 +22,21 @@ export class ParentService {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
+  private async getTeacherClassIds(teacherId: string): Promise<string[]> {
+    const classes = await this.prisma.class.findMany({
+      where: {
+        OR: [
+          { supervisorId: teacherId },
+          { lessons: { some: { teacherId } } },
+          { subjects: { some: { teachers: { some: { id: teacherId } } } } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    return classes.map((c) => c.id);
+  }
+
   async getAllParents(
     userId: string,
     userRole: Roles,
@@ -53,16 +68,7 @@ export class ParentService {
 
         case Roles.TEACHER:
           // Teachers can only see parents of students in their classes
-          const teacherClasses = await this.prisma.class.findMany({
-            where: {
-              id: userId,
-            },
-            select: {
-              id: true,
-            },
-          });
-
-          const classIds = teacherClasses.map((c) => c.id);
+          const classIds = await this.getTeacherClassIds(userId);
 
           baseQuery.where = {
             students: {
@@ -70,6 +76,15 @@ export class ParentService {
                 classId: {
                   in: classIds,
                 },
+              },
+            },
+          };
+          baseQuery.include = {
+            students: {
+              where: { classId: { in: classIds } },
+              include: {
+                class: true,
+                result: true,
               },
             },
           };

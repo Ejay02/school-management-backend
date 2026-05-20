@@ -134,11 +134,11 @@ export class RolesGuard implements CanActivate {
           where: {
             parentId: args.parentId,
             class: {
-              lessons: {
-                some: {
-                  teacherId: user.id,
-                },
-              },
+              OR: [
+                { supervisorId: user.id },
+                { lessons: { some: { teacherId: user.id } } },
+                { subjects: { some: { teachers: { some: { id: user.id } } } } },
+              ],
             },
           },
         });
@@ -154,11 +154,11 @@ export class RolesGuard implements CanActivate {
           where: {
             id: studentId,
             class: {
-              lessons: {
-                some: {
-                  teacherId: user.id,
-                },
-              },
+              OR: [
+                { supervisorId: user.id },
+                { lessons: { some: { teacherId: user.id } } },
+                { subjects: { some: { teachers: { some: { id: user.id } } } } },
+              ],
             },
           },
         });
