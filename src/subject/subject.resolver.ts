@@ -73,7 +73,7 @@ export class SubjectResolver {
   }
 
   @Mutation(() => Subject)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async updateSubject(
     @Args('subjectId') subjectId: string,
     @Args('input') input: UpdateSubjectInput,
@@ -82,7 +82,7 @@ export class SubjectResolver {
   }
 
   @Mutation(() => DeleteResponse)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async deleteSubject(@Args('subjectId') subjectId: string) {
     return await this.subjectService.deleteSubject(subjectId);
   }

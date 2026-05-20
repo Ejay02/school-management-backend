@@ -36,7 +36,7 @@ export class StudentResolver {
     return await this.studentService.getStudentById(studentId);
   }
 
-  @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   @Mutation(() => Student)
   async assignStudentToClass(@Args('input') input: AssignStudentToClassInput) {
     return await this.studentService.assignStudentToClass(input);

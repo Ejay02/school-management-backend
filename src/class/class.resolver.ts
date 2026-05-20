@@ -41,7 +41,7 @@ export class ClassResolver {
   }
 
   @Mutation(() => Class)
-  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.TEACHER)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async assignClassToTeacher(
     @Args('classId') classId: string,
     @Args('teacherId') teacherId: string,
