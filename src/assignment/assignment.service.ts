@@ -259,10 +259,31 @@ export class AssignmentService {
           );
         }
 
+        const startDate = new Date(input.startDate);
+        const dueDate = new Date(input.dueDate);
+        if (
+          Number.isNaN(startDate.getTime()) ||
+          Number.isNaN(dueDate.getTime())
+        ) {
+          throw new BadRequestException('Invalid assignment date.');
+        }
+        if (dueDate.getTime() < startDate.getTime()) {
+          throw new BadRequestException(
+            'Due date must be on or after start date.',
+          );
+        }
+        const startDay = startDate.getDay();
+        const dueDay = dueDate.getDay();
+        if (startDay === 0 || startDay === 6 || dueDay === 0 || dueDay === 6) {
+          throw new BadRequestException(
+            'Assignments must be scheduled Monday to Friday.',
+          );
+        }
+
         const createData = {
           title: input.title,
-          startDate: new Date(input.startDate),
-          dueDate: new Date(input.dueDate),
+          startDate,
+          dueDate,
           description: input.description,
           instructions: input.instructions,
           content: input.content,
@@ -363,13 +384,111 @@ export class AssignmentService {
           }
         }
 
+        const effectiveClassId =
+          editAssignmentInput.classId ?? assignment.classId;
+        const effectiveSubjectId =
+          editAssignmentInput.subjectId ?? assignment.subjectId;
+        const effectiveLessonId =
+          editAssignmentInput.lessonId ?? assignment.lessonId;
+
+        const startDate = editAssignmentInput.startDate
+          ? new Date(editAssignmentInput.startDate)
+          : assignment.startDate;
+        const dueDate = editAssignmentInput.dueDate
+          ? new Date(editAssignmentInput.dueDate)
+          : assignment.dueDate;
+
+        if (
+          Number.isNaN(startDate.getTime()) ||
+          Number.isNaN(dueDate.getTime())
+        ) {
+          throw new BadRequestException('Invalid assignment date.');
+        }
+        if (dueDate.getTime() < startDate.getTime()) {
+          throw new BadRequestException(
+            'Due date must be on or after start date.',
+          );
+        }
+        const startDay = startDate.getDay();
+        const dueDay = dueDate.getDay();
+        if (startDay === 0 || startDay === 6 || dueDay === 0 || dueDay === 6) {
+          throw new BadRequestException(
+            'Assignments must be scheduled Monday to Friday.',
+          );
+        }
+
+        if (userRole === Roles.TEACHER && effectiveClassId) {
+          const teacherClass = await tx.teacher.findFirst({
+            where: {
+              id: userId,
+              classes: {
+                some: {
+                  id: effectiveClassId,
+                },
+              },
+            },
+            select: { id: true },
+          });
+          if (!teacherClass) {
+            throw new ForbiddenException('You are not assigned to this class');
+          }
+        }
+
+        if (effectiveClassId && effectiveSubjectId) {
+          const subject = await tx.subject.findFirst({
+            where: {
+              id: effectiveSubjectId,
+              classId: effectiveClassId,
+            },
+            select: { id: true },
+          });
+          if (!subject) {
+            throw new NotFoundException('Subject not found in this class');
+          }
+        }
+
+        if (effectiveLessonId) {
+          const lesson = await tx.lesson.findUnique({
+            where: { id: effectiveLessonId },
+            select: {
+              id: true,
+              classId: true,
+              subject: { select: { id: true } },
+            },
+          });
+          if (!lesson) {
+            throw new NotFoundException('Lesson not found');
+          }
+          if (effectiveClassId && lesson.classId !== effectiveClassId) {
+            throw new BadRequestException('Lesson not found in this class');
+          }
+          if (effectiveSubjectId && lesson.subject.id !== effectiveSubjectId) {
+            throw new BadRequestException('Lesson and subject do not match');
+          }
+        }
+
         const editData: any = {
           title: editAssignmentInput.title,
-          startDate: new Date(editAssignmentInput.startDate),
-          dueDate: new Date(editAssignmentInput.dueDate),
-          lessonId: editAssignmentInput.lessonId,
-          subjectId: editAssignmentInput.subjectId,
-          classId: editAssignmentInput.classId,
+          startDate,
+          dueDate,
+          ...(editAssignmentInput.description !== undefined
+            ? { description: editAssignmentInput.description }
+            : {}),
+          ...(editAssignmentInput.instructions !== undefined
+            ? { instructions: editAssignmentInput.instructions }
+            : {}),
+          ...(editAssignmentInput.content !== undefined
+            ? { content: editAssignmentInput.content }
+            : {}),
+          ...(editAssignmentInput.lessonId !== undefined
+            ? { lessonId: editAssignmentInput.lessonId }
+            : {}),
+          ...(editAssignmentInput.subjectId !== undefined
+            ? { subjectId: editAssignmentInput.subjectId }
+            : {}),
+          ...(editAssignmentInput.classId !== undefined
+            ? { classId: editAssignmentInput.classId }
+            : {}),
         };
 
         // Update the assignment with the provided data

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -18,6 +19,184 @@ import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 @Injectable()
 export class LessonService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly schoolStartMinutes = 9 * 60;
+  private readonly schoolEndMinutes = 14 * 60;
+  private readonly weekdayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+  ];
+
+  private normalizeWeekday(value: string): string | null {
+    const trimmed = String(value || '')
+      .trim()
+      .toLowerCase();
+    const match = this.weekdayNames.find((d) => d.toLowerCase() === trimmed);
+    return match || null;
+  }
+
+  private parseTimeToMinutes(value: string): number {
+    const trimmed = String(value || '').trim();
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(trimmed);
+    if (!match)
+      throw new BadRequestException('Invalid time format. Use HH:MM.');
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    return hours * 60 + minutes;
+  }
+
+  private ensureWithinSchoolHours(
+    day: string,
+    startTime: string,
+    endTime: string,
+  ) {
+    const normalizedDay = this.normalizeWeekday(day);
+    if (!normalizedDay) {
+      throw new BadRequestException(
+        'Lessons can only be scheduled Monday to Friday.',
+      );
+    }
+
+    const startMinutes = this.parseTimeToMinutes(startTime);
+    const endMinutes = this.parseTimeToMinutes(endTime);
+
+    if (endMinutes <= startMinutes) {
+      throw new BadRequestException('End time must be after start time.');
+    }
+
+    if (
+      startMinutes < this.schoolStartMinutes ||
+      endMinutes > this.schoolEndMinutes
+    ) {
+      throw new BadRequestException(
+        'Lessons must be within school hours (Mon-Fri, 9:00am to 2:00pm).',
+      );
+    }
+
+    return { normalizedDay, startMinutes, endMinutes };
+  }
+
+  private timeRangesOverlap(
+    aStart: number,
+    aEnd: number,
+    bStart: number,
+    bEnd: number,
+  ) {
+    return aStart < bEnd && bStart < aEnd;
+  }
+
+  private parseScheduleSlots(value: string): string[] {
+    return String(value || '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+
+  private async ensureNoLessonClash(
+    tx: any,
+    classId: string,
+    teacherId: string | null,
+    day: string,
+    startMinutes: number,
+    endMinutes: number,
+    excludeLessonId?: string,
+  ) {
+    const baseWhere: any = {
+      classId,
+      day: { contains: day, mode: 'insensitive' },
+    };
+
+    if (excludeLessonId) baseWhere.id = { not: excludeLessonId };
+
+    const classLessons = await tx.lesson.findMany({
+      where: baseWhere,
+      select: {
+        id: true,
+        name: true,
+        day: true,
+        startTime: true,
+        endTime: true,
+        teacherId: true,
+      },
+    });
+
+    for (const lesson of classLessons) {
+      const days = this.parseScheduleSlots(lesson.day);
+      const starts = this.parseScheduleSlots(lesson.startTime);
+      const ends = this.parseScheduleSlots(lesson.endTime);
+      const slots = Math.min(days.length, starts.length, ends.length);
+
+      for (let i = 0; i < slots; i++) {
+        const slotDay = this.normalizeWeekday(days[i]);
+        if (!slotDay || slotDay.toLowerCase() !== day.toLowerCase()) continue;
+        let slotStart: number;
+        let slotEnd: number;
+        try {
+          slotStart = this.parseTimeToMinutes(starts[i]);
+          slotEnd = this.parseTimeToMinutes(ends[i]);
+        } catch {
+          continue;
+        }
+
+        if (
+          this.timeRangesOverlap(startMinutes, endMinutes, slotStart, slotEnd)
+        ) {
+          throw new ConflictException(
+            'This time conflicts with an existing lesson for the class.',
+          );
+        }
+      }
+    }
+
+    if (!teacherId) return;
+
+    const teacherLessons = await tx.lesson.findMany({
+      where: {
+        teacherId,
+        day: { contains: day, mode: 'insensitive' },
+        ...(excludeLessonId ? { id: { not: excludeLessonId } } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        day: true,
+        startTime: true,
+        endTime: true,
+        classId: true,
+      },
+    });
+
+    for (const lesson of teacherLessons) {
+      const days = this.parseScheduleSlots(lesson.day);
+      const starts = this.parseScheduleSlots(lesson.startTime);
+      const ends = this.parseScheduleSlots(lesson.endTime);
+      const slots = Math.min(days.length, starts.length, ends.length);
+
+      for (let i = 0; i < slots; i++) {
+        const slotDay = this.normalizeWeekday(days[i]);
+        if (!slotDay || slotDay.toLowerCase() !== day.toLowerCase()) continue;
+        let slotStart: number;
+        let slotEnd: number;
+        try {
+          slotStart = this.parseTimeToMinutes(starts[i]);
+          slotEnd = this.parseTimeToMinutes(ends[i]);
+        } catch {
+          continue;
+        }
+
+        if (
+          this.timeRangesOverlap(startMinutes, endMinutes, slotStart, slotEnd)
+        ) {
+          throw new ConflictException(
+            'This time conflicts with another lesson in your schedule.',
+          );
+        }
+      }
+    }
+  }
 
   async generateAllLessons(tx: any): Promise<void> {
     // Fetch all classes from the database
@@ -415,6 +594,12 @@ export class LessonService {
         throw new NotFoundException('Subject not found in this class');
       }
 
+      const schedule = this.ensureWithinSchoolHours(
+        createLessonInput.day,
+        createLessonInput.startTime,
+        createLessonInput.endTime,
+      );
+
       // Check for duplicate lessons
       const existingLesson = await tx.lesson.findFirst({
         where: {
@@ -432,7 +617,7 @@ export class LessonService {
       // Base lesson data
       const lessonData = {
         name: createLessonInput.name,
-        day: createLessonInput.day,
+        day: schedule.normalizedDay,
         startTime: createLessonInput.startTime,
         endTime: createLessonInput.endTime,
         description: createLessonInput.description,
@@ -456,6 +641,15 @@ export class LessonService {
           throw new ForbiddenException('Teacher not found');
         }
 
+        await this.ensureNoLessonClash(
+          tx,
+          classId,
+          teacher.id,
+          schedule.normalizedDay,
+          schedule.startMinutes,
+          schedule.endMinutes,
+        );
+
         // Create the lesson with teacher assignment
         return await tx.lesson.create({
           data: {
@@ -473,6 +667,15 @@ export class LessonService {
           },
         });
       }
+
+      await this.ensureNoLessonClash(
+        tx,
+        classId,
+        null,
+        schedule.normalizedDay,
+        schedule.startMinutes,
+        schedule.endMinutes,
+      );
 
       // If admin, create lesson without teacher assignment
       const lesson = await tx.lesson.create({
@@ -532,10 +735,16 @@ export class LessonService {
         }
       }
 
+      const schedule = this.ensureWithinSchoolHours(
+        editLessonInput.day,
+        editLessonInput.startTime,
+        editLessonInput.endTime,
+      );
+
       // Prepare edit data
       const editData: any = {
         name: editLessonInput.name,
-        day: editLessonInput.day,
+        day: schedule.normalizedDay,
         startTime: editLessonInput.startTime,
         endTime: editLessonInput.endTime,
         description: editLessonInput.description,
@@ -548,6 +757,21 @@ export class LessonService {
           connect: { id: editLessonInput.teacherId },
         };
       }
+
+      const effectiveTeacherId =
+        userRole === Roles.ADMIN && editLessonInput.teacherId
+          ? editLessonInput.teacherId
+          : existingLesson.teacher?.id || null;
+
+      await this.ensureNoLessonClash(
+        tx,
+        existingLesson.classId,
+        effectiveTeacherId,
+        schedule.normalizedDay,
+        schedule.startMinutes,
+        schedule.endMinutes,
+        lessonId,
+      );
 
       // edit the lesson
       return tx.lesson.update({

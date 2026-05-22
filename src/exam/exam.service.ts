@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -27,6 +29,128 @@ import {
 export class ExamService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly schoolStartMinutes = 9 * 60;
+  private readonly schoolEndMinutes = 14 * 60;
+
+  private getWeekdayIndex(date: Date): number {
+    return date.getDay();
+  }
+
+  private toMinutesOfDay(date: Date): number {
+    return date.getHours() * 60 + date.getMinutes();
+  }
+
+  private ensureExamWithinSchoolHours(
+    date: Date,
+    startTime: Date,
+    endTime: Date,
+  ) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid exam date.');
+    }
+    if (!(startTime instanceof Date) || Number.isNaN(startTime.getTime())) {
+      throw new BadRequestException('Invalid exam start time.');
+    }
+    if (!(endTime instanceof Date) || Number.isNaN(endTime.getTime())) {
+      throw new BadRequestException('Invalid exam end time.');
+    }
+
+    const weekday = this.getWeekdayIndex(date);
+    if (weekday === 0 || weekday === 6) {
+      throw new BadRequestException(
+        'Exams can only be scheduled Monday to Friday.',
+      );
+    }
+
+    const startMinutes = this.toMinutesOfDay(startTime);
+    const endMinutes = this.toMinutesOfDay(endTime);
+
+    if (endMinutes <= startMinutes) {
+      throw new BadRequestException('End time must be after start time.');
+    }
+
+    if (
+      startMinutes < this.schoolStartMinutes ||
+      endMinutes > this.schoolEndMinutes
+    ) {
+      throw new BadRequestException(
+        'Exams must be within school hours (Mon-Fri, 9:00am to 2:00pm).',
+      );
+    }
+
+    return { startMinutes, endMinutes };
+  }
+
+  private timeRangesOverlap(
+    aStart: number,
+    aEnd: number,
+    bStart: number,
+    bEnd: number,
+  ) {
+    return aStart < bEnd && bStart < aEnd;
+  }
+
+  private getDateBounds(date: Date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+
+  private async ensureNoExamClash(
+    tx: any,
+    classId: string,
+    teacherId: string,
+    date: Date,
+    startMinutes: number,
+    endMinutes: number,
+    excludeExamId?: string,
+  ) {
+    const bounds = this.getDateBounds(date);
+    const whereForClass: any = {
+      classId,
+      date: { gte: bounds.start, lt: bounds.end },
+    };
+    if (excludeExamId) whereForClass.id = { not: excludeExamId };
+
+    const classExams = await tx.exam.findMany({
+      where: whereForClass,
+      select: { id: true, startTime: true, endTime: true },
+    });
+
+    for (const exam of classExams) {
+      const s = this.toMinutesOfDay(new Date(exam.startTime));
+      const e = this.toMinutesOfDay(new Date(exam.endTime));
+      if (this.timeRangesOverlap(startMinutes, endMinutes, s, e)) {
+        throw new ConflictException(
+          'This time conflicts with an existing exam for the class.',
+        );
+      }
+    }
+
+    const whereForTeacher: any = {
+      teacherId,
+      date: { gte: bounds.start, lt: bounds.end },
+    };
+    if (excludeExamId) whereForTeacher.id = { not: excludeExamId };
+
+    const teacherExams = await tx.exam.findMany({
+      where: whereForTeacher,
+      select: { id: true, startTime: true, endTime: true },
+    });
+
+    for (const exam of teacherExams) {
+      const s = this.toMinutesOfDay(new Date(exam.startTime));
+      const e = this.toMinutesOfDay(new Date(exam.endTime));
+      if (this.timeRangesOverlap(startMinutes, endMinutes, s, e)) {
+        throw new ConflictException(
+          'This time conflicts with another exam in your schedule.',
+        );
+      }
+    }
+  }
+
   async createExam(teacherId: string, input: CreateExamInput) {
     // Start a transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -48,6 +172,21 @@ export class ExamService {
           'You do not have access to this class/subject',
         );
       }
+
+      const schedule = this.ensureExamWithinSchoolHours(
+        input.date,
+        input.startTime,
+        input.endTime,
+      );
+
+      await this.ensureNoExamClash(
+        tx,
+        input.classId,
+        teacherId,
+        input.date,
+        schedule.startMinutes,
+        schedule.endMinutes,
+      );
 
       // Create the exam within the transaction
       const exam = await tx.exam.create({
@@ -128,6 +267,27 @@ export class ExamService {
       if (exam.teacherId !== teacherId) {
         throw new ForbiddenException('You can only edit your own exams');
       }
+
+      const effectiveClassId = input.classId || exam.classId;
+      const effectiveDate = input.date || exam.date;
+      const effectiveStartTime = input.startTime || exam.startTime;
+      const effectiveEndTime = input.endTime || exam.endTime;
+
+      const schedule = this.ensureExamWithinSchoolHours(
+        effectiveDate,
+        effectiveStartTime,
+        effectiveEndTime,
+      );
+
+      await this.ensureNoExamClash(
+        tx,
+        effectiveClassId,
+        teacherId,
+        effectiveDate,
+        schedule.startMinutes,
+        schedule.endMinutes,
+        examId,
+      );
 
       // Update the exam within the transaction
       return tx.exam.update({
