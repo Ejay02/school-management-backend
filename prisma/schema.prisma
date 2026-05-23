@@ -282,6 +282,8 @@ model Attendance{
   id              String        @id @default(uuid())
   date            DateTime
   present         Boolean
+  status          String?
+  reason          String?
   studentId       String
   student         Student       @relation(fields: [studentId], references: [id] )
   lessonId        String

@@ -130,6 +130,8 @@ type Attendance {
   lesson: Lesson!
   lessonId: String!
   present: Boolean!
+  reason: String
+  status: String
   student: Student!
   studentId: String!
   updatedAt: DateTime!
@@ -642,6 +644,8 @@ type Lesson {
 input MarkAttendanceInput {
   date: DateTime!
   present: Boolean!
+  reason: String
+  status: String
   studentId: String!
 }
 

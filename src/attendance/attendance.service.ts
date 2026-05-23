@@ -155,12 +155,16 @@ export class AttendanceService {
       },
       update: {
         present: true,
+        status: 'PRESENT',
+        reason: null,
       },
       create: {
         lessonId,
         studentId: userId,
         date: new Date(dateKey),
         present: true,
+        status: 'PRESENT',
+        reason: null,
         classId: lesson.classId,
       },
       include: {
@@ -413,9 +417,35 @@ export class AttendanceService {
       );
     }
 
+    const allowedStatuses = new Set([
+      'PRESENT',
+      'ABSENT',
+      'LATE',
+      'EARLY_LEAVE',
+    ]);
+
+    const normalizeStatus = (status: unknown, present: boolean) => {
+      if (typeof status === 'string' && status.trim()) {
+        const normalized = status.trim().toUpperCase();
+        if (!allowedStatuses.has(normalized)) {
+          throw new ForbiddenException('Invalid attendance status');
+        }
+        return normalized;
+      }
+      return present ? 'PRESENT' : 'ABSENT';
+    };
+
     // Create attendance records
     const attendanceRecords = await Promise.all(
       attendanceData.map(async (data) => {
+        const status = normalizeStatus(data.status, data.present);
+        const present =
+          status === 'ABSENT' ? false : true;
+        const reason =
+          typeof data.reason === 'string' && data.reason.trim()
+            ? data.reason.trim()
+            : null;
+
         return this.prisma.attendance.upsert({
           where: {
             lessonId_studentId_date: {
@@ -425,13 +455,17 @@ export class AttendanceService {
             },
           },
           update: {
-            present: data.present,
+            present,
+            status,
+            reason,
           },
           create: {
             lessonId,
             studentId: data.studentId,
             date: data.date,
-            present: data.present,
+            present,
+            status,
+            reason,
             classId: lesson.classId,
           },
           include: {

@@ -14,6 +14,12 @@ export class Attendance {
   @Field()
   present: boolean;
 
+  @Field({ nullable: true })
+  status?: string;
+
+  @Field({ nullable: true })
+  reason?: string;
+
   @Field()
   studentId: string;
 
