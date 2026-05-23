@@ -78,6 +78,43 @@ export class AttendanceResolver {
     );
   }
 
+  @Mutation(() => AttendanceSessionToken)
+  @HasRoles(Roles.TEACHER)
+  async createAttendanceSessionBySubject(
+    @Args('classId') classId: string,
+    @Args('subjectId') subjectId: string,
+    @Args('date') date: Date,
+    @Context() context,
+  ) {
+    return await this.attendanceService.createAttendanceSessionBySubject(
+      classId,
+      subjectId,
+      date,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Mutation(() => [Attendance])
+  @HasRoles(Roles.TEACHER)
+  async markAttendanceBySubject(
+    @Args('classId') classId: string,
+    @Args('subjectId') subjectId: string,
+    @Args('date') date: Date,
+    @Args('attendanceData', { type: () => [MarkAttendanceInput] })
+    attendanceData: MarkAttendanceInput[],
+    @Context() context,
+  ) {
+    return await this.attendanceService.markAttendanceBySubject(
+      classId,
+      subjectId,
+      date,
+      attendanceData,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
   @Mutation(() => Attendance)
   @HasRoles(Roles.STUDENT)
   async checkInAttendance(@Args('token') token: string, @Context() context) {

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -33,6 +34,54 @@ export class AttendanceService {
       'lessonId' in record &&
       'date' in record
     );
+  }
+
+  private getWeekdayLabel(date: Date): string {
+    const day = new Date(date);
+    if (Number.isNaN(day.getTime())) {
+      throw new BadRequestException('Invalid date.');
+    }
+    const map = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+    return map[day.getDay()];
+  }
+
+  private async resolveLessonIdForSubjectOnDate(
+    classId: string,
+    subjectId: string,
+    teacherId: string,
+    date: Date,
+  ): Promise<string> {
+    const weekday = this.getWeekdayLabel(date);
+    if (weekday === 'Sunday' || weekday === 'Saturday') {
+      throw new BadRequestException('Attendance can only be marked Monday to Friday.');
+    }
+
+    const lessons = await this.prisma.lesson.findMany({
+      where: {
+        classId,
+        subjectId,
+        teacherId,
+        day: { contains: weekday, mode: 'insensitive' },
+      },
+      select: { id: true, startTime: true },
+      orderBy: { startTime: 'asc' },
+    });
+
+    if (!lessons.length) {
+      throw new NotFoundException(
+        'No lesson found for this subject on the selected date.',
+      );
+    }
+
+    return lessons[0].id;
   }
 
   async createAttendanceSession(
@@ -85,6 +134,44 @@ export class AttendanceService {
       expiresAt,
       qrPayload: `school:v1:attendance_session:${token}`,
     };
+  }
+
+  async createAttendanceSessionBySubject(
+    classId: string,
+    subjectId: string,
+    date: Date,
+    userId: string,
+    userRole: Roles,
+  ) {
+    if (userRole !== Roles.TEACHER) {
+      throw new ForbiddenException(
+        'Only teachers can start attendance sessions',
+      );
+    }
+
+    const hasAccess = await this.prisma.class.findFirst({
+      where: {
+        id: classId,
+        OR: [
+          { supervisorId: userId },
+          { subjects: { some: { id: subjectId, teachers: { some: { id: userId } } } } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!hasAccess) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    const lessonId = await this.resolveLessonIdForSubjectOnDate(
+      classId,
+      subjectId,
+      userId,
+      date,
+    );
+
+    return this.createAttendanceSession(lessonId, date, userId, userRole);
   }
 
   async checkInAttendance(token: string, userId: string, userRole: Roles) {
@@ -484,6 +571,43 @@ export class AttendanceService {
     });
 
     return attendanceRecords;
+  }
+
+  async markAttendanceBySubject(
+    classId: string,
+    subjectId: string,
+    date: Date,
+    attendanceData: MarkAttendanceInput[],
+    userId: string,
+    userRole: Roles,
+  ) {
+    if (userRole !== Roles.TEACHER) {
+      throw new ForbiddenException('Only teachers can mark attendance');
+    }
+
+    const hasAccess = await this.prisma.class.findFirst({
+      where: {
+        id: classId,
+        OR: [
+          { supervisorId: userId },
+          { subjects: { some: { id: subjectId, teachers: { some: { id: userId } } } } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!hasAccess) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    const lessonId = await this.resolveLessonIdForSubjectOnDate(
+      classId,
+      subjectId,
+      userId,
+      date,
+    );
+
+    return this.markAttendance(lessonId, attendanceData, userId, userRole);
   }
 
   // Get attendance statistics

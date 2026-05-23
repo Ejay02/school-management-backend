@@ -673,6 +673,7 @@ type Mutation {
   createAnnouncement(classId: String, content: String!, targetRoles: [String!], title: String!): Announcement!
   createAssignment(createAssignmentInput: CreateAssignmentInput!): Assignment!
   createAttendanceSession(date: DateTime!, lessonId: String!): AttendanceSessionToken!
+  createAttendanceSessionBySubject(classId: String!, date: DateTime!, subjectId: String!): AttendanceSessionToken!
   createClass(input: CreateClassInput!): Class!
   createEvent(data: CreateEventInput!): Event!
   createExam(input: CreateExamInput!): Exam!
@@ -703,6 +704,7 @@ type Mutation {
   logout(refreshToken: String!): Boolean!
   markAnnouncementAsRead(announcementId: String!): Boolean!
   markAttendance(attendanceData: [MarkAttendanceInput!]!, lessonId: String!): [Attendance!]!
+  markAttendanceBySubject(attendanceData: [MarkAttendanceInput!]!, classId: String!, date: DateTime!, subjectId: String!): [Attendance!]!
   markEventAsRead(eventId: String!): Boolean!
   notifyStudentResults(message: String, studentId: String!, term: String!): [Result!]!
   parentSignup(input: ParentSignupInput!): AuthResponse!
