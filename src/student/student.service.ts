@@ -252,7 +252,7 @@ export class StudentService {
       const [maleCount, femaleCount, studentList] = await Promise.all([
         this.prisma.student.count({ where: { ...whereClause, sex: 'MALE' } }),
         this.prisma.student.count({ where: { ...whereClause, sex: 'FEMALE' } }),
-        params && params.page !== undefined
+        params?.page !== undefined
           ? PrismaQueryBuilder.paginateResponse(
               this.prisma.student,
               {

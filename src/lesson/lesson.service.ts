@@ -146,7 +146,7 @@ export class LessonService {
 
       for (let i = 0; i < slots; i++) {
         const slotDay = this.normalizeWeekday(days[i]);
-        if (!slotDay || slotDay.toLowerCase() !== day.toLowerCase()) continue;
+        if (slotDay?.toLowerCase() !== day.toLowerCase()) continue;
         let slotStart: number;
         let slotEnd: number;
         try {
@@ -192,7 +192,7 @@ export class LessonService {
 
       for (let i = 0; i < slots; i++) {
         const slotDay = this.normalizeWeekday(days[i]);
-        if (!slotDay || slotDay.toLowerCase() !== day.toLowerCase()) continue;
+        if (slotDay?.toLowerCase() !== day.toLowerCase()) continue;
         let slotStart: number;
         let slotEnd: number;
         try {

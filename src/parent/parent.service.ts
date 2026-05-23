@@ -66,7 +66,7 @@ export class ParentService {
           // baseQuery already has the include
           break;
 
-        case Roles.TEACHER:
+        case Roles.TEACHER: {
           // Teachers can only see parents of students in their classes
           const classIds = await this.getTeacherClassIds(userId);
 
@@ -89,8 +89,9 @@ export class ParentService {
             },
           };
           break;
+        }
 
-        case Roles.STUDENT:
+        case Roles.STUDENT: {
           // Students can only see their own parents
           const student = await this.prisma.student.findUnique({
             where: { id: userId },
@@ -103,6 +104,7 @@ export class ParentService {
             id: student?.parentId,
           };
           break;
+        }
 
         case Roles.PARENT:
           // Parents can only see their own profile
@@ -202,19 +204,19 @@ export class ParentService {
         // Update parent profile
         const updateData: any = {};
 
-        if (typeof input.name !== 'undefined') updateData.name = input.name;
-        if (typeof input.surname !== 'undefined') updateData.surname = input.surname;
-        if (typeof input.username !== 'undefined')
-          updateData.username = input.username;
-        if (typeof input.email !== 'undefined') updateData.email = input.email;
-        if (typeof input.phone !== 'undefined') updateData.phone = input.phone;
-        if (typeof input.address !== 'undefined') updateData.address = input.address;
-        if (typeof input.aboutMe !== 'undefined') updateData.aboutMe = input.aboutMe;
-        if (typeof input.dateOfBirth !== 'undefined')
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.surname !== undefined) updateData.surname = input.surname;
+        if (input.username !== undefined) updateData.username = input.username;
+        if (input.email !== undefined) updateData.email = input.email;
+        if (input.phone !== undefined) updateData.phone = input.phone;
+        if (input.address !== undefined) updateData.address = input.address;
+        if (input.aboutMe !== undefined) updateData.aboutMe = input.aboutMe;
+        if (input.dateOfBirth !== undefined)
           updateData.dateOfBirth = input.dateOfBirth;
 
-        if ((passwordData as any).password) updateData.password = (passwordData as any).password;
-        if (typeof imageUrl !== 'undefined') updateData.image = imageUrl;
+        if ((passwordData as any).password)
+          updateData.password = (passwordData as any).password;
+        if (imageUrl !== undefined) updateData.image = imageUrl;
 
         return tx.parent.update({
           where: { id },

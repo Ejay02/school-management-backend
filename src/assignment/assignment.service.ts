@@ -471,25 +471,26 @@ export class AssignmentService {
           title: editAssignmentInput.title,
           startDate,
           dueDate,
-          ...(editAssignmentInput.description !== undefined
-            ? { description: editAssignmentInput.description }
-            : {}),
-          ...(editAssignmentInput.instructions !== undefined
-            ? { instructions: editAssignmentInput.instructions }
-            : {}),
-          ...(editAssignmentInput.content !== undefined
-            ? { content: editAssignmentInput.content }
-            : {}),
-          ...(editAssignmentInput.lessonId !== undefined
-            ? { lessonId: editAssignmentInput.lessonId }
-            : {}),
-          ...(editAssignmentInput.subjectId !== undefined
-            ? { subjectId: editAssignmentInput.subjectId }
-            : {}),
-          ...(editAssignmentInput.classId !== undefined
-            ? { classId: editAssignmentInput.classId }
-            : {}),
         };
+
+        if (editAssignmentInput.description !== undefined) {
+          editData.description = editAssignmentInput.description;
+        }
+        if (editAssignmentInput.instructions !== undefined) {
+          editData.instructions = editAssignmentInput.instructions;
+        }
+        if (editAssignmentInput.content !== undefined) {
+          editData.content = editAssignmentInput.content;
+        }
+        if (editAssignmentInput.lessonId !== undefined) {
+          editData.lessonId = editAssignmentInput.lessonId;
+        }
+        if (editAssignmentInput.subjectId !== undefined) {
+          editData.subjectId = editAssignmentInput.subjectId;
+        }
+        if (editAssignmentInput.classId !== undefined) {
+          editData.classId = editAssignmentInput.classId;
+        }
 
         // Update the assignment with the provided data
         return await tx.assignment.update({
