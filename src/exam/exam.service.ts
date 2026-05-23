@@ -31,6 +31,8 @@ export class ExamService {
 
   private readonly schoolStartMinutes = 9 * 60;
   private readonly schoolEndMinutes = 14 * 60;
+  private readonly breakStartMinutes = 12 * 60;
+  private readonly breakEndMinutes = 13 * 60;
 
   private getWeekdayIndex(date: Date): number {
     return date.getDay();
@@ -75,6 +77,19 @@ export class ExamService {
     ) {
       throw new BadRequestException(
         'Exams must be within school hours (Mon-Fri, 9:00am to 2:00pm).',
+      );
+    }
+
+    if (
+      this.timeRangesOverlap(
+        startMinutes,
+        endMinutes,
+        this.breakStartMinutes,
+        this.breakEndMinutes,
+      )
+    ) {
+      throw new BadRequestException(
+        'Exams cannot be scheduled during break time (12:00pm to 1:00pm).',
       );
     }
 

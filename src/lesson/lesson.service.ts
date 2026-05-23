@@ -22,6 +22,8 @@ export class LessonService {
 
   private readonly schoolStartMinutes = 9 * 60;
   private readonly schoolEndMinutes = 14 * 60;
+  private readonly breakStartMinutes = 12 * 60;
+  private readonly breakEndMinutes = 13 * 60;
   private readonly weekdayNames = [
     'Monday',
     'Tuesday',
@@ -73,6 +75,19 @@ export class LessonService {
     ) {
       throw new BadRequestException(
         'Lessons must be within school hours (Mon-Fri, 9:00am to 2:00pm).',
+      );
+    }
+
+    if (
+      this.timeRangesOverlap(
+        startMinutes,
+        endMinutes,
+        this.breakStartMinutes,
+        this.breakEndMinutes,
+      )
+    ) {
+      throw new BadRequestException(
+        'Lessons cannot be scheduled during break time (12:00pm to 1:00pm).',
       );
     }
 
