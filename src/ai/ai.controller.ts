@@ -10,6 +10,9 @@ export class AiController {
     if (!message?.trim()) {
       throw new BadRequestException('Message is required');
     }
+    if (message.length > 5000) {
+      throw new BadRequestException('Message is too long');
+    }
 
     return this.aiService.chat(message);
   }

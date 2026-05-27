@@ -6,6 +6,7 @@ import { EventEmitter } from 'events';
 import rateLimit from 'express-rate-limit';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   console.log(`
@@ -61,6 +62,14 @@ async function bootstrap() {
 
   // Create the app with HTTPS options if available
   const app = await NestFactory.create(AppModule, { httpsOptions });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   app.useWebSocketAdapter(new IoAdapter(app));
 
