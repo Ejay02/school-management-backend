@@ -17,6 +17,20 @@ type ContactMessageInput = {
 export class ContactService {
   constructor(private readonly mailService: MailService) {}
 
+  private escapeHtml(value: string) {
+    const text = typeof value === 'string' ? value : '';
+    return text
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  private hasNewlines(value: string) {
+    return /[\r\n]/.test(value);
+  }
+
   private normalizeInput(input: ContactMessageInput) {
     return {
       name: input.name.trim(),
@@ -55,6 +69,14 @@ export class ContactService {
         'You must agree to the privacy policy and terms of service',
       );
     }
+
+    if (
+      this.hasNewlines(input.name) ||
+      this.hasNewlines(input.email) ||
+      this.hasNewlines(input.inquiryType)
+    ) {
+      throw new BadRequestException('Invalid input');
+    }
   }
 
   async sendContactMessage(rawInput: ContactMessageInput) {
@@ -71,7 +93,7 @@ export class ContactService {
 
     await this.mailService.sendMail({
       to: recipient,
-      subject: `New Contact Inquiry: ${input.inquiryType}`,
+      subject: `New Contact Inquiry: ${input.inquiryType.replace(/[\r\n]/g, ' ').slice(0, 80)}`,
       replyTo: input.email,
       text: [
         'New contact form submission',
@@ -84,11 +106,11 @@ export class ContactService {
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.5;">
           <h2 style="margin: 0 0 12px;">New Contact Form Submission</h2>
-          <p style="margin: 0 0 8px;"><strong>Name:</strong> ${input.name}</p>
-          <p style="margin: 0 0 8px;"><strong>Email:</strong> ${input.email}</p>
-          <p style="margin: 0 0 8px;"><strong>Inquiry Type:</strong> ${input.inquiryType}</p>
+          <p style="margin: 0 0 8px;"><strong>Name:</strong> ${this.escapeHtml(input.name)}</p>
+          <p style="margin: 0 0 8px;"><strong>Email:</strong> ${this.escapeHtml(input.email)}</p>
+          <p style="margin: 0 0 8px;"><strong>Inquiry Type:</strong> ${this.escapeHtml(input.inquiryType)}</p>
           <p style="margin: 12px 0 8px;"><strong>Message:</strong></p>
-          <p style="margin: 0; white-space: pre-wrap;">${input.message}</p>
+          <p style="margin: 0; white-space: pre-wrap;">${this.escapeHtml(input.message)}</p>
         </div>
       `.trim(),
     });
