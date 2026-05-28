@@ -586,7 +586,7 @@ export class ExamService {
           },
         });
         if (!teacherAccess) {
-          throw new ForbiddenException('You do not have access to this exam');
+          throw new ForbiddenException('Nice try — you do not have access to this exam');
         }
         break;
       }
@@ -599,7 +599,7 @@ export class ExamService {
           },
         });
         if (!studentAccess) {
-          throw new ForbiddenException('You do not have access to this exam');
+          throw new ForbiddenException('Nice try — you do not have access to this exam');
         }
         break;
       }
@@ -616,7 +616,7 @@ export class ExamService {
           },
         });
         if (!parentAccess) {
-          throw new ForbiddenException('You do not have access to this exam');
+          throw new ForbiddenException('Nice try — you do not have access to this exam');
         }
         break;
       }

@@ -264,7 +264,7 @@ export class AssignmentService {
         case Roles.TEACHER: {
           if (assignment.teacherId !== userId) {
             throw new ForbiddenException(
-              'You can only view assignments you created',
+              'Nice try — you can only view assignments you created',
             );
           }
           break;
@@ -282,7 +282,7 @@ export class AssignmentService {
 
           if (assignment.classId !== student.classId) {
             throw new ForbiddenException(
-              'You do not have access to this assignment',
+              'Nice try — you do not have access to this assignment',
             );
           }
 
@@ -306,7 +306,7 @@ export class AssignmentService {
           );
           if (!hasAccess) {
             throw new ForbiddenException(
-              'You do not have access to this assignment',
+              'Nice try — you do not have access to this assignment',
             );
           }
 
