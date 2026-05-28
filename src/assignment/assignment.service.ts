@@ -25,6 +25,53 @@ export class AssignmentService {
   @WebSocketServer()
   private readonly server: Server;
 
+  private redactAssessmentContent(content: unknown): unknown {
+    if (typeof content !== 'string' || !content.trim().length) return content;
+    try {
+      const parsed = JSON.parse(content) as any;
+      const questions = Array.isArray(parsed?.questions)
+        ? parsed.questions
+        : [];
+      const safeQuestions = questions.map((q: any) => {
+        if (!q || typeof q !== 'object') return q;
+        const { correctAnswer, ...rest } = q;
+        return rest;
+      });
+      return JSON.stringify({ ...parsed, questions: safeQuestions });
+    } catch {
+      return content;
+    }
+  }
+
+  private canViewAnswers(userRole: Roles, userId: string, assignment: any) {
+    if (userRole !== Roles.TEACHER) return false;
+    return Boolean(assignment?.teacherId && assignment.teacherId === userId);
+  }
+
+  private sanitizeAssignmentForViewer(
+    assignment: any,
+    userId: string,
+    userRole: Roles,
+  ) {
+    if (!assignment) return assignment;
+    if (this.canViewAnswers(userRole, userId, assignment)) return assignment;
+
+    if (Array.isArray(assignment.questions)) {
+      assignment.questions = assignment.questions.map((question) => ({
+        ...question,
+        correctAnswer: null,
+      }));
+    }
+
+    if (typeof assignment.content === 'string') {
+      assignment.content = this.redactAssessmentContent(
+        assignment.content,
+      ) as string;
+    }
+
+    return assignment;
+  }
+
   async getAllAssignments(
     userId: string,
     role: Roles,
@@ -42,6 +89,7 @@ export class AssignmentService {
             subject: true,
             class: true,
             submissions: true,
+            questions: true,
           },
           orderBy: { createdAt: 'desc' },
         };
@@ -58,6 +106,7 @@ export class AssignmentService {
             subject: true,
             class: true,
             submissions: true,
+            questions: true,
           },
           orderBy: { createdAt: 'desc' },
         };
@@ -87,6 +136,7 @@ export class AssignmentService {
                 studentId: userId,
               },
             },
+            questions: true,
           },
           orderBy: { createdAt: 'desc' },
         };
@@ -168,12 +218,16 @@ export class AssignmentService {
       const searchFields = ['title', 'description'];
 
       // Use the PrismaQueryBuilder to handle pagination and search
-      return await PrismaQueryBuilder.paginateResponse(
+      const result = await PrismaQueryBuilder.paginateResponse(
         this.prisma.assignment,
         baseQuery,
         params,
         searchFields,
       );
+      result.data = result.data.map((assignment: any) =>
+        this.sanitizeAssignmentForViewer(assignment, userId, role),
+      );
+      return result;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       if (error instanceof ForbiddenException) throw error;
@@ -181,9 +235,9 @@ export class AssignmentService {
     }
   }
 
-  async getAssignmentById(assignmentId: string) {
+  async getAssignmentById(assignmentId: string, userId: string, role: Roles) {
     try {
-      return await this.prisma.assignment.findUnique({
+      const assignment = await this.prisma.assignment.findUnique({
         where: {
           id: assignmentId,
         },
@@ -194,10 +248,86 @@ export class AssignmentService {
           subject: true,
           class: true,
           lesson: true,
+          questions: true,
         },
       });
+
+      if (!assignment) {
+        throw new NotFoundException('Assignment not found');
+      }
+
+      switch (role) {
+        case Roles.SUPER_ADMIN:
+        case Roles.ADMIN:
+          break;
+
+        case Roles.TEACHER: {
+          if (assignment.teacherId !== userId) {
+            throw new ForbiddenException(
+              'You can only view assignments you created',
+            );
+          }
+          break;
+        }
+
+        case Roles.STUDENT: {
+          const student = await this.prisma.student.findUnique({
+            where: { id: userId },
+            select: { classId: true },
+          });
+
+          if (!student) {
+            throw new NotFoundException('Student not found');
+          }
+
+          if (assignment.classId !== student.classId) {
+            throw new ForbiddenException(
+              'You do not have access to this assignment',
+            );
+          }
+
+          if (Array.isArray(assignment.submissions)) {
+            assignment.submissions = assignment.submissions.filter(
+              (s: any) => s?.studentId === userId,
+            );
+          }
+          break;
+        }
+
+        case Roles.PARENT: {
+          const children = await this.prisma.student.findMany({
+            where: { parentId: userId },
+            select: { id: true, classId: true },
+          });
+
+          const childIds = children.map((c) => c.id);
+          const hasAccess = children.some(
+            (c) => c.classId === assignment.classId,
+          );
+          if (!hasAccess) {
+            throw new ForbiddenException(
+              'You do not have access to this assignment',
+            );
+          }
+
+          if (Array.isArray(assignment.submissions)) {
+            assignment.submissions = assignment.submissions.filter((s: any) =>
+              childIds.includes(s?.studentId),
+            );
+          }
+          break;
+        }
+
+        default:
+          throw new ForbiddenException(
+            'You do not have permission to view assignments',
+          );
+      }
+
+      return this.sanitizeAssignmentForViewer(assignment, userId, role);
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Failed to fetch assignment');
     }
   }

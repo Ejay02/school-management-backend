@@ -34,6 +34,47 @@ export class ExamService {
   private readonly breakStartMinutes = 12 * 60;
   private readonly breakEndMinutes = 13 * 60;
 
+  private redactAssessmentContent(content: unknown): unknown {
+    if (typeof content !== 'string' || !content.trim().length) return content;
+    try {
+      const parsed = JSON.parse(content) as any;
+      const questions = Array.isArray(parsed?.questions)
+        ? parsed.questions
+        : [];
+      const safeQuestions = questions.map((q: any) => {
+        if (!q || typeof q !== 'object') return q;
+        const { correctAnswer, ...rest } = q;
+        return rest;
+      });
+      return JSON.stringify({ ...parsed, questions: safeQuestions });
+    } catch {
+      return content;
+    }
+  }
+
+  private canViewAnswers(userRole: Roles, userId: string, exam: any): boolean {
+    if (userRole !== Roles.TEACHER) return false;
+    return Boolean(exam?.teacherId && exam.teacherId === userId);
+  }
+
+  private sanitizeExamForViewer(exam: any, userId: string, userRole: Roles) {
+    if (!exam) return exam;
+    if (this.canViewAnswers(userRole, userId, exam)) return exam;
+
+    if (Array.isArray(exam.questions)) {
+      exam.questions = exam.questions.map((question) => ({
+        ...question,
+        correctAnswer: null,
+      }));
+    }
+
+    if (typeof exam.content === 'string') {
+      exam.content = this.redactAssessmentContent(exam.content) as string;
+    }
+
+    return exam;
+  }
+
   private getWeekdayIndex(date: Date): number {
     return date.getDay();
   }
@@ -413,12 +454,16 @@ export class ExamService {
         'class.name',
       ];
 
-      return await PrismaQueryBuilder.paginateResponse(
+      const result = await PrismaQueryBuilder.paginateResponse(
         this.prisma.exam,
         baseQuery,
         params,
         searchFields,
       );
+      result.data = result.data.map((exam: any) =>
+        this.sanitizeExamForViewer(exam, userId, userRole),
+      );
+      return result;
     } catch (error) {
       if (
         error instanceof ForbiddenException ||
@@ -506,7 +551,9 @@ export class ExamService {
       searchFields,
     );
 
-    return result.data;
+    return result.data.map((exam: any) =>
+      this.sanitizeExamForViewer(exam, userId, userRole),
+    );
   }
 
   // Retrieve detailed information about a specific exam.
@@ -554,16 +601,6 @@ export class ExamService {
         if (!studentAccess) {
           throw new ForbiddenException('You do not have access to this exam');
         }
-
-        // Remove correct answers from questions for students
-        if (exam.questions) {
-          exam.questions = exam.questions.map((question) => {
-            return {
-              ...question,
-              correctAnswer: '',
-            };
-          });
-        }
         break;
       }
 
@@ -585,7 +622,7 @@ export class ExamService {
       }
     }
 
-    return exam;
+    return this.sanitizeExamForViewer(exam, userId, userRole);
   }
 
   async startExam(input: StartExamInput, userId: string, userRole: Roles) {
@@ -614,7 +651,7 @@ export class ExamService {
     }
 
     // Update the student-exam record to mark it as started
-    return this.prisma.studentExam.update({
+    const updated = await this.prisma.studentExam.update({
       where: {
         id: studentExam.id,
       },
@@ -627,6 +664,10 @@ export class ExamService {
         exam: true,
       },
     });
+    if (updated?.exam) {
+      updated.exam = this.sanitizeExamForViewer(updated.exam, userId, userRole);
+    }
+    return updated;
   }
 
   async completeExam(
@@ -695,6 +736,13 @@ export class ExamService {
         });
       }
 
+      if (updatedStudentExam?.exam) {
+        updatedStudentExam.exam = this.sanitizeExamForViewer(
+          updatedStudentExam.exam,
+          userId,
+          userRole,
+        );
+      }
       return updatedStudentExam;
     });
   }
@@ -727,7 +775,7 @@ export class ExamService {
     }
 
     // Get all exams assigned to the student
-    return this.prisma.studentExam.findMany({
+    const rows = await this.prisma.studentExam.findMany({
       where: {
         studentId: targetStudentId,
       },
@@ -739,6 +787,12 @@ export class ExamService {
           },
         },
       },
+    });
+    return rows.map((row: any) => {
+      if (row?.exam) {
+        row.exam = this.sanitizeExamForViewer(row.exam, userId, userRole);
+      }
+      return row;
     });
   }
 
@@ -833,6 +887,13 @@ export class ExamService {
         },
       });
 
+      if (updatedStudentExam?.exam) {
+        updatedStudentExam.exam = this.sanitizeExamForViewer(
+          updatedStudentExam.exam,
+          userId,
+          userRole,
+        );
+      }
       return updatedStudentExam;
     });
   }

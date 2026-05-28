@@ -47,8 +47,12 @@ export class AssignmentResolver {
     Roles.STUDENT,
     Roles.SUPER_ADMIN,
   )
-  async getAssignmentById(@Args('assignmentId') assignmentId: string) {
-    return this.assignmentService.getAssignmentById(assignmentId);
+  async getAssignmentById(@Context() context, @Args('assignmentId') assignmentId: string) {
+    return this.assignmentService.getAssignmentById(
+      assignmentId,
+      context.req.user.userId,
+      context.req.user.role,
+    );
   }
 
   @Mutation(() => Assignment)
