@@ -61,10 +61,15 @@ export class ExamService {
     if (!exam) return exam;
     if (this.canViewAnswers(userRole, userId, exam)) return exam;
 
+    const redactedAnswer =
+      userRole === Roles.STUDENT
+        ? 'Nice try — answers are teacher-only.'
+        : null;
+
     if (Array.isArray(exam.questions)) {
-      exam.questions = exam.questions.map((question) => ({
+      exam.questions = exam.questions.map((question: any) => ({
         ...question,
-        correctAnswer: null,
+        correctAnswer: redactedAnswer,
       }));
     }
 
@@ -454,7 +459,7 @@ export class ExamService {
         'class.name',
       ];
 
-      const result = await PrismaQueryBuilder.paginateResponse(
+      const result = await PrismaQueryBuilder.paginateResponse<Exam>(
         this.prisma.exam,
         baseQuery,
         params,
@@ -586,7 +591,9 @@ export class ExamService {
           },
         });
         if (!teacherAccess) {
-          throw new ForbiddenException('Nice try — you do not have access to this exam');
+          throw new ForbiddenException(
+            'Nice try — you do not have access to this exam',
+          );
         }
         break;
       }
@@ -599,7 +606,9 @@ export class ExamService {
           },
         });
         if (!studentAccess) {
-          throw new ForbiddenException('Nice try — you do not have access to this exam');
+          throw new ForbiddenException(
+            'Nice try — you do not have access to this exam',
+          );
         }
         break;
       }
@@ -616,7 +625,9 @@ export class ExamService {
           },
         });
         if (!parentAccess) {
-          throw new ForbiddenException('Nice try — you do not have access to this exam');
+          throw new ForbiddenException(
+            'Nice try — you do not have access to this exam',
+          );
         }
         break;
       }

@@ -56,10 +56,15 @@ export class AssignmentService {
     if (!assignment) return assignment;
     if (this.canViewAnswers(userRole, userId, assignment)) return assignment;
 
+    const redactedAnswer =
+      userRole === Roles.STUDENT
+        ? 'Nice try — answers are teacher-only.'
+        : null;
+
     if (Array.isArray(assignment.questions)) {
       assignment.questions = assignment.questions.map((question) => ({
         ...question,
-        correctAnswer: null,
+        correctAnswer: redactedAnswer,
       }));
     }
 
