@@ -911,6 +911,7 @@ type Query {
   getSubjectById(id: String!): Subject!
   getSubmissionsByAssignment(assignmentId: String!, params: PaginationInput): [Submission!]!
   getTeacherById(teacherId: String!): Teacher!
+  getTeacherPendingSubmissions(params: PaginationInput): [Submission!]!
   getTeacherTodayOverview: TeacherTodayOverview!
   getUnreadAnnouncementsCount: Int!
   getUserById(id: String!): UserUnion

@@ -17,6 +17,19 @@ export class SubmissionResolver {
 
   @Query(() => [Submission])
   @HasRoles(Roles.TEACHER)
+  async getTeacherPendingSubmissions(
+    @Context() context,
+    @Args('params', { nullable: true }) params?: PaginationInput,
+  ) {
+    const result = await this.submissionService.getTeacherPendingSubmissions(
+      context.req.user.userId,
+      params || {},
+    );
+    return result.data;
+  }
+
+  @Query(() => [Submission])
+  @HasRoles(Roles.TEACHER)
   async getSubmissionsByAssignment(
     @Context() context,
     @Args('assignmentId') assignmentId: string,

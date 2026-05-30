@@ -14,6 +14,34 @@ import { PaginationParams } from '../shared/pagination/types/pagination.types';
 export class SubmissionService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getTeacherPendingSubmissions(teacherId: string, params?: PaginationParams) {
+    const baseQuery = {
+      where: {
+        assignment: { teacherId },
+        OR: [{ status: 'SUBMITTED' }, { status: 'submitted' }],
+      },
+      include: {
+        student: true,
+        assignment: {
+          include: {
+            class: true,
+            subject: true,
+          },
+        },
+      },
+      orderBy: { submissionDate: 'desc' as const },
+    };
+
+    const searchFields = ['content', 'status'];
+
+    return PrismaQueryBuilder.paginateResponse(
+      this.prisma.submission,
+      baseQuery,
+      params,
+      searchFields,
+    );
+  }
+
   async getSubmissionsByAssignment(
     assignmentId: string,
     teacherId: string,
