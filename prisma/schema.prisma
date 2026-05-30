@@ -203,12 +203,43 @@ model StudentExam {
   hasTaken        Boolean       @default(false) // Flag to track if student has taken the exam
   startedAt       DateTime?     // When the student started the exam
   completedAt     DateTime?     // When the student completed the exam
+  submittedAt     DateTime?
+  answers         Json?
+  answersVersion  Int           @default(0)
+  lastSyncAt      DateTime?
+  lastClientSyncAt DateTime?
+  answersHash     String?
+  clientAnswersHash String?
+  answerOps       StudentExamAnswerOp[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   @@unique([studentId, examId]) // Ensure a student can only be assigned to an exam once
   @@index([studentId])
   @@index([examId])
+}
+
+model StudentExamAnswerOp {
+  id            String   @id @default(uuid())
+  opId          String   @unique
+  studentExamId String
+  studentExam   StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+  baseVersion   Int
+  kind          String
+  questionId    String?
+  payload       Json?
+  clientCreatedAt DateTime?
+  receivedAt    DateTime @default(now())
+  applied       Boolean  @default(false)
+  rejectedReason String?
+  appliedVersion Int?
+  actorId       String?
+  actorUsername String?
+  actorRole     Role?
+  ipAddress     String?
+
+  @@index([studentExamId])
+  @@index([receivedAt])
 }
 
 

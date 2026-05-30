@@ -6,7 +6,9 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { getAuditRequestContext } from 'src/shared/audit/audit-context';
 import { Roles } from 'src/shared/enum/role';
 import {
   PaginatedResponse,
@@ -22,6 +24,7 @@ import {
   AssignExamToStudentInput,
   CompleteExamInput,
   CompleteExamWithAnswersInput,
+  SyncStudentExamAnswersInput,
   StartExamInput,
 } from './input/student-exam.input';
 
@@ -907,6 +910,348 @@ export class ExamService {
       }
       return updatedStudentExam;
     });
+  }
+
+  private normalizeAnswers(value: unknown): Record<string, any> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, any>;
+  }
+
+  private computeAnswersHash(answers: Record<string, any>): string {
+    const keys = Object.keys(answers || {}).sort();
+    const normalized = keys.map((k) => {
+      const v = (answers as any)[k];
+      const answer =
+        v && typeof v === 'object' && !Array.isArray(v) ? v.answer : v;
+      return [k, answer === undefined ? null : answer];
+    });
+    const stable = JSON.stringify(normalized);
+    return createHash('sha256').update(stable).digest('hex');
+  }
+
+  async syncStudentExamAnswers(
+    input: SyncStudentExamAnswersInput,
+    userId: string,
+    userRole: Roles,
+  ) {
+    if (userRole === Roles.STUDENT && userId !== input.studentId) {
+      throw new ForbiddenException('You can only sync your own exam session');
+    }
+
+    const ops = Array.isArray(input.ops) ? input.ops : [];
+    const opIds = ops
+      .map((op) => String(op?.opId || '').trim())
+      .filter((id) => id.length > 0);
+
+    if (!opIds.length) {
+      throw new BadRequestException('At least one operation is required.');
+    }
+
+    const now = new Date();
+    const ctx = getAuditRequestContext();
+    const actor = ctx?.actor;
+    const ipAddress = ctx?.ipAddress;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const studentExam = await tx.studentExam.findUnique({
+        where: {
+          studentId_examId: {
+            studentId: input.studentId,
+            examId: input.examId,
+          },
+        },
+        include: {
+          exam: { include: { questions: true } },
+        },
+      });
+
+      if (!studentExam) {
+        throw new NotFoundException('Student is not assigned to this exam');
+      }
+
+      if (!studentExam.startedAt) {
+        throw new ForbiddenException('Exam has not been started yet');
+      }
+
+      let submittedAt: Date | null = studentExam.submittedAt
+        ? new Date(studentExam.submittedAt)
+        : studentExam.completedAt
+          ? new Date(studentExam.completedAt)
+          : null;
+
+      const existingAnswers = this.normalizeAnswers(studentExam.answers);
+      let currentVersion = Number(studentExam.answersVersion ?? 0);
+
+      const opsToPersist = ops
+        .map((op) => ({
+          opId: String(op?.opId || '').trim(),
+          studentExamId: studentExam.id,
+          baseVersion: Number(op?.baseVersion ?? 0),
+          kind: String(op?.kind || '').trim(),
+          questionId: op?.questionId ? String(op.questionId) : null,
+          payload: op?.answer !== undefined ? { answer: op.answer } : null,
+          clientCreatedAt: op?.clientCreatedAt
+            ? new Date(op.clientCreatedAt)
+            : null,
+          actorId: actor?.id || null,
+          actorUsername: actor?.username || null,
+          actorRole: (actor?.role as any) || null,
+          ipAddress: ipAddress || null,
+        }))
+        .filter((row) => row.opId.length > 0);
+
+      await tx.studentExamAnswerOp.createMany({
+        data: opsToPersist,
+        skipDuplicates: true,
+      });
+
+      const persistedOps = await tx.studentExamAnswerOp.findMany({
+        where: { opId: { in: opIds } },
+        select: {
+          id: true,
+          opId: true,
+          baseVersion: true,
+          kind: true,
+          questionId: true,
+          payload: true,
+          clientCreatedAt: true,
+          applied: true,
+          rejectedReason: true,
+        },
+      });
+
+      const persistedById = new Map(
+        persistedOps.map((row) => [row.opId, row] as const),
+      );
+
+      const appliedOpIds: string[] = [];
+      const duplicateOpIds: string[] = [];
+      const rejectedOps: Array<{ opId: string; reason: string }> = [];
+
+      const questions = Array.isArray(studentExam.exam?.questions)
+        ? studentExam.exam.questions
+        : [];
+      const allowedQuestionIds = new Set(questions.map((q) => q.id));
+
+      const examEndTime = studentExam.exam?.endTime
+        ? new Date(studentExam.exam.endTime)
+        : null;
+      const answerGraceMs = 30_000;
+
+      const applyReject = async (
+        rowId: string,
+        opId: string,
+        reason: string,
+      ) => {
+        rejectedOps.push({ opId, reason });
+        await tx.studentExamAnswerOp.update({
+          where: { id: rowId },
+          data: { rejectedReason: reason },
+        });
+      };
+
+      const seenOpIds = new Set<string>();
+
+      for (const inputOp of ops) {
+        const opId = String(inputOp?.opId || '').trim();
+        if (!opId) continue;
+        if (seenOpIds.has(opId)) {
+          duplicateOpIds.push(opId);
+          continue;
+        }
+        seenOpIds.add(opId);
+
+        const persisted = persistedById.get(opId);
+        if (!persisted) {
+          rejectedOps.push({ opId, reason: 'UNKNOWN_OPERATION' });
+          continue;
+        }
+
+        if (persisted.applied) {
+          duplicateOpIds.push(opId);
+          continue;
+        }
+
+        if (persisted.rejectedReason) {
+          rejectedOps.push({ opId, reason: persisted.rejectedReason });
+          continue;
+        }
+
+        const kind = String(persisted.kind || '')
+          .trim()
+          .toUpperCase();
+
+        if (submittedAt && kind !== 'SUBMIT') {
+          await applyReject(persisted.id, opId, 'ALREADY_SUBMITTED');
+          continue;
+        }
+
+        const baseVersion = Number(persisted.baseVersion ?? 0);
+        if (baseVersion !== currentVersion) {
+          await applyReject(persisted.id, opId, 'VERSION_CONFLICT');
+          continue;
+        }
+
+        if (kind === 'UPSERT_ANSWER' || kind === 'CLEAR_ANSWER') {
+          const questionId = persisted.questionId
+            ? String(persisted.questionId)
+            : '';
+          if (!questionId || !allowedQuestionIds.has(questionId)) {
+            await applyReject(persisted.id, opId, 'INVALID_QUESTION');
+            continue;
+          }
+
+          const clientCreatedAt = persisted.clientCreatedAt
+            ? new Date(persisted.clientCreatedAt)
+            : null;
+
+          const effectiveTime = clientCreatedAt || now;
+          if (
+            examEndTime &&
+            effectiveTime.getTime() > examEndTime.getTime() + answerGraceMs
+          ) {
+            await applyReject(persisted.id, opId, 'EXAM_ENDED');
+            continue;
+          }
+
+          if (kind === 'UPSERT_ANSWER') {
+            const payload: any = persisted.payload || {};
+            const answer = payload?.answer;
+            if (answer === undefined || answer === null) {
+              await applyReject(persisted.id, opId, 'MISSING_ANSWER');
+              continue;
+            }
+            existingAnswers[questionId] = {
+              answer: String(answer),
+              clientCreatedAt: clientCreatedAt
+                ? clientCreatedAt.toISOString()
+                : null,
+              serverUpdatedAt: now.toISOString(),
+            };
+          } else {
+            delete existingAnswers[questionId];
+          }
+        } else if (kind === 'SUBMIT') {
+          if (submittedAt) {
+            await applyReject(persisted.id, opId, 'ALREADY_SUBMITTED');
+            continue;
+          }
+
+          const answerMap = new Map<string, string>();
+          for (const [questionId, value] of Object.entries(existingAnswers)) {
+            const answer =
+              value && typeof value === 'object' && !Array.isArray(value)
+                ? (value as any).answer
+                : value;
+            if (typeof answer === 'string') {
+              answerMap.set(questionId, answer);
+            }
+          }
+
+          let totalPoints = 0;
+          let earnedPoints = 0;
+
+          for (const question of questions) {
+            totalPoints += Number(question.points ?? 0);
+            const studentAnswer = answerMap.get(question.id);
+            if (
+              typeof studentAnswer === 'string' &&
+              typeof question.correctAnswer === 'string' &&
+              studentAnswer === question.correctAnswer
+            ) {
+              earnedPoints += Number(question.points ?? 0);
+            }
+          }
+
+          const score =
+            totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+
+          const existingResult = await tx.result.findFirst({
+            where: {
+              examId: studentExam.examId,
+              studentId: studentExam.studentId,
+            },
+            select: { id: true },
+          });
+
+          if (!existingResult) {
+            await tx.result.create({
+              data: {
+                score,
+                examId: studentExam.examId,
+                studentId: studentExam.studentId,
+              },
+            });
+          }
+          submittedAt = now;
+        } else {
+          await applyReject(persisted.id, opId, 'UNKNOWN_KIND');
+          continue;
+        }
+
+        currentVersion += 1;
+        appliedOpIds.push(opId);
+        await tx.studentExamAnswerOp.update({
+          where: { id: persisted.id },
+          data: { applied: true, appliedVersion: currentVersion },
+        });
+      }
+
+      const answersHash = this.computeAnswersHash(existingAnswers);
+      const integrityMismatch =
+        Boolean(input.clientAnswersHash) &&
+        input.clientAnswersHash !== answersHash;
+
+      const submitTime = submittedAt;
+
+      const updatedStudentExam = await tx.studentExam.update({
+        where: { id: studentExam.id },
+        data: {
+          answers: existingAnswers,
+          answersVersion: currentVersion,
+          lastSyncAt: now,
+          lastClientSyncAt: input.clientNow ? new Date(input.clientNow) : null,
+          submittedAt: submitTime,
+          completedAt: submitTime,
+          hasTaken: true,
+          clientAnswersHash: input.clientAnswersHash || null,
+          answersHash,
+        },
+        select: {
+          answers: true,
+          answersVersion: true,
+          submittedAt: true,
+          completedAt: true,
+          answersHash: true,
+          clientAnswersHash: true,
+        },
+      });
+
+      const hasConflict = rejectedOps.some(
+        (r) => r.reason === 'VERSION_CONFLICT',
+      );
+      const status = hasConflict
+        ? 'CONFLICT'
+        : rejectedOps.length
+          ? 'PARTIAL'
+          : 'OK';
+
+      return {
+        status,
+        serverVersion: updatedStudentExam.answersVersion,
+        serverAnswers: updatedStudentExam.answers,
+        appliedOpIds,
+        duplicateOpIds,
+        rejectedOps,
+        submittedAt: updatedStudentExam.submittedAt || null,
+        completedAt: updatedStudentExam.completedAt || null,
+        integrityMismatch,
+        serverAnswersHash: updatedStudentExam.answersHash || null,
+        clientAnswersHash: updatedStudentExam.clientAnswersHash || null,
+      };
+    });
+
+    return result;
   }
 
   //  might want to assign an exam to only certain students in a class (for example, makeup exams, special assessments, or accommodations)

@@ -10,10 +10,11 @@ import { UpdateExamInput } from './input/update.exam.input';
 import { PaginationInput } from '../shared/pagination/input/pagination.input';
 import { CreateExamInput } from './input/create.exam.input';
 import { DeleteResponse } from '../shared/auth/response/delete.response';
-import { StudentExam } from './types/student-exam.types';
+import { StudentExam, StudentExamSyncResponse } from './types/student-exam.types';
 import {
   AssignExamToStudentInput,
   CompleteExamInput,
+  SyncStudentExamAnswersInput,
   StartExamInput,
 } from './input/student-exam.input';
 
@@ -116,6 +117,19 @@ export class ExamResolver {
     @Args('input') input: CompleteExamInput,
   ) {
     return await this.examService.completeExam(
+      input,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
+  @Mutation(() => StudentExamSyncResponse)
+  @HasRoles(Roles.STUDENT)
+  async syncStudentExamAnswers(
+    @Context() context,
+    @Args('input') input: SyncStudentExamAnswersInput,
+  ) {
+    return await this.examService.syncStudentExamAnswers(
       input,
       context.req.user.userId,
       context.req.user.role,

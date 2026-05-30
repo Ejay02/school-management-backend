@@ -719,6 +719,7 @@ type Mutation {
   setUserActiveStatus(isActive: Boolean!, reason: String, targetId: String!): UserUnion!
   startExam(input: StartExamInput!): StudentExam!
   studentSignup(input: StudentSignupInput!): AuthResponse!
+  syncStudentExamAnswers(input: SyncStudentExamAnswersInput!): StudentExamSyncResponse!
   teacherSignup(input: TeacherSignupInput!): AuthResponse!
   unarchiveAnnouncement(announcementId: String!): Boolean!
   updateAdminProfile(input: UpdateProfileInput!): Admin!
@@ -1108,16 +1109,51 @@ type Student {
 }
 
 type StudentExam {
+  answers: JSON
+  answersHash: String
+  answersVersion: Float!
+  clientAnswersHash: String
   completedAt: DateTime
   createdAt: DateTime!
   exam: Exam!
   examId: String!
   hasTaken: Boolean!
   id: ID!
+  lastClientSyncAt: DateTime
+  lastSyncAt: DateTime
   startedAt: DateTime
   student: Student!
   studentId: String!
+  submittedAt: DateTime
   updatedAt: DateTime!
+}
+
+input StudentExamAnswerOpInput {
+  answer: String
+  baseVersion: Int!
+  clientCreatedAt: DateTime
+  kind: String!
+  opId: String!
+  questionId: String
+}
+
+type StudentExamSyncRejectedOp {
+  opId: String!
+  reason: String!
+}
+
+type StudentExamSyncResponse {
+  appliedOpIds: [String!]!
+  clientAnswersHash: String
+  completedAt: DateTime
+  duplicateOpIds: [String!]!
+  integrityMismatch: Boolean!
+  rejectedOps: [StudentExamSyncRejectedOp!]!
+  serverAnswers: JSON
+  serverAnswersHash: String
+  serverVersion: Float!
+  status: String!
+  submittedAt: DateTime
 }
 
 type StudentGenderStatistics {
@@ -1185,6 +1221,15 @@ type Submission {
   student: Student!
   studentId: String!
   submissionDate: DateTime!
+}
+
+input SyncStudentExamAnswersInput {
+  clientAnswersHash: String
+  clientNow: DateTime
+  clientState: JSON
+  examId: String!
+  ops: [StudentExamAnswerOpInput!]!
+  studentId: String!
 }
 
 type Teacher {

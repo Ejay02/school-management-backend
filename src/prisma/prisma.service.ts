@@ -101,6 +101,7 @@ export class PrismaService
       'Lesson',
       'Exam',
       'Assignment',
+      'Result',
       'Invoice',
       'Payment',
       'FeeStructure',
@@ -171,7 +172,8 @@ export class PrismaService
                     action: op.toUpperCase(),
                     entityType: modelName,
                     entityId: entityId || (after as any)?.id || null,
-                    entityLabel: getEntityLabel(after) || getEntityLabel(before),
+                    entityLabel:
+                      getEntityLabel(after) || getEntityLabel(before),
                     actorId: actor?.id || null,
                     actorUsername: actor?.username || null,
                     actorName: actor?.name || null,
