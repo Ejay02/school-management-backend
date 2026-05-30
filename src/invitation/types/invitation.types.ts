@@ -34,6 +34,12 @@ export class Invitation {
   @Field(() => Date)
   lastSentAt: Date;
 
+  @Field(() => Int)
+  reminderCount: number;
+
+  @Field(() => Date, { nullable: true })
+  lastReminderSentAt?: Date;
+
   @Field(() => Date)
   expiresAt: Date;
 

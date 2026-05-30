@@ -389,6 +389,8 @@ model Invitation {
   sentAt     DateTime     @default(now())
   sentCount  Int          @default(1)
   lastSentAt DateTime     @default(now())
+  reminderCount Int       @default(0)
+  lastReminderSentAt DateTime?
   expiresAt  DateTime
   acceptedAt DateTime?
   revokedAt  DateTime?

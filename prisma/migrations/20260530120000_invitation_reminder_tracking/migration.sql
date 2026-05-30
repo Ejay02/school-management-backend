@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Invitation"
+ADD COLUMN IF NOT EXISTS "reminderCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "lastReminderSentAt" TIMESTAMP(3);

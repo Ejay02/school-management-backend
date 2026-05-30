@@ -12,6 +12,7 @@ import { MailService } from 'src/mail/mail.service';
 import { InviteStatus } from './enum/inviteStatus';
 import { AuthService } from 'src/shared/auth/auth.service';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class InvitationService {
@@ -368,6 +369,76 @@ export class InvitationService {
     });
   }
 
+  private async sendInvitationReminderEmail(params: {
+    email: string;
+    name?: string | null;
+    role: Roles;
+    token: string;
+    expiresAt: Date;
+  }) {
+    const link = this.getInviteLink(params.token);
+    const { schoolAddress, schoolLogo, schoolName } =
+      await this.getSchoolBranding();
+
+    const roleLabel = this.roleLabel(params.role);
+    const safeRoleLabel = this.escapeHtml(roleLabel);
+    const inviteeName = formatFirstName(params.name) || 'there';
+    const safeInviteeName = this.escapeHtml(inviteeName);
+    const safeSchoolName = this.escapeHtml(schoolName || 'your school');
+    const safeSchoolAddress = schoolAddress
+      ? this.escapeHtml(schoolAddress)
+      : null;
+    const safeLink = this.escapeHtml(link);
+    const logoUrl = this.normalizePublicImageUrl(schoolLogo);
+    const safeLogoUrl = logoUrl ? this.escapeHtmlAttribute(logoUrl) : null;
+
+    const expiresLabel = params.expiresAt.toLocaleDateString();
+    const safeExpiresLabel = this.escapeHtml(expiresLabel);
+
+    const subject = `Reminder: your ${schoolName || 'school'} invitation is waiting`;
+    const text = `Hi ${inviteeName},\n\nJust a reminder: your invitation to join ${schoolName || 'your school'} as a ${roleLabel} is still pending.\n\nAccept invitation: ${link}\n\nThis invite expires on ${expiresLabel}.\n\nIf you weren’t expecting this, you can ignore this email.`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+          ${
+            safeLogoUrl
+              ? `<img src="${safeLogoUrl}" width="40" height="40" alt="${safeSchoolName}" style="display:block; width:40px; height:40px; border-radius:8px; object-fit:cover;" />`
+              : `<div style="width:40px; height:40px; border-radius:8px; background-color:#3b2fa3; display:inline-block;"></div>`
+          }
+          <div>
+            <div style="font-weight:700; color:#17123a;">${safeSchoolName}</div>
+            <div style="font-size:12px; color:#4b4675;">Invitation reminder</div>
+          </div>
+        </div>
+
+        <p style="margin:0 0 10px;">Hi ${safeInviteeName},</p>
+        <p style="margin:0 0 10px; color:#2f2a5e;">
+          Just a reminder: your invitation to join ${safeSchoolName} as a ${safeRoleLabel} is still pending.
+        </p>
+        <p style="margin:0 0 10px;">
+          <a href="${safeLink}">${safeLink}</a>
+        </p>
+        <p style="margin:0 0 10px; color:#4b4675;">
+          This invite expires on ${safeExpiresLabel}.
+        </p>
+        ${
+          safeSchoolAddress
+            ? `<p style="margin:12px 0 0; font-size:12px; color:#6b6790;">${safeSchoolAddress}</p>`
+            : ''
+        }
+      </div>
+    `.trim();
+
+    await this.mailService.sendMail({
+      to: params.email,
+      subject,
+      mailType: 'onboarding',
+      html,
+      text,
+    });
+  }
+
   private async refreshExpiredInvitations() {
     const now = new Date();
 
@@ -429,6 +500,113 @@ export class InvitationService {
     return `${accepted} of ${totalSent} invited users activated`;
   }
 
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async sendInvitationRemindersCron() {
+    await this.sendPendingInvitationReminders();
+  }
+
+  async sendPendingInvitationReminders() {
+    await this.refreshExpiredInvitations();
+
+    const now = new Date();
+    const firstReminderDays = Math.max(
+      Number.parseInt(process.env.INVITE_REMINDER_FIRST_DAYS || '3', 10) || 3,
+      1,
+    );
+    const enableSecondReminder = /^true$/i.test(
+      process.env.INVITE_REMINDER_ENABLE_SECOND || 'false',
+    );
+    const secondReminderDays = Math.max(
+      Number.parseInt(process.env.INVITE_REMINDER_SECOND_DAYS || '6', 10) || 6,
+      firstReminderDays + 1,
+    );
+
+    const firstThreshold = new Date(now);
+    firstThreshold.setDate(firstThreshold.getDate() - firstReminderDays);
+
+    const secondThreshold = new Date(now);
+    secondThreshold.setDate(secondThreshold.getDate() - secondReminderDays);
+
+    const pendingBaseWhere = {
+      status: InviteStatus.PENDING as any,
+      acceptedAt: null,
+      revokedAt: null,
+      expiresAt: { gt: now },
+    } as const;
+
+    const [firstBatch, secondBatch] = await Promise.all([
+      this.prisma.invitation.findMany({
+        where: {
+          ...pendingBaseWhere,
+          reminderCount: 0,
+          sentAt: { lte: firstThreshold },
+        } as any,
+      }),
+      enableSecondReminder
+        ? this.prisma.invitation.findMany({
+            where: {
+              ...pendingBaseWhere,
+              reminderCount: 1,
+              sentAt: { lte: secondThreshold },
+            } as any,
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const invitesToRemind = [...firstBatch, ...secondBatch].sort((a, b) => {
+      const aTime = a.sentAt?.getTime?.() ?? 0;
+      const bTime = b.sentAt?.getTime?.() ?? 0;
+      return aTime - bTime;
+    });
+
+    for (const invite of invitesToRemind) {
+      if (!invite?.id) continue;
+
+      const originalReminderCount = invite.reminderCount || 0;
+      const originalLastReminderSentAt = invite.lastReminderSentAt || null;
+
+      if (originalLastReminderSentAt) {
+        const sameDay =
+          originalLastReminderSentAt.toDateString() === now.toDateString();
+        if (sameDay) continue;
+      }
+
+      const reserve = await this.prisma.invitation.updateMany({
+        where: {
+          id: invite.id,
+          ...pendingBaseWhere,
+          reminderCount: originalReminderCount,
+        } as any,
+        data: {
+          reminderCount: { increment: 1 },
+          lastReminderSentAt: now,
+        } as any,
+      });
+
+      if (!reserve.count) continue;
+
+      try {
+        await this.sendInvitationReminderEmail({
+          email: invite.email,
+          name: invite.name,
+          role: invite.role as any,
+          token: invite.token,
+          expiresAt: invite.expiresAt,
+        });
+      } catch (error) {
+        await this.prisma.invitation.update({
+          where: { id: invite.id },
+          data: {
+            reminderCount: originalReminderCount,
+            lastReminderSentAt: originalLastReminderSentAt,
+          } as any,
+        });
+
+        throw error;
+      }
+    }
+  }
+
   async createInvitation(
     invitedByUserId: string,
     name: string,
@@ -476,6 +654,8 @@ export class InvitationService {
         sentAt: now,
         sentCount: 1,
         lastSentAt: now,
+        reminderCount: 0,
+        lastReminderSentAt: null,
         expiresAt,
       },
     });
@@ -522,6 +702,8 @@ export class InvitationService {
         lastSentAt: now,
         expiresAt,
         revokedAt: null,
+        reminderCount: 0,
+        lastReminderSentAt: null,
       },
     });
 

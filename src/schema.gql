@@ -530,8 +530,10 @@ type Invitation {
   expiresAt: DateTime!
   id: String!
   invitedBy: String
+  lastReminderSentAt: DateTime
   lastSentAt: DateTime!
   name: String
+  reminderCount: Int!
   revokedAt: DateTime
   role: Roles!
   sentAt: DateTime!
