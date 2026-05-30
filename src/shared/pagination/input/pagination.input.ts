@@ -22,7 +22,7 @@ export class PaginationInput {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(1000)
   limit?: number;
 
   @Field(() => String, { nullable: true })
