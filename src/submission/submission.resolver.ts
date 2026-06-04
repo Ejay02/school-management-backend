@@ -9,6 +9,7 @@ import { Roles } from '../shared/enum/role';
 import { PaginationInput } from '../shared/pagination/input/pagination.input';
 import { CreateSubmissionInput } from './input/create.submission.input';
 import { UpdateSubmissionInput } from './input/update.submission.input';
+import { GradeSubmissionInput } from './input/grade.submission.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -67,6 +68,18 @@ export class SubmissionResolver {
       params || {},
     );
     return result.data;
+  }
+
+  @Mutation(() => Submission)
+  @HasRoles(Roles.TEACHER)
+  async gradeSubmission(
+    @Context() context,
+    @Args('input') input: GradeSubmissionInput,
+  ) {
+    return await this.submissionService.gradeSubmission(
+      context.req.user.userId,
+      input,
+    );
   }
 
   @Mutation(() => Submission)

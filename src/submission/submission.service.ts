@@ -9,12 +9,17 @@ import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination
 import { UpdateSubmissionInput } from './input/update.submission.input';
 import { CreateSubmissionInput } from './input/create.submission.input';
 import { PaginationParams } from '../shared/pagination/types/pagination.types';
+import { GradeSubmissionInput } from './input/grade.submission.input';
+import { ResultType } from '../result/enum/resultType';
 
 @Injectable()
 export class SubmissionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getTeacherPendingSubmissions(teacherId: string, params?: PaginationParams) {
+  async getTeacherPendingSubmissions(
+    teacherId: string,
+    params?: PaginationParams,
+  ) {
     const baseQuery = {
       where: {
         assignment: { teacherId },
@@ -40,6 +45,89 @@ export class SubmissionService {
       params,
       searchFields,
     );
+  }
+
+  async gradeSubmission(teacherId: string, input: GradeSubmissionInput) {
+    const roundedScore = Math.round(Number(input.score));
+    if (Number.isNaN(roundedScore) || roundedScore < 0 || roundedScore > 100) {
+      throw new ForbiddenException('Score must be between 0 and 100');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const submission = await tx.submission.findUnique({
+        where: { id: input.submissionId },
+        include: {
+          student: true,
+          assignment: {
+            include: {
+              class: true,
+              subject: true,
+            },
+          },
+          result: true,
+        },
+      });
+
+      if (!submission) {
+        throw new NotFoundException('Submission not found');
+      }
+
+      if (submission.assignment.teacherId !== teacherId) {
+        throw new ForbiddenException(
+          'You do not have permission to grade this submission',
+        );
+      }
+
+      const reusableResult =
+        submission.result &&
+        submission.result.studentId === submission.studentId &&
+        submission.result.assignmentId === submission.assignmentId
+          ? submission.result
+          : null;
+
+      const result = reusableResult
+        ? await tx.result.update({
+            where: { id: reusableResult.id },
+            data: {
+              score: roundedScore,
+              comments: input.comments?.trim() || null,
+              academicPeriod: input.academicPeriod?.trim() || null,
+              term: input.term,
+              type: ResultType.ASSIGNMENT,
+              isOfficialResult: true,
+            },
+          })
+        : await tx.result.create({
+            data: {
+              studentId: submission.studentId,
+              assignmentId: submission.assignmentId,
+              score: roundedScore,
+              comments: input.comments?.trim() || null,
+              academicPeriod: input.academicPeriod?.trim() || null,
+              term: input.term,
+              type: ResultType.ASSIGNMENT,
+              isOfficialResult: true,
+            },
+          });
+
+      return tx.submission.update({
+        where: { id: submission.id },
+        data: {
+          status: 'GRADED',
+          resultId: result.id,
+        },
+        include: {
+          student: true,
+          result: true,
+          assignment: {
+            include: {
+              class: true,
+              subject: true,
+            },
+          },
+        },
+      });
+    });
   }
 
   async getSubmissionsByAssignment(

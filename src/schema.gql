@@ -523,6 +523,14 @@ type FinanceOverview {
   totalOutstanding: Float!
 }
 
+input GradeSubmissionInput {
+  academicPeriod: String
+  comments: String
+  score: Int!
+  submissionId: String!
+  term: Term
+}
+
 type Invitation {
   acceptedAt: DateTime
   createdAt: DateTime!
@@ -701,6 +709,7 @@ type Mutation {
   generateInvoice(feeStructureId: String!): Invoice!
   generateResult(assignmentId: String, examId: String, score: Int!, studentId: String!): Result!
   globalAnnouncementDelete(announcementId: String!): Boolean!
+  gradeSubmission(input: GradeSubmissionInput!): Submission!
   initiatePayment(amount: Float!, invoiceId: String!): String!
   login(input: BaseLoginInput!): AuthResponse!
   logout(refreshToken: String!): Boolean!
