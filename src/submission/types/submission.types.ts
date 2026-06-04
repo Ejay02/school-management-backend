@@ -32,4 +32,7 @@ export class Submission {
 
   @Field(() => Result, { nullable: true })
   result?: Result;
+
+  @Field(() => Date, { nullable: true })
+  updatedAt?: Date;
 }

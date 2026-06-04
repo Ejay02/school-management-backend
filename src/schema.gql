@@ -921,6 +921,7 @@ type Query {
   getSubmissionsByAssignment(assignmentId: String!, params: PaginationInput): [Submission!]!
   getTeacherById(teacherId: String!): Teacher!
   getTeacherPendingSubmissions(params: PaginationInput): [Submission!]!
+  getTeacherSubmissions(params: PaginationInput): [Submission!]!
   getTeacherTodayOverview: TeacherTodayOverview!
   getUnreadAnnouncementsCount: Int!
   getUserById(id: String!): UserUnion
@@ -1231,6 +1232,7 @@ type Submission {
   student: Student!
   studentId: String!
   submissionDate: DateTime!
+  updatedAt: DateTime
 }
 
 input SyncStudentExamAnswersInput {

@@ -16,6 +16,34 @@ import { ResultType } from '../result/enum/resultType';
 export class SubmissionService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getTeacherSubmissions(teacherId: string, params?: PaginationParams) {
+    const baseQuery = {
+      where: {
+        assignment: { teacherId },
+      },
+      include: {
+        student: true,
+        result: true,
+        assignment: {
+          include: {
+            class: true,
+            subject: true,
+          },
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' as const }, { submissionDate: 'desc' as const }],
+    };
+
+    const searchFields = ['content', 'status'];
+
+    return PrismaQueryBuilder.paginateResponse(
+      this.prisma.submission,
+      baseQuery,
+      params,
+      searchFields,
+    );
+  }
+
   async getTeacherPendingSubmissions(
     teacherId: string,
     params?: PaginationParams,
