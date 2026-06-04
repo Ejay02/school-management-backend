@@ -106,6 +106,8 @@ export class RolesGuard implements CanActivate {
         'deleteExam', //T
         'getAllAssignments',
         'getAssignmentById',
+        'getTeacherPendingSubmissions',
+        'getSubmissionsByAssignment',
         'createAssignment',
         'deleteAssignment',
         'editAssignment',
