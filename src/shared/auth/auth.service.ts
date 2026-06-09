@@ -44,6 +44,31 @@ export class AuthService {
     private readonly mailService: MailService,
   ) {}
 
+  private normalizePersonName(value: string) {
+    const collapsed = value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase();
+
+    let normalized = '';
+    let shouldCapitalize = true;
+
+    for (const char of collapsed) {
+      if (shouldCapitalize) {
+        normalized += char.toLocaleUpperCase();
+      } else {
+        normalized += char;
+      }
+
+      shouldCapitalize =
+        char === ' ' || char === '-' || char === "'" || char === '.';
+    }
+
+    return normalized;
+  }
+
   private escapeHtml(value: string) {
     return value
       .replaceAll('&', '&amp;')
@@ -597,6 +622,8 @@ export class AuthService {
 
       const result = await this.prisma.$transaction(async (tx) => {
         const { username, password, email, role } = input;
+        const normalizedName = this.normalizePersonName(input.name);
+        const normalizedSurname = this.normalizePersonName(input.surname);
 
         // Check if the username already exists in the relevant model
         const existingUser = await this.findUserByUsername(username, role, tx);
@@ -648,8 +675,8 @@ export class AuthService {
                 password: hashedPassword,
                 email,
                 role: effectiveRole,
-                name: input.name,
-                surname: input.surname,
+                name: normalizedName,
+                surname: normalizedSurname,
               },
             });
             break;
@@ -659,8 +686,8 @@ export class AuthService {
             const teacherId = await this.generateTeacherId(tx);
             const institutionalEmail = await this.generateInstitutionalEmail(
               tx,
-              input.name,
-              input.surname,
+              normalizedName,
+              normalizedSurname,
               schoolDomain,
             );
             newUser = await tx.teacher.create({
@@ -671,8 +698,8 @@ export class AuthService {
                 email,
                 institutionalEmail,
                 role: effectiveRole,
-                name: input.name,
-                surname: input.surname,
+                name: normalizedName,
+                surname: normalizedSurname,
               },
             });
             break;
@@ -695,8 +722,8 @@ export class AuthService {
                 password: hashedPassword,
                 email,
                 role,
-                name: studentInput.name,
-                surname: studentInput.surname,
+                name: normalizedName,
+                surname: normalizedSurname,
                 // Any other relevant parent fields
               };
 
@@ -735,8 +762,8 @@ export class AuthService {
               const studentId = await this.generateStudentId(tx);
               const institutionalEmail = await this.generateInstitutionalEmail(
                 tx,
-                studentInput.name,
-                studentInput.surname,
+                normalizedName,
+                normalizedSurname,
                 schoolDomain,
               );
               newUser = await tx.student.create({
@@ -747,8 +774,8 @@ export class AuthService {
                   email,
                   institutionalEmail,
                   role,
-                  name: studentInput.name,
-                  surname: studentInput.surname,
+                  name: normalizedName,
+                  surname: normalizedSurname,
 
                   parentId: studentInput.parentId,
                   classId: classRecord.id,
@@ -765,8 +792,8 @@ export class AuthService {
                 password: hashedPassword,
                 email,
                 role,
-                name: input.name,
-                surname: input.surname,
+                name: normalizedName,
+                surname: normalizedSurname,
               },
             });
             break;
