@@ -31,7 +31,10 @@ export class SubmissionService {
           },
         },
       },
-      orderBy: [{ updatedAt: 'desc' as const }, { submissionDate: 'desc' as const }],
+      orderBy: [
+        { updatedAt: 'desc' as const },
+        { submissionDate: 'desc' as const },
+      ],
     };
 
     const searchFields = ['content', 'status'];
@@ -107,9 +110,8 @@ export class SubmissionService {
       }
 
       const reusableResult =
-        submission.result &&
-        submission.result.studentId === submission.studentId &&
-        submission.result.assignmentId === submission.assignmentId
+        submission?.result?.studentId === submission?.studentId &&
+        submission?.result?.assignmentId === submission?.assignmentId
           ? submission.result
           : null;
 
