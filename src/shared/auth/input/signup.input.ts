@@ -44,12 +44,14 @@ export class AdminSignupInput extends BaseSignupInput {
 @InputType()
 export class TeacherSignupInput extends BaseSignupInput {
   @Field(() => Roles)
+  @IsEnum(Roles)
   role: Roles = Roles.TEACHER;
 }
 
 @InputType()
 export class StudentSignupInput extends BaseSignupInput {
   @Field(() => Roles)
+  @IsEnum(Roles)
   role: Roles = Roles.STUDENT;
 
   @Field()
@@ -67,5 +69,6 @@ export class StudentSignupInput extends BaseSignupInput {
 @InputType()
 export class ParentSignupInput extends BaseSignupInput {
   @Field(() => Roles)
+  @IsEnum(Roles)
   role: Roles = Roles.PARENT;
 }
