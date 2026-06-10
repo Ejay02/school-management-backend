@@ -400,6 +400,46 @@ model AnnouncementArchive {
   @@index([userId])
 }
 
+model ChatConversation {
+  id            String                   @id @default(uuid())
+  type          ChatConversationType     @default(DIRECT)
+  directKey     String?                  @unique
+  createdById   String
+  createdByRole Role
+  members       ChatConversationMember[]
+  messages      ChatMessage[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+}
+
+model ChatConversationMember {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  userRole       Role
+  joinedAt       DateTime         @default(now())
+  lastReadAt     DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+}
+
+model ChatMessage {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  senderRole     Role
+  content        String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
 model RefreshToken {
   id              String       @id @default(uuid())
   token           String       @unique
@@ -628,6 +668,10 @@ enum Role {
   TEACHER
   PARENT 
   STUDENT
+}
+
+enum ChatConversationType {
+  DIRECT
 }
 
 enum InviteStatus {

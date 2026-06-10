@@ -125,6 +125,12 @@ export class RolesGuard implements CanActivate {
         'getSchoolAttendanceStats',
         'updateTeacherProfile', //T
         'getAllAdminUsers',
+        'getChatContacts',
+        'getChatConversations',
+        'getChatMessages',
+        'findOrCreateDirectConversation',
+        'sendChatMessage',
+        'markChatConversationAsRead',
       ];
 
       // If accessing getUserById endpoint
@@ -199,7 +205,13 @@ export class RolesGuard implements CanActivate {
       if (
         (fieldName === 'getUserById' && args.id) ||
         fieldName === 'getSetupState' ||
-        fieldName === 'getAllTeachers'
+        fieldName === 'getAllTeachers' ||
+        fieldName === 'getChatContacts' ||
+        fieldName === 'getChatConversations' ||
+        fieldName === 'getChatMessages' ||
+        fieldName === 'findOrCreateDirectConversation' ||
+        fieldName === 'sendChatMessage' ||
+        fieldName === 'markChatConversationAsRead'
       ) {
         return true; // Allow parents to access user information
       }

@@ -107,6 +107,9 @@ export class PrismaService
       'FeeStructure',
       'Event',
       'Announcement',
+      'ChatConversation',
+      'ChatConversationMember',
+      'ChatMessage',
       'SetupState',
       'Invitation',
     ]);

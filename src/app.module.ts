@@ -39,6 +39,7 @@ import { ContactModule } from './contact/contact.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditContextInterceptor } from './shared/audit/audit-context.interceptor';
 import { AuditModule } from './shared/audit/audit.module';
+import { ChatModule } from './chat/chat.module';
 import type { GraphQLFormattedError } from 'graphql';
 
 @Module({
@@ -148,6 +149,7 @@ import type { GraphQLFormattedError } from 'graphql';
     AiModule,
     ContactModule,
     AuditModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
