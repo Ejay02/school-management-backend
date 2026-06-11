@@ -38,6 +38,22 @@ export class ChatService {
     private readonly chatGateway: ChatGateway,
   ) {}
 
+  async getConversationParticipantIdsForUser(
+    userId: string,
+    conversationId: string,
+  ): Promise<string[]> {
+    await this.getMembershipOrThrow(userId, conversationId);
+
+    const members = await this.prisma.chatConversationMember.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+
+    return members
+      .map((member) => member.userId)
+      .filter((memberId) => memberId && memberId !== userId);
+  }
+
   async getChatContacts(
     userId: string,
     role: Roles,
