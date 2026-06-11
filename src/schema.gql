@@ -217,6 +217,36 @@ type BillingReportDashboard {
   totalRevenue: TotalRevenueData!
 }
 
+type ChatConversation {
+  createdAt: DateTime!
+  id: String!
+  lastMessage: ChatMessage
+  participants: [ChatParticipant!]!
+  type: String!
+  unreadCount: Int!
+  updatedAt: DateTime!
+}
+
+type ChatMessage {
+  content: String!
+  conversationId: String!
+  createdAt: DateTime!
+  id: String!
+  sender: ChatParticipant!
+  updatedAt: DateTime!
+}
+
+type ChatParticipant {
+  displayName: String!
+  email: String
+  id: String!
+  image: String
+  name: String
+  role: Roles!
+  subtitle: String
+  surname: String
+}
+
 type Class {
   announcements: [Announcement!]!
   assignments: [Assignment!]!
@@ -706,6 +736,7 @@ type Mutation {
   editAssignment(assignmentId: String!, editAssignmentInput: EditAssignmentInput!): Assignment!
   editLesson(editLessonInput: EditLessonInput!, lessonId: String!): Lesson!
   editSubmission(input: UpdateSubmissionInput!, submissionId: String!): Submission!
+  findOrCreateDirectConversation(participantId: String!): ChatConversation!
   generateInvoice(feeStructureId: String!): Invoice!
   generateResult(assignmentId: String, examId: String, score: Int!, studentId: String!): Result!
   globalAnnouncementDelete(announcementId: String!): Boolean!
@@ -716,6 +747,7 @@ type Mutation {
   markAnnouncementAsRead(announcementId: String!): Boolean!
   markAttendance(attendanceData: [MarkAttendanceInput!]!, lessonId: String!): [Attendance!]!
   markAttendanceBySubject(attendanceData: [MarkAttendanceInput!]!, classId: String!, date: DateTime!, subjectId: String!): [Attendance!]!
+  markChatConversationAsRead(conversationId: String!): Boolean!
   markEventAsRead(eventId: String!): Boolean!
   notifyStudentResults(message: String, studentId: String!, term: String!): [Result!]!
   parentSignup(input: ParentSignupInput!): AuthResponse!
@@ -725,6 +757,7 @@ type Mutation {
   resendInvitation(id: String!): Invitation!
   resetPassword(input: ResetPasswordInput!): AuthResponse!
   revokeInvitation(id: String!): Invitation!
+  sendChatMessage(content: String!, conversationId: String!): ChatMessage!
   setUserActiveStatus(isActive: Boolean!, reason: String, targetId: String!): UserUnion!
   startExam(input: StartExamInput!): StudentExam!
   studentSignup(input: StudentSignupInput!): AuthResponse!
@@ -881,6 +914,9 @@ type Query {
   getAssignmentById(assignmentId: String!): Assignment!
   getAttendances(studentId: String): [Attendance!]!
   getBillingReportDashboard: BillingReportDashboard!
+  getChatContacts(search: String): [ChatParticipant!]!
+  getChatConversations: [ChatConversation!]!
+  getChatMessages(conversationId: String!): [ChatMessage!]!
   getChildrenResults(academicPeriod: String, params: PaginationInput, parentId: String!, studentId: String): [Result!]!
   getClassById(id: String!): Class!
   getClassExams(classId: String!, params: PaginationInput): [Exam!]!

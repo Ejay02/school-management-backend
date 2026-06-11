@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Role as PrismaRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Roles } from '../shared/enum/role';
 import { ChatGateway } from './gateway/chat.gateway';
@@ -13,11 +14,15 @@ import {
   ChatParticipant,
 } from './types/chat.types';
 
-type SupportedChatRole = Roles.ADMIN | Roles.SUPER_ADMIN | Roles.TEACHER | Roles.PARENT;
+type SupportedChatRole =
+  | Roles.ADMIN
+  | Roles.SUPER_ADMIN
+  | Roles.TEACHER
+  | Roles.PARENT;
 
 type DirectoryUser = {
   id: string;
-  role: Roles;
+  role: PrismaRole;
   name?: string | null;
   surname?: string | null;
   username?: string | null;
@@ -154,7 +159,9 @@ export class ChatService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const participants = await this.getUsersByIds(messages.map((m) => m.senderId));
+    const participants = await this.getUsersByIds(
+      messages.map((m) => m.senderId),
+    );
 
     return messages.map((message) =>
       this.mapMessage(message, participants.get(message.senderId)),
@@ -173,7 +180,9 @@ export class ChatService {
     }
 
     if (participantId === userId) {
-      throw new BadRequestException('You cannot start a conversation with yourself');
+      throw new BadRequestException(
+        'You cannot start a conversation with yourself',
+      );
     }
 
     const target = await this.getUserById(participantId);
@@ -181,9 +190,16 @@ export class ChatService {
       throw new NotFoundException('Chat participant not found');
     }
 
-    const canChat = await this.canUsersChat(userId, role, target.id, target.role);
+    const canChat = await this.canUsersChat(
+      userId,
+      role,
+      target.id,
+      this.asRoles(target.role),
+    );
     if (!canChat) {
-      throw new ForbiddenException('You are not allowed to chat with this user');
+      throw new ForbiddenException(
+        'You are not allowed to chat with this user',
+      );
     }
 
     const directKey = this.buildDirectKey(userId, target.id);
@@ -196,12 +212,12 @@ export class ChatService {
         type: 'DIRECT',
         directKey,
         createdById: userId,
-        createdByRole: role,
+        createdByRole: this.asPrismaRole(role),
         members: {
           create: [
             {
               userId,
-              userRole: role,
+              userRole: this.asPrismaRole(role),
               lastReadAt: now,
             },
             {
@@ -243,18 +259,22 @@ export class ChatService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const otherMembers = conversation.members.filter((member) => member.userId !== userId);
+    const otherMembers = conversation.members.filter(
+      (member) => member.userId !== userId,
+    );
 
     for (const otherMember of otherMembers) {
       const canChat = await this.canUsersChat(
         userId,
         role,
         otherMember.userId,
-        otherMember.userRole as Roles,
+        this.asRoles(otherMember.userRole),
       );
 
       if (!canChat) {
-        throw new ForbiddenException('This conversation is no longer available');
+        throw new ForbiddenException(
+          'This conversation is no longer available',
+        );
       }
     }
 
@@ -265,7 +285,7 @@ export class ChatService {
         data: {
           conversationId,
           senderId: userId,
-          senderRole: role,
+          senderRole: this.asPrismaRole(role),
           content: trimmedContent,
         },
       });
@@ -300,7 +320,10 @@ export class ChatService {
         );
 
         if (updatedConversation) {
-          this.chatGateway.emitConversationUpdated(participantId, updatedConversation);
+          this.chatGateway.emitConversationUpdated(
+            participantId,
+            updatedConversation,
+          );
         }
 
         this.chatGateway.emitMessageCreated(participantId, mappedMessage);
@@ -347,7 +370,10 @@ export class ChatService {
         );
 
         if (updatedConversation) {
-          this.chatGateway.emitConversationUpdated(member.userId, updatedConversation);
+          this.chatGateway.emitConversationUpdated(
+            member.userId,
+            updatedConversation,
+          );
         }
 
         if (member.userId !== membership.userId) {
@@ -380,7 +406,9 @@ export class ChatService {
 
   private assertSupportedRole(role: Roles): asserts role is SupportedChatRole {
     if (
-      ![Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER, Roles.PARENT].includes(role)
+      ![Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER, Roles.PARENT].includes(
+        role,
+      )
     ) {
       throw new ForbiddenException('Chat is not available for this account');
     }
@@ -422,13 +450,13 @@ export class ChatService {
 
     return {
       id: user.id,
-      role: user.role,
+      role: this.asRoles(user.role),
       name: user.name ?? null,
       surname: user.surname ?? null,
       displayName,
       image: user.image ?? null,
       email: user.email ?? null,
-      subtitle: this.getRoleLabel(user.role),
+      subtitle: this.getRoleLabel(this.asRoles(user.role)),
     };
   }
 
@@ -453,7 +481,9 @@ export class ChatService {
     userId: string,
     membership: any,
   ): Promise<ChatConversation> {
-    const participantIds = membership.conversation.members.map((member: any) => member.userId);
+    const participantIds = membership.conversation.members.map(
+      (member: any) => member.userId,
+    );
     const participants = await this.getUsersByIds(participantIds);
     const lastMessageRecord = membership.conversation.messages[0] || null;
 
@@ -529,7 +559,10 @@ export class ChatService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const mapped = await this.getConversationByIdForUser(userId, conversation.id);
+    const mapped = await this.getConversationByIdForUser(
+      userId,
+      conversation.id,
+    );
 
     if (!mapped) {
       throw new NotFoundException('Conversation not found');
@@ -549,7 +582,9 @@ export class ChatService {
     });
 
     if (!membership) {
-      throw new ForbiddenException('You do not have access to this conversation');
+      throw new ForbiddenException(
+        'You do not have access to this conversation',
+      );
     }
 
     return membership;
@@ -570,7 +605,9 @@ export class ChatService {
     return classes.map((item) => item.id);
   }
 
-  private async getTeacherRelatedParentIds(teacherId: string): Promise<string[]> {
+  private async getTeacherRelatedParentIds(
+    teacherId: string,
+  ): Promise<string[]> {
     const classIds = await this.getTeacherClassIds(teacherId);
     if (!classIds.length) return [];
 
@@ -586,13 +623,17 @@ export class ChatService {
     return Array.from(new Set(students.map((student) => student.parentId)));
   }
 
-  private async getParentRelatedTeacherIds(parentId: string): Promise<string[]> {
+  private async getParentRelatedTeacherIds(
+    parentId: string,
+  ): Promise<string[]> {
     const classIds = await this.prisma.student.findMany({
       where: { parentId },
       select: { classId: true },
     });
 
-    const uniqueClassIds = Array.from(new Set(classIds.map((item) => item.classId)));
+    const uniqueClassIds = Array.from(
+      new Set(classIds.map((item) => item.classId)),
+    );
     if (!uniqueClassIds.length) return [];
 
     const classes = await this.prisma.class.findMany({
@@ -640,9 +681,12 @@ export class ChatService {
     this.assertSupportedRole(targetUserRole as SupportedChatRole);
 
     if (this.isAdminRole(currentUserRole)) {
-      return [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER, Roles.PARENT].includes(
-        targetUserRole,
-      );
+      return [
+        Roles.ADMIN,
+        Roles.SUPER_ADMIN,
+        Roles.TEACHER,
+        Roles.PARENT,
+      ].includes(targetUserRole);
     }
 
     if (this.isAdminRole(targetUserRole)) {
@@ -689,5 +733,13 @@ export class ChatService {
   private async getUserById(userId: string): Promise<DirectoryUser | null> {
     const users = await this.getUsersByIds([userId]);
     return users.get(userId) || null;
+  }
+
+  private asRoles(role: PrismaRole | Roles): Roles {
+    return role as unknown as Roles;
+  }
+
+  private asPrismaRole(role: PrismaRole | Roles): PrismaRole {
+    return role as unknown as PrismaRole;
   }
 }
