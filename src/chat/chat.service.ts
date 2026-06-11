@@ -4,11 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role as PrismaRole } from '@prisma/client';
+import { Prisma, Role as PrismaRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../shared/cloudinary/services/cloudinary.service';
 import { Roles } from '../shared/enum/role';
+import { ChatAttachmentInput } from './input/chat.input';
 import { ChatGateway } from './gateway/chat.gateway';
 import {
+  ChatAttachment,
   ChatConversation,
   ChatMessage,
   ChatParticipant,
@@ -35,24 +38,9 @@ type DirectoryUser = {
 export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
     private readonly chatGateway: ChatGateway,
   ) {}
-
-  async getConversationParticipantIdsForUser(
-    userId: string,
-    conversationId: string,
-  ): Promise<string[]> {
-    await this.getMembershipOrThrow(userId, conversationId);
-
-    const members = await this.prisma.chatConversationMember.findMany({
-      where: { conversationId },
-      select: { userId: true },
-    });
-
-    return members
-      .map((member) => member.userId)
-      .filter((memberId) => memberId && memberId !== userId);
-  }
 
   async getChatContacts(
     userId: string,
@@ -252,13 +240,18 @@ export class ChatService {
     userId: string,
     role: Roles,
     conversationId: string,
-    content: string,
+    content?: string,
+    attachments?: ChatAttachmentInput[],
   ): Promise<ChatMessage> {
     this.assertSupportedRole(role);
 
     const trimmedContent = String(content || '').trim();
-    if (!trimmedContent) {
-      throw new BadRequestException('Message content is required');
+    const normalizedAttachments = await this.prepareAttachments(attachments);
+
+    if (!trimmedContent && !normalizedAttachments.length) {
+      throw new BadRequestException(
+        'Message content or at least one attachment is required',
+      );
     }
 
     if (trimmedContent.length > 2000) {
@@ -303,6 +296,9 @@ export class ChatService {
           senderId: userId,
           senderRole: this.asPrismaRole(role),
           content: trimmedContent,
+          attachments: normalizedAttachments.length
+            ? (normalizedAttachments as unknown as Prisma.InputJsonValue)
+            : null,
         },
       });
 
@@ -481,6 +477,7 @@ export class ChatService {
       id: message.id,
       conversationId: message.conversationId,
       content: message.content,
+      attachments: this.mapAttachments(message.attachments),
       sender: this.toParticipant(
         sender || {
           id: message.senderId,
@@ -491,6 +488,77 @@ export class ChatService {
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
     };
+  }
+
+  private mapAttachments(value: unknown): ChatAttachment[] {
+    if (!Array.isArray(value)) return [];
+
+    return value
+      .filter((item) => item && typeof item === 'object')
+      .map((item: any) => ({
+        name: String(item.name || 'Attachment'),
+        mimeType: String(item.mimeType || 'application/octet-stream'),
+        size: Number(item.size || 0),
+        url: String(item.url || ''),
+        kind: String(item.kind || 'file'),
+      }))
+      .filter((item) => item.url);
+  }
+
+  private async prepareAttachments(
+    attachments?: ChatAttachmentInput[],
+  ): Promise<ChatAttachment[]> {
+    const items = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
+
+    if (!items.length) return [];
+
+    if (items.length > 5) {
+      throw new BadRequestException('You can attach up to 5 files per message');
+    }
+
+    return Promise.all(
+      items.map(async (attachment, index) => {
+        const name = String(attachment?.name || '').trim();
+        const mimeType = String(attachment?.mimeType || '').trim();
+        const dataUrl = String(attachment?.dataUrl || '').trim();
+        const size = Number(attachment?.size || 0);
+
+        if (
+          !name ||
+          !mimeType ||
+          !dataUrl ||
+          !Number.isFinite(size) ||
+          size <= 0
+        ) {
+          throw new BadRequestException('Invalid attachment payload');
+        }
+
+        if (size > 5 * 1024 * 1024) {
+          throw new BadRequestException(
+            'Each attachment must be 5MB or smaller',
+          );
+        }
+
+        if (!dataUrl.startsWith('data:')) {
+          throw new BadRequestException(
+            'Attachment must be sent as a data URL',
+          );
+        }
+
+        const url = await this.cloudinaryService.uploadDataUri(
+          dataUrl,
+          'chat-attachments',
+        );
+
+        return {
+          name,
+          mimeType,
+          size,
+          url,
+          kind: mimeType.startsWith('image/') ? 'image' : 'file',
+        };
+      }),
+    );
   }
 
   private async mapConversationForMember(

@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../shared/auth/guards/jwtAuth.guard';
 import { RolesGuard } from '../shared/auth/guards/roles.guard';
 import { HasRoles } from '../shared/auth/decorators/roles.decorator';
 import { Roles } from '../shared/enum/role';
+import { ChatAttachmentInput } from './input/chat.input';
 import { ChatService } from './chat.service';
 import {
   ChatConversation,
@@ -69,13 +70,19 @@ export class ChatResolver {
   async sendChatMessage(
     @Context() context: any,
     @Args('conversationId') conversationId: string,
-    @Args('content') content: string,
+    @Args('content', { nullable: true }) content?: string,
+    @Args('attachments', {
+      nullable: true,
+      type: () => [ChatAttachmentInput],
+    })
+    attachments?: ChatAttachmentInput[],
   ) {
     return this.chatService.sendChatMessage(
       context.req.user.userId,
       context.req.user.role,
       conversationId,
       content,
+      attachments,
     );
   }
 

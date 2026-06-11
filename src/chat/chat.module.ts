@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../shared/auth/auth.module';
+import { CloudinaryModule } from '../shared/cloudinary/cloudinary.module';
 import { ChatResolver } from './chat.resolver';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './gateway/chat.gateway';
@@ -10,6 +11,7 @@ import { ChatGateway } from './gateway/chat.gateway';
   imports: [
     PrismaModule,
     AuthModule,
+    CloudinaryModule,
     JwtModule.registerAsync({
       useFactory: () => ({
         secret: process.env.JWT_SECRET,

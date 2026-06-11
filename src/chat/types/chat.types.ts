@@ -29,6 +29,24 @@ export class ChatParticipant {
 }
 
 @ObjectType()
+export class ChatAttachment {
+  @Field(() => String)
+  name: string;
+
+  @Field(() => String)
+  mimeType: string;
+
+  @Field(() => Int)
+  size: number;
+
+  @Field(() => String)
+  url: string;
+
+  @Field(() => String)
+  kind: string;
+}
+
+@ObjectType()
 export class ChatMessage {
   @Field(() => String)
   id: string;
@@ -38,6 +56,9 @@ export class ChatMessage {
 
   @Field(() => String)
   content: string;
+
+  @Field(() => [ChatAttachment], { nullable: true })
+  attachments?: ChatAttachment[] | null;
 
   @Field(() => ChatParticipant)
   sender: ChatParticipant;

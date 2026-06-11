@@ -39,6 +39,15 @@ export class CloudinaryService {
     });
   }
 
+  async uploadDataUri(dataUri: string, folder = 'school-management'): Promise<string> {
+    const result = await cloudinary.uploader.upload(dataUri, {
+      folder,
+      resource_type: 'auto',
+    });
+
+    return result.secure_url;
+  }
+
   async deleteImage(publicId: string): Promise<void> {
     await cloudinary.uploader.destroy(publicId);
   }

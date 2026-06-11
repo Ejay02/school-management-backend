@@ -217,6 +217,14 @@ type BillingReportDashboard {
   totalRevenue: TotalRevenueData!
 }
 
+type ChatAttachment {
+  kind: String!
+  mimeType: String!
+  name: String!
+  size: Int!
+  url: String!
+}
+
 type ChatConversation {
   createdAt: DateTime!
   id: String!
@@ -228,6 +236,7 @@ type ChatConversation {
 }
 
 type ChatMessage {
+  attachments: [ChatAttachment!]
   content: String!
   conversationId: String!
   createdAt: DateTime!
