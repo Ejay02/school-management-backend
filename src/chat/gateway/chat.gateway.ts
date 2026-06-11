@@ -8,9 +8,9 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from '../../shared/auth/auth.service';
 import { ChatConversation, ChatMessage } from '../types/chat.types';
-import { ChatService } from '../chat.service';
 
 @WebSocketGateway({
   cors: {
@@ -27,7 +27,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly jwtService: JwtService,
     private readonly authService: AuthService,
-    private readonly chatService: ChatService,
+    private readonly prisma: PrismaService,
   ) {}
 
   private getRefreshToken(client: Socket): string | undefined {
@@ -130,11 +130,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const participantIds =
-      await this.chatService.getConversationParticipantIdsForUser(
-        userId,
-        conversationId,
-      );
+    const membership = await this.prisma.chatConversationMember.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      client.disconnect();
+      return;
+    }
+
+    const members = await this.prisma.chatConversationMember.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+
+    const participantIds = members
+      .map((member) => member.userId)
+      .filter((memberId) => memberId && memberId !== userId);
 
     const safePayload = {
       conversationId,
