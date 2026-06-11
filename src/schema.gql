@@ -225,6 +225,13 @@ type ChatAttachment {
   url: String!
 }
 
+input ChatAttachmentInput {
+  dataUrl: String!
+  mimeType: String!
+  name: String!
+  size: Int!
+}
+
 type ChatConversation {
   createdAt: DateTime!
   id: String!
@@ -766,7 +773,7 @@ type Mutation {
   resendInvitation(id: String!): Invitation!
   resetPassword(input: ResetPasswordInput!): AuthResponse!
   revokeInvitation(id: String!): Invitation!
-  sendChatMessage(content: String!, conversationId: String!): ChatMessage!
+  sendChatMessage(attachments: [ChatAttachmentInput!], content: String, conversationId: String!): ChatMessage!
   setUserActiveStatus(isActive: Boolean!, reason: String, targetId: String!): UserUnion!
   startExam(input: StartExamInput!): StudentExam!
   studentSignup(input: StudentSignupInput!): AuthResponse!
