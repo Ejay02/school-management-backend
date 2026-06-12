@@ -60,8 +60,19 @@ async function bootstrap() {
     }
   }
 
-  // Create the app with HTTPS options if available
-  const app = await NestFactory.create(AppModule, { httpsOptions });
+  // Create the app with HTTPS options if available.
+  // We disable Nest's default body parser so we can raise the JSON limit for
+  // chat attachments while still keeping the Stripe webhook on raw body.
+  const app = await NestFactory.create(AppModule, {
+    httpsOptions,
+    bodyParser: false,
+  });
+  const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '35mb';
+
+  // Stripe webhook must keep the raw body for signature verification.
+  app.use('/webhook', express.raw({ type: 'application/json' }));
+  app.use(express.json({ limit: requestBodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -102,12 +113,6 @@ async function bootstrap() {
         return false;
       },
     }),
-  );
-
-  // Use raw middleware for Stripe webhook endpoint
-  app.use(
-    '/webhook',
-    express.raw({ type: 'application/json' }), // Stripe requires raw body for webhooks
   );
 
   // Set up HSTS ?? for production
