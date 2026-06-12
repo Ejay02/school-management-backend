@@ -36,6 +36,8 @@ type DirectoryUser = {
 
 @Injectable()
 export class ChatService {
+  private readonly chatDeleteWindowMs = 30 * 60 * 1000;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
@@ -190,7 +192,7 @@ export class ChatService {
     }
 
     const target = await this.getUserById(participantId);
-    if (!target || !target.isActive) {
+    if (!target?.isActive) {
       throw new NotFoundException('Chat participant not found');
     }
 
@@ -367,10 +369,16 @@ export class ChatService {
 
     await this.getMembershipOrThrow(userId, message.conversationId);
 
-    const canDelete =
-      this.isAdminRole(role) || String(message.senderId) === String(userId);
-    if (!canDelete) {
-      throw new ForbiddenException('You cannot delete this message');
+    if (String(message.senderId) !== String(userId)) {
+      throw new ForbiddenException('You can only delete your own messages');
+    }
+
+    const messageAgeMs =
+      new Date().getTime() - new Date(message.createdAt).getTime();
+    if (messageAgeMs > this.chatDeleteWindowMs) {
+      throw new ForbiddenException(
+        'You can only delete your own messages within 30 minutes',
+      );
     }
 
     const attachmentUrls = this.mapAttachments(message.attachments).map(
@@ -405,7 +413,8 @@ export class ChatService {
       }),
     );
 
-    const memberIds = conversation?.members?.map((member) => member.userId) || [];
+    const memberIds =
+      conversation?.members?.map((member) => member.userId) || [];
     await Promise.all(
       memberIds.map(async (memberId) => {
         const updatedConversation = await this.getConversationByIdForUser(
@@ -414,7 +423,10 @@ export class ChatService {
         );
 
         if (updatedConversation) {
-          this.chatGateway.emitConversationUpdated(memberId, updatedConversation);
+          this.chatGateway.emitConversationUpdated(
+            memberId,
+            updatedConversation,
+          );
         }
 
         this.chatGateway.emitMessageDeleted(memberId, {
