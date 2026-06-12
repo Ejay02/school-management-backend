@@ -739,6 +739,7 @@ type Mutation {
   createSubject(input: CreateSubjectInput!): Subject!
   createSubmission(input: CreateSubmissionInput!): Submission!
   deleteAssignment(assignmentId: String!): DeleteResponse!
+  deleteChatMessage(messageId: String!): Boolean!
   deleteClass(classId: String!): DeleteResponse!
   deleteEvent(eventId: String!): Boolean!
   deleteExam(examId: String!): DeleteResponse!

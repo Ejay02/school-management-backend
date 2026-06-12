@@ -88,6 +88,19 @@ export class ChatResolver {
 
   @Mutation(() => Boolean)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER, Roles.PARENT)
+  async deleteChatMessage(
+    @Context() context: any,
+    @Args('messageId') messageId: string,
+  ) {
+    return this.chatService.deleteChatMessage(
+      context.req.user.userId,
+      context.req.user.role,
+      messageId,
+    );
+  }
+
+  @Mutation(() => Boolean)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER, Roles.PARENT)
   async markChatConversationAsRead(
     @Context() context: any,
     @Args('conversationId') conversationId: string,

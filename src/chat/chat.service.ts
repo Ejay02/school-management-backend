@@ -345,6 +345,88 @@ export class ChatService {
     return mappedMessage;
   }
 
+  async deleteChatMessage(
+    userId: string,
+    role: Roles,
+    messageId: string,
+  ): Promise<boolean> {
+    this.assertSupportedRole(role);
+
+    const normalizedMessageId = String(messageId || '').trim();
+    if (!normalizedMessageId) {
+      throw new BadRequestException('Message is required');
+    }
+
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: normalizedMessageId },
+    });
+
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    await this.getMembershipOrThrow(userId, message.conversationId);
+
+    const canDelete =
+      this.isAdminRole(role) || String(message.senderId) === String(userId);
+    if (!canDelete) {
+      throw new ForbiddenException('You cannot delete this message');
+    }
+
+    const attachmentUrls = this.mapAttachments(message.attachments).map(
+      (attachment) => attachment.url,
+    );
+
+    const now = new Date();
+    const conversation = await this.prisma.$transaction(async (tx) => {
+      await tx.chatMessage.delete({
+        where: { id: normalizedMessageId },
+      });
+
+      await tx.chatConversation.update({
+        where: { id: message.conversationId },
+        data: { updatedAt: now },
+      });
+
+      return tx.chatConversation.findUnique({
+        where: { id: message.conversationId },
+        include: { members: true },
+      });
+    });
+
+    await Promise.all(
+      attachmentUrls.map(async (url) => {
+        try {
+          const publicId = this.cloudinaryService.getPublicIdFromUrl(url);
+          await this.cloudinaryService.deleteImage(publicId);
+        } catch {
+          return;
+        }
+      }),
+    );
+
+    const memberIds = conversation?.members?.map((member) => member.userId) || [];
+    await Promise.all(
+      memberIds.map(async (memberId) => {
+        const updatedConversation = await this.getConversationByIdForUser(
+          memberId,
+          message.conversationId,
+        );
+
+        if (updatedConversation) {
+          this.chatGateway.emitConversationUpdated(memberId, updatedConversation);
+        }
+
+        this.chatGateway.emitMessageDeleted(memberId, {
+          conversationId: message.conversationId,
+          messageId: normalizedMessageId,
+        });
+      }),
+    );
+
+    return true;
+  }
+
   async markConversationAsRead(
     userId: string,
     role: Roles,

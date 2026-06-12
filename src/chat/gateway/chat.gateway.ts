@@ -176,6 +176,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`user-${userId}`).emit('chatMessageCreated', message);
   }
 
+  emitMessageDeleted(
+    userId: string,
+    payload: { conversationId: string; messageId: string },
+  ) {
+    this.server.to(`user-${userId}`).emit('chatMessageDeleted', payload);
+  }
+
   emitConversationRead(
     userId: string,
     payload: {

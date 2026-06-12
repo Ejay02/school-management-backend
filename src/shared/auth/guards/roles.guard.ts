@@ -130,6 +130,7 @@ export class RolesGuard implements CanActivate {
         'getChatMessages',
         'findOrCreateDirectConversation',
         'sendChatMessage',
+        'deleteChatMessage',
         'markChatConversationAsRead',
       ];
 
@@ -211,6 +212,7 @@ export class RolesGuard implements CanActivate {
         fieldName === 'getChatMessages' ||
         fieldName === 'findOrCreateDirectConversation' ||
         fieldName === 'sendChatMessage' ||
+        fieldName === 'deleteChatMessage' ||
         fieldName === 'markChatConversationAsRead'
       ) {
         return true; // Allow parents to access user information
