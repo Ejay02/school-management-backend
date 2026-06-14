@@ -316,7 +316,7 @@ export class RolesGuard implements CanActivate {
 
       // Handle getting invoices for the parent
       if (info.fieldName === 'getMyInvoices') {
-        return user.id === args.parentId; // Allow if parentId matches the user ID
+        return true;
       }
 
       return false;
