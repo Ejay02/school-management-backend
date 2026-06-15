@@ -785,6 +785,7 @@ type Mutation {
   updateClass(classId: String!, input: UpdateClassInput!): Class!
   updateEvent(eventId: String!, input: EditEventInput!): Event!
   updateExam(examId: String!, input: UpdateExamInput!): Exam!
+  updateFeeReminderPreference(optOut: Boolean!): Parent!
   updateFeeStructure(id: String!, input: UpdateFeeStructureInput!): FeeStructure!
   updateParentProfile(input: UpdateProfileInput!): Parent!
   updateResult(input: UpdateResultInput!): Result!
