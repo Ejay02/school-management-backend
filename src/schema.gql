@@ -650,6 +650,7 @@ type Invoice {
   checkoutSessionId: String
   createdAt: DateTime!
   dueDate: DateTime!
+  feeStructure: FeeStructure
   feeStructureId: String!
   id: ID!
   invoiceNumber: String!

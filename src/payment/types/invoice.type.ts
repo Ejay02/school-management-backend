@@ -7,6 +7,7 @@ import {
 } from '@nestjs/graphql';
 import { InvoiceStatus } from '../enum/invoice.status';
 import { Payment } from './payment.type';
+import { FeeStructure } from './fee.structure.type';
 
 registerEnumType(InvoiceStatus, { name: 'InvoiceStatus' });
 
@@ -23,6 +24,9 @@ export class Invoice {
 
   @Field()
   feeStructureId: string;
+
+  @Field(() => FeeStructure, { nullable: true })
+  feeStructure?: FeeStructure;
 
   @Field(() => Float)
   totalAmount: number;
