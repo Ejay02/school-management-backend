@@ -37,6 +37,9 @@ export class Parent {
   @Field({ nullable: true })
   aboutMe?: string;
 
+  @Field()
+  feeReminderOptOut: boolean;
+
   @Field({ nullable: true })
   dateOfBirth?: Date;
 

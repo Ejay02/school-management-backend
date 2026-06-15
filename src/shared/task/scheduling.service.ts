@@ -10,6 +10,8 @@ import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from '../auth/auth.service';
+import { MailService } from 'src/mail/mail.service';
+import { InvoiceStatus } from '@prisma/client';
 
 @Injectable()
 @WebSocketGateway({
@@ -30,6 +32,7 @@ export class SchedulingService
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly authService: AuthService,
+    private readonly mailService: MailService,
   ) {
     this.logger.log(
       '=== Scheduling service initialized at: ' +
@@ -146,6 +149,7 @@ export class SchedulingService
     try {
       // Run tasks sequentially to avoid any potential race conditions
       await this.markCompletedEvents();
+      await this.sendFeeReminderNotifications();
       await this.archiveOldAnnouncements(30); // First archive announcements older than 30 days
       await this.deleteOldAnnouncements(60); // Then delete announcements older than 60 days that are already archived
 
@@ -209,6 +213,269 @@ export class SchedulingService
       }
     } catch (error) {
       this.logger.error('Error marking events as completed', error);
+    }
+  }
+
+  private parsePreDueReminderDays() {
+    const raw = process.env.FEE_REMINDER_PRE_DUE_DAYS || '7,1';
+    const values = raw
+      .split(',')
+      .map((value) => Number.parseInt(value.trim(), 10))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    return [...new Set(values)].sort((left, right) => right - left);
+  }
+
+  private getMaxOverdueReminderCount() {
+    const parsed = Number.parseInt(
+      process.env.FEE_REMINDER_MAX_OVERDUE_COUNT || '3',
+      10,
+    );
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
+  }
+
+  private startOfDay(value: Date) {
+    const normalized = new Date(value);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }
+
+  private endOfDay(value: Date) {
+    const normalized = new Date(value);
+    normalized.setHours(23, 59, 59, 999);
+    return normalized;
+  }
+
+  private getDateKey(value: Date) {
+    return this.startOfDay(value).toISOString().split('T')[0];
+  }
+
+  private getDaysUntilDue(dueDate: Date, today: Date) {
+    const dueStart = this.startOfDay(dueDate).getTime();
+    const todayStart = this.startOfDay(today).getTime();
+    return Math.round((dueStart - todayStart) / (24 * 60 * 60 * 1000));
+  }
+
+  private formatCurrency(amount: number) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(Number(amount || 0));
+  }
+
+  private formatDate(value: Date) {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(value);
+  }
+
+  private buildInvoicePayLink(invoiceId: string) {
+    const frontendUrl = (process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
+    if (!frontendUrl) {
+      return `/settings/billing?invoiceId=${invoiceId}`;
+    }
+    return `${frontendUrl}/settings/billing?invoiceId=${invoiceId}`;
+  }
+
+  private getRemainingBalance(invoice: {
+    totalAmount: number;
+    paidAmount: number;
+  }) {
+    return Math.max(
+      Number(invoice?.totalAmount || 0) - Number(invoice?.paidAmount || 0),
+      0,
+    );
+  }
+
+  private async reserveReminderLog(params: {
+    dedupeKey: string;
+    type: 'PRE_DUE' | 'OVERDUE';
+    invoiceId: string;
+    parentId: string;
+    daysBeforeDue?: number;
+  }) {
+    try {
+      await this.prisma.feeReminderLog.create({
+        data: {
+          dedupeKey: params.dedupeKey,
+          type: params.type,
+          invoiceId: params.invoiceId,
+          parentId: params.parentId,
+          daysBeforeDue: params.daysBeforeDue ?? null,
+        },
+      });
+
+      return true;
+    } catch (error) {
+      if (error?.code === 'P2002') {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  private async rollbackReminderLog(dedupeKey: string) {
+    try {
+      await this.prisma.feeReminderLog.delete({
+        where: { dedupeKey },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to roll back fee reminder log ${dedupeKey}: ${error.message}`,
+      );
+    }
+  }
+
+  private async sendFeeReminderEmail(params: {
+    email: string;
+    parentName: string;
+    invoiceNumber: string;
+    amountDue: number;
+    dueDate: Date;
+    payLink: string;
+    type: 'PRE_DUE' | 'OVERDUE';
+    daysBeforeDue?: number;
+  }) {
+    const reminderLabel =
+      params.type === 'OVERDUE'
+        ? 'Overdue fee notice'
+        : `Fee reminder: due in ${params.daysBeforeDue} day${params.daysBeforeDue === 1 ? '' : 's'}`;
+
+    await this.mailService.sendMail({
+      to: params.email,
+      subject: `${reminderLabel} - Invoice ${params.invoiceNumber}`,
+      template: 'fee.reminder.hbs',
+      context: {
+        parentName: params.parentName,
+        invoiceNumber: params.invoiceNumber,
+        amountDue: this.formatCurrency(params.amountDue),
+        dueDate: this.formatDate(params.dueDate),
+        payLink: params.payLink,
+        isOverdue: params.type === 'OVERDUE',
+        daysBeforeDue: params.daysBeforeDue,
+        reminderLabel,
+      },
+    });
+  }
+
+  private async sendFeeReminderNotifications() {
+    this.logger.log('Running task to send fee reminders');
+
+    try {
+      const today = this.startOfDay(new Date());
+      const preDueDays = this.parsePreDueReminderDays();
+      const maxPreDueWindow = preDueDays.length ? Math.max(...preDueDays) : 0;
+      const preDueWindowEnd = this.endOfDay(
+        new Date(today.getTime() + maxPreDueWindow * 24 * 60 * 60 * 1000),
+      );
+      const maxOverdueReminderCount = this.getMaxOverdueReminderCount();
+
+      const invoices = await this.prisma.invoice.findMany({
+        where: {
+          status: {
+            in: [InvoiceStatus.PENDING, InvoiceStatus.PARTIAL, InvoiceStatus.OVERDUE],
+          },
+          dueDate: {
+            lte: preDueWindowEnd,
+          },
+        },
+        include: {
+          parent: true,
+          reminderLogs: true,
+        },
+        orderBy: {
+          dueDate: 'asc',
+        },
+      });
+
+      let sentCount = 0;
+
+      for (const invoice of invoices) {
+        const remainingBalance = this.getRemainingBalance(invoice);
+        if (!remainingBalance) continue;
+        if (!invoice.parent?.email) continue;
+
+        const daysUntilDue = this.getDaysUntilDue(invoice.dueDate, today);
+        const payLink = this.buildInvoicePayLink(invoice.id);
+        const parentName =
+          [invoice.parent?.name, invoice.parent?.surname]
+            .filter(Boolean)
+            .join(' ')
+            .trim() || 'Parent';
+
+        if (!invoice.parent.feeReminderOptOut && preDueDays.includes(daysUntilDue)) {
+          const dedupeKey = `pre-due:${invoice.id}:${daysUntilDue}`;
+          const reserved = await this.reserveReminderLog({
+            dedupeKey,
+            type: 'PRE_DUE',
+            invoiceId: invoice.id,
+            parentId: invoice.parentId,
+            daysBeforeDue: daysUntilDue,
+          });
+
+          if (reserved) {
+            try {
+              await this.sendFeeReminderEmail({
+                email: invoice.parent.email,
+                parentName,
+                invoiceNumber: invoice.invoiceNumber,
+                amountDue: remainingBalance,
+                dueDate: invoice.dueDate,
+                payLink,
+                type: 'PRE_DUE',
+                daysBeforeDue: daysUntilDue,
+              });
+              sentCount += 1;
+            } catch (error) {
+              await this.rollbackReminderLog(dedupeKey);
+              throw error;
+            }
+          }
+        }
+
+        if (daysUntilDue < 0) {
+          const overdueReminderCount = invoice.reminderLogs.filter(
+            (log) => log.type === 'OVERDUE',
+          ).length;
+
+          if (overdueReminderCount >= maxOverdueReminderCount) {
+            continue;
+          }
+
+          const dedupeKey = `overdue:${invoice.id}:${this.getDateKey(today)}`;
+          const reserved = await this.reserveReminderLog({
+            dedupeKey,
+            type: 'OVERDUE',
+            invoiceId: invoice.id,
+            parentId: invoice.parentId,
+          });
+
+          if (reserved) {
+            try {
+              await this.sendFeeReminderEmail({
+                email: invoice.parent.email,
+                parentName,
+                invoiceNumber: invoice.invoiceNumber,
+                amountDue: remainingBalance,
+                dueDate: invoice.dueDate,
+                payLink,
+                type: 'OVERDUE',
+              });
+              sentCount += 1;
+            } catch (error) {
+              await this.rollbackReminderLog(dedupeKey);
+              throw error;
+            }
+          }
+        }
+      }
+
+      this.logger.log(`Sent ${sentCount} fee reminder notification(s)`);
+    } catch (error) {
+      this.logger.error('Error sending fee reminders', error);
     }
   }
 

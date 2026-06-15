@@ -232,4 +232,30 @@ export class ParentService {
       );
     }
   }
+
+  async updateFeeReminderPreference(id: string, optOut: boolean) {
+    try {
+      const parent = await this.prisma.parent.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+
+      if (!parent) {
+        throw new NotFoundException(`Parent with ID: ${id} not found`);
+      }
+
+      return await this.prisma.parent.update({
+        where: { id },
+        data: { feeReminderOptOut: optOut },
+        include: {
+          students: true,
+        },
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        `Failed to update fee reminder preference: ${error.message}`,
+      );
+    }
+  }
 }

@@ -1,0 +1,23 @@
+<html>
+  <body>
+    <h2>{{reminderLabel}}</h2>
+    <p>Hello {{parentName}},</p>
+
+    {{#if isOverdue}}
+      <p>This is an overdue notice for an unpaid school fee balance.</p>
+    {{else}}
+      <p>This is a reminder about an upcoming school fee payment.</p>
+    {{/if}}
+
+    <div>
+      <p><strong>Invoice:</strong> {{invoiceNumber}}</p>
+      <p><strong>Amount due:</strong> {{amountDue}}</p>
+      <p><strong>Due date:</strong> {{dueDate}}</p>
+    </div>
+
+    <p>
+      Pay now:
+      <a href='{{payLink}}'>{{payLink}}</a>
+    </p>
+  </body>
+</html>

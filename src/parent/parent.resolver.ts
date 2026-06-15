@@ -58,4 +58,17 @@ export class ParentResolver {
       input,
     );
   }
+
+  @Mutation(() => Parent)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.PARENT)
+  async updateFeeReminderPreference(
+    @Args('optOut') optOut: boolean,
+    @Context() context: any,
+  ) {
+    return this.parentService.updateFeeReminderPreference(
+      context.req.user.userId,
+      optOut,
+    );
+  }
 }

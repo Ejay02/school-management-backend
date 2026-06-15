@@ -100,11 +100,13 @@ model Parent {
   image           String?
   dateOfBirth     DateTime? 
   aboutMe         String?
+  feeReminderOptOut Boolean     @default(false)
   isActive        Boolean       @default(true)
   deactivatedAt   DateTime?
   students        Student[]
   invoices        Invoice[]
   payments        Payment[]
+  feeReminderLogs FeeReminderLog[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -533,8 +535,25 @@ model Invoice {
   dueDate         DateTime
   payments        Payment[]
   paymentIntentId String? 
+  reminderLogs    FeeReminderLog[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+}
+
+model FeeReminderLog {
+  id            String         @id @default(uuid())
+  dedupeKey     String         @unique
+  type          FeeReminderType
+  invoiceId     String
+  invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  parentId      String
+  parent        Parent         @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  daysBeforeDue Int?
+  createdAt     DateTime       @default(now())
+
+  @@index([invoiceId])
+  @@index([parentId])
+  @@index([type])
 }
 
 model Payment {
@@ -640,6 +659,11 @@ enum InvoiceStatus {
   PAID
   OVERDUE
   CANCELLED
+}
+
+enum FeeReminderType {
+  PRE_DUE
+  OVERDUE
 }
 
 enum PaymentStatus {

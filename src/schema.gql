@@ -855,6 +855,7 @@ type Parent {
   dateOfBirth: DateTime
   deactivatedAt: DateTime
   email: String
+  feeReminderOptOut: Boolean!
   id: ID!
   image: String
   isActive: Boolean!
