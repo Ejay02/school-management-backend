@@ -701,6 +701,10 @@ export class PaymentService {
           throw new BadRequestException('Invoice is already paid');
         }
 
+        if (amount <= 0) {
+          throw new BadRequestException('Payment amount must be greater than 0');
+        }
+
         if (amount > invoice.totalAmount - invoice.paidAmount) {
           throw new BadRequestException(
             'Payment amount exceeds remaining balance',
@@ -730,8 +734,8 @@ export class PaymentService {
             parentId: invoice.parentId,
             invoiceNumber: invoice.invoiceNumber,
           },
-          success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+          success_url: `${process.env.FRONTEND_URL}/settings/billing?payment=success&invoiceId=${invoiceId}&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.FRONTEND_URL}/settings/billing?payment=cancel&invoiceId=${invoiceId}`,
         });
 
         // Update invoice with session ID
@@ -745,6 +749,12 @@ export class PaymentService {
         return session.url;
       });
     } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
       throw new InternalServerErrorException(
         `Failed to create checkout session: ${error.message}`,
       );
@@ -755,6 +765,10 @@ export class PaymentService {
 
   async handlePaymentWebhook(signature: string, payload: Buffer) {
     try {
+      if (!signature) {
+        throw new BadRequestException('Missing Stripe signature header');
+      }
+
       // 1. Verify the webhook payload using Stripe's webhook secret.
       // This ensures the request came from Stripe and wasn't tampered with.
       const event = this.stripe.webhooks.constructEvent(
@@ -776,11 +790,6 @@ export class PaymentService {
           await this.handleSuccessfulCheckoutSession(session);
           break;
         }
-        case 'payment_intent.succeeded':
-          await this.handleSuccessfulPayment(
-            event.data.object as Stripe.PaymentIntent,
-          );
-          break;
         case 'payment_intent.payment_failed':
           await this.handleFailedPayment(
             event.data.object as Stripe.PaymentIntent,
@@ -803,6 +812,70 @@ export class PaymentService {
     }
   }
 
+  private async recordSuccessfulPayment(
+    tx: Prisma.TransactionClient,
+    input: {
+      invoiceId: string;
+      parentId: string;
+      stripePaymentId: string;
+      amount: number;
+      currency: string;
+      paymentMethod: string;
+      description?: string;
+      checkoutSessionId?: string | null;
+    },
+  ) {
+    const existingPayment = await tx.payment.findUnique({
+      where: { stripePaymentId: input.stripePaymentId },
+    });
+
+    if (existingPayment) {
+      return existingPayment;
+    }
+
+    const invoice = await tx.invoice.findFirst({
+      where: {
+        id: input.invoiceId,
+        parentId: input.parentId,
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found or access denied');
+    }
+
+    const payment = await tx.payment.create({
+      data: {
+        amount: input.amount,
+        currency: input.currency,
+        status: PaymentStatus.COMPLETED,
+        stripePaymentId: input.stripePaymentId,
+        paymentMethod: input.paymentMethod || 'card',
+        invoiceId: input.invoiceId,
+        parentId: input.parentId,
+        description: input.description,
+      },
+    });
+
+    const newPaidAmount = invoice.paidAmount + payment.amount;
+    const newStatus =
+      newPaidAmount >= invoice.totalAmount
+        ? InvoiceStatus.PAID
+        : InvoiceStatus.PARTIAL;
+
+    await tx.invoice.update({
+      where: { id: input.invoiceId },
+      data: {
+        paidAmount: newPaidAmount,
+        status: newStatus,
+        checkoutSessionId: input.checkoutSessionId ?? null,
+        paymentIntentId: input.stripePaymentId,
+      },
+    });
+
+    return payment;
+  }
+
   private async handleSuccessfulCheckoutSession(
     session: Stripe.Checkout.Session,
   ) {
@@ -820,20 +893,6 @@ export class PaymentService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        const invoice = await tx.invoice.findFirst({
-          where: {
-            id: invoiceId,
-            parentId,
-          },
-        });
-
-        if (!invoice) {
-          console.log('Invoice not found for ID:', invoiceId);
-          throw new NotFoundException('Invoice not found or access denied');
-        }
-
-        console.log('Invoice found:', invoice);
-
         // Get the payment intent ID from the expanded session
         const paymentIntentId =
           typeof session.payment_intent === 'string'
@@ -842,40 +901,18 @@ export class PaymentService {
 
         console.log('Payment Intent ID:', paymentIntentId);
 
-        // Create payment record
-        const payment = await tx.payment.create({
-          data: {
-            amount: session.amount_total / 100,
-            currency: session.currency,
-            status: PaymentStatus.COMPLETED,
-            stripePaymentId: paymentIntentId, // Use payment intent ID here
-            paymentMethod: session.payment_method_types?.[0] || 'card',
-            invoiceId,
-            parentId,
-            description: `Payment for invoice ${session.metadata.invoiceNumber}`,
-          },
+        const payment = await this.recordSuccessfulPayment(tx, {
+          invoiceId,
+          parentId,
+          stripePaymentId: paymentIntentId,
+          amount: Number(session.amount_total || 0) / 100,
+          currency: session.currency || 'usd',
+          paymentMethod: session.payment_method_types?.[0] || 'card',
+          description: `Payment for invoice ${session.metadata.invoiceNumber}`,
+          checkoutSessionId: null,
         });
 
         console.log('Payment created:', payment);
-
-        // Update invoice status, paid amount, and payment intent ID
-        const newPaidAmount = invoice.paidAmount + payment.amount;
-        const newStatus =
-          newPaidAmount >= invoice.totalAmount
-            ? InvoiceStatus.PAID
-            : InvoiceStatus.PARTIAL;
-
-        await tx.invoice.update({
-          where: { id: invoiceId },
-          data: {
-            paidAmount: newPaidAmount,
-            status: newStatus,
-            checkoutSessionId: null, // Clear session ID after successful payment
-            paymentIntentId, // Store the payment intent ID
-          },
-        });
-
-        console.log('Invoice updated to status:', newStatus);
       });
     } catch (error) {
       throw new InternalServerErrorException(
@@ -909,44 +946,14 @@ export class PaymentService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        // Validate that the invoice belongs to the parent
-        const invoice = await tx.invoice.findFirst({
-          where: {
-            id: invoiceId,
-            parentId,
-          },
-        });
-
-        if (!invoice) {
-          throw new NotFoundException('Invoice not found or access denied');
-        }
-
-        // Create payment record
-        const payment = await tx.payment.create({
-          data: {
-            amount: paymentIntent.amount / 100,
-            currency: paymentIntent.currency,
-            status: PaymentStatus.COMPLETED,
-            stripePaymentId: paymentIntent.id,
-            paymentMethod: paymentIntent.payment_method_types[0],
-            invoiceId,
-            parentId,
-            description: paymentIntent.description,
-          },
-        });
-
-        const newPaidAmount = invoice.paidAmount + payment.amount;
-        const newStatus =
-          newPaidAmount >= invoice.totalAmount
-            ? InvoiceStatus.PAID
-            : InvoiceStatus.PARTIAL;
-
-        await tx.invoice.update({
-          where: { id: invoiceId },
-          data: {
-            paidAmount: newPaidAmount,
-            status: newStatus,
-          },
+        await this.recordSuccessfulPayment(tx, {
+          invoiceId,
+          parentId,
+          stripePaymentId: paymentIntent.id,
+          amount: paymentIntent.amount / 100,
+          currency: paymentIntent.currency,
+          paymentMethod: paymentIntent.payment_method_types?.[0] || 'card',
+          description: paymentIntent.description,
         });
       });
     } catch (error) {
@@ -961,13 +968,21 @@ export class PaymentService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        const existingPayment = await tx.payment.findUnique({
+          where: { stripePaymentId: paymentIntent.id },
+        });
+
+        if (existingPayment) {
+          return existingPayment;
+        }
+
         await tx.payment.create({
           data: {
             amount: paymentIntent.amount / 100,
             currency: paymentIntent.currency,
             status: PaymentStatus.FAILED,
             stripePaymentId: paymentIntent.id,
-            paymentMethod: paymentIntent.payment_method_types[0],
+            paymentMethod: paymentIntent.payment_method_types?.[0] || 'card',
             invoiceId,
             parentId,
             description: `Failed payment for invoice ${paymentIntent.metadata.invoiceNumber}`,
