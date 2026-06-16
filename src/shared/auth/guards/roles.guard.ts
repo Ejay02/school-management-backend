@@ -319,6 +319,22 @@ export class RolesGuard implements CanActivate {
         return true;
       }
 
+      // Handle getting payments for the parent
+      if (info.fieldName === 'getAllPayments') {
+        return true;
+      }
+
+      // Handle getting a single payment for the parent
+      if (info.fieldName === 'getPaymentById' && args.paymentId) {
+        const payment = await this.prisma.payment.findFirst({
+          where: {
+            id: args.paymentId,
+            parentId: user.id,
+          },
+        });
+        return !!payment;
+      }
+
       return false;
     } catch (error) {
       throw new UnauthorizedException('Unauthorized access to parent info');
