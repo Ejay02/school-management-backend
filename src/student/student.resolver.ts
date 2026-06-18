@@ -10,6 +10,7 @@ import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { StudentGenderStatistics } from './types/student.statistic.types';
 import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
+import { UpdateStudentAdminInput } from './input/update-student-admin.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -68,5 +69,14 @@ export class StudentResolver {
       context.req.user.userId,
       input,
     );
+  }
+
+  @Mutation(() => Student)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async adminUpdateStudent(
+    @Args('studentId') studentId: string,
+    @Args('input') input: UpdateStudentAdminInput,
+  ) {
+    return this.studentService.adminUpdateStudent(studentId, input);
   }
 }

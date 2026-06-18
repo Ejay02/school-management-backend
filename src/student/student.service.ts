@@ -14,6 +14,7 @@ import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.paginatio
 import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 import * as bcrypt from 'bcrypt';
 import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
+import { UpdateStudentAdminInput } from './input/update-student-admin.input';
 
 @Injectable()
 export class StudentService {
@@ -349,6 +350,81 @@ export class StudentService {
       throw new InternalServerErrorException(
         `Failed to update student profile: ${error.message}`,
       );
+    }
+  }
+
+  async adminUpdateStudent(studentId: string, input: UpdateStudentAdminInput) {
+    try {
+      const existingStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        select: { id: true },
+      });
+
+      if (!existingStudent) {
+        throw new NotFoundException(`Student with ID ${studentId} not found`);
+      }
+
+      if (input.parentId) {
+        const parentExists = await this.prisma.parent.findUnique({
+          where: { id: input.parentId },
+          select: { id: true },
+        });
+
+        if (!parentExists) {
+          throw new NotFoundException(
+            `Parent with ID ${input.parentId} not found`,
+          );
+        }
+      }
+
+      if (input.classId) {
+        const classExists = await this.prisma.class.findUnique({
+          where: { id: input.classId },
+          select: { id: true },
+        });
+
+        if (!classExists) {
+          throw new NotFoundException(
+            `Class with ID ${input.classId} not found`,
+          );
+        }
+      }
+
+      return await this.prisma.student.update({
+        where: { id: studentId },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.surname !== undefined ? { surname: input.surname } : {}),
+          ...(input.studentId !== undefined ? { studentId: input.studentId } : {}),
+          ...(input.phone !== undefined ? { phone: input.phone } : {}),
+          ...(input.address !== undefined ? { address: input.address } : {}),
+          ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
+          ...(input.classId !== undefined ? { classId: input.classId } : {}),
+        },
+        include: {
+          parent: true,
+          class: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      const prismaCode = (error as any)?.code;
+      if (prismaCode === 'P2002') {
+        throw new BadRequestException(
+          'Student ID or phone number is already in use',
+        );
+      }
+      if (prismaCode === 'P2003') {
+        throw new BadRequestException('Selected parent or class does not exist');
+      }
+
+      throw new InternalServerErrorException('Failed to update student');
     }
   }
 }

@@ -713,6 +713,7 @@ type MonthlyRevenue {
 type Mutation {
   acceptInvitation(input: AcceptInvitationInput!): AuthResponse!
   adminSignup(input: AdminSignupInput!): AuthResponse!
+  adminUpdateStudent(input: UpdateStudentAdminInput!, studentId: String!): Student!
   archiveAnnouncement(announcementId: String!): Boolean!
   assignAdminRole(role: String!, targetId: String!): Admin!
   assignAssignmentResult(academicPeriod: String!, assignmentId: String!, comments: String, score: Float!, studentId: String!): Result!
@@ -1442,6 +1443,16 @@ input UpdateSetupStateInput {
   schoolName: String
   schoolPhone: String
   schoolTimezone: String
+}
+
+input UpdateStudentAdminInput {
+  address: String
+  classId: String
+  name: String
+  parentId: String
+  phone: String
+  studentId: String
+  surname: String
 }
 
 input UpdateSubjectInput {
