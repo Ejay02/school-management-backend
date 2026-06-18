@@ -11,6 +11,7 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { StudentGenderStatistics } from './types/student.statistic.types';
 import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 import { UpdateStudentAdminInput } from './input/update-student-admin.input';
+import { CreateStudentAdminInput } from './input/create-student-admin.input';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -69,6 +70,12 @@ export class StudentResolver {
       context.req.user.userId,
       input,
     );
+  }
+
+  @Mutation(() => Student)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async adminCreateStudent(@Args('input') input: CreateStudentAdminInput) {
+    return this.studentService.adminCreateStudent(input);
   }
 
   @Mutation(() => Student)

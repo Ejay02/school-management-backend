@@ -15,6 +15,7 @@ import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 import * as bcrypt from 'bcrypt';
 import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
 import { UpdateStudentAdminInput } from './input/update-student-admin.input';
+import { CreateStudentAdminInput } from './input/create-student-admin.input';
 
 @Injectable()
 export class StudentService {
@@ -23,6 +24,113 @@ export class StudentService {
     private readonly jwtService: JwtService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
+
+  private normalizePersonName(value: string) {
+    const collapsed = value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase();
+
+    let normalized = '';
+    let shouldCapitalize = true;
+
+    for (const char of collapsed) {
+      if (shouldCapitalize) {
+        normalized += char.toLocaleUpperCase();
+      } else {
+        normalized += char;
+      }
+
+      shouldCapitalize =
+        char === ' ' || char === '-' || char === "'" || char === '.';
+    }
+
+    return normalized;
+  }
+
+  private normalizeSchoolDomain(value: unknown): string | null {
+    const base = typeof value === 'string' ? value : '';
+    const trimmed = base.trim().toLowerCase().replace(/^@/, '');
+    return trimmed.length ? trimmed : null;
+  }
+
+  private normalizeNamePart(value: unknown): string {
+    const base = typeof value === 'string' ? value : '';
+    return base
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  private async claimNextSequence(
+    tx: any,
+    field: 'nextStudentSequence' | 'nextTeacherSequence' | 'nextAdminSequence',
+  ): Promise<number> {
+    const updated = await tx.setupState.update({
+      where: { id: 'default' },
+      data: { [field]: { increment: 1 } },
+      select: { [field]: true } as any,
+    });
+
+    const value = Number(updated[field]);
+    return value - 1;
+  }
+
+  private async generateStudentId(tx: any): Promise<string> {
+    const year = new Date().getFullYear();
+    const sequence = await this.claimNextSequence(tx, 'nextStudentSequence');
+    return `STU-${year}-${String(sequence).padStart(4, '0')}`;
+  }
+
+  private async generateInstitutionalEmail(
+    tx: any,
+    name: string,
+    surname: string,
+    schoolDomain: string | null,
+  ): Promise<string | null> {
+    if (!schoolDomain) return null;
+
+    const firstToken = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .find(Boolean);
+    const lastToken = String(surname || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .pop();
+
+    const firstInitial = this.normalizeNamePart(firstToken).slice(0, 1);
+    const lastName = this.normalizeNamePart(lastToken);
+    if (!firstInitial || !lastName) return null;
+
+    const base = `${firstInitial}.${lastName}`;
+    for (let n = 0; n < 1000; n++) {
+      const suffix = n === 0 ? '' : String(n);
+      const candidate = `${base}${suffix}@${schoolDomain}`;
+
+      const [teacher, student] = await Promise.all([
+        tx.teacher.findFirst({
+          where: {
+            OR: [{ institutionalEmail: candidate }, { email: candidate }],
+          },
+          select: { id: true },
+        }),
+        tx.student.findFirst({
+          where: {
+            OR: [{ institutionalEmail: candidate }, { email: candidate }],
+          },
+          select: { id: true },
+        }),
+      ]);
+
+      if (!teacher && !student) return candidate;
+    }
+
+    throw new BadRequestException('Unable to generate a unique email address');
+  }
 
   private async getTeacherClassIds(teacherId: string): Promise<string[]> {
     const classes = await this.prisma.class.findMany({
@@ -353,6 +461,131 @@ export class StudentService {
     }
   }
 
+  async adminCreateStudent(input: CreateStudentAdminInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const normalizedName = this.normalizePersonName(input.name);
+        const normalizedSurname = this.normalizePersonName(input.surname);
+        const username = String(input.username || '').trim();
+
+        if (!username) {
+          throw new BadRequestException('Username is required');
+        }
+
+        const [existingStudentUsername, existingParent, existingClass] =
+          await Promise.all([
+            tx.student.findUnique({
+              where: { username },
+              select: { id: true },
+            }),
+            tx.parent.findUnique({
+              where: { id: input.parentId },
+              include: {
+                students: {
+                  select: { id: true },
+                },
+              },
+            }),
+            tx.class.findUnique({
+              where: { id: input.classId },
+              include: {
+                students: {
+                  select: { id: true },
+                },
+              },
+            }),
+          ]);
+
+        if (existingStudentUsername) {
+          throw new BadRequestException('Username is already in use');
+        }
+
+        if (!existingParent) {
+          throw new NotFoundException(
+            `Parent with ID ${input.parentId} not found`,
+          );
+        }
+
+        if (!existingClass) {
+          throw new NotFoundException(
+            `Class with ID ${input.classId} not found`,
+          );
+        }
+
+        if (existingClass.students.length >= existingClass.capacity) {
+          throw new BadRequestException(
+            `Class ${existingClass.name} has reached maximum capacity`,
+          );
+        }
+
+        await tx.setupState.upsert({
+          where: { id: 'default' },
+          update: {},
+          create: { id: 'default' },
+        });
+
+        const setupState = await tx.setupState.findUnique({
+          where: { id: 'default' },
+          select: { schoolDomain: true },
+        });
+
+        const schoolDomain = this.normalizeSchoolDomain(
+          setupState?.schoolDomain,
+        );
+        const hashedPassword = await bcrypt.hash(input.password, 10);
+        const studentId = await this.generateStudentId(tx);
+        const institutionalEmail = await this.generateInstitutionalEmail(
+          tx,
+          normalizedName,
+          normalizedSurname,
+          schoolDomain,
+        );
+
+        return tx.student.create({
+          data: {
+            studentId,
+            username,
+            password: hashedPassword,
+            role: Roles.STUDENT,
+            name: normalizedName,
+            surname: normalizedSurname,
+            email: input.email?.trim() || null,
+            phone: input.phone?.trim() || null,
+            address: input.address?.trim() || null,
+            parentId: existingParent.id,
+            classId: existingClass.id,
+            institutionalEmail,
+          },
+          include: {
+            parent: true,
+            class: true,
+          },
+        });
+      });
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      const prismaCode = (error as any)?.code;
+      if (prismaCode === 'P2002') {
+        throw new BadRequestException(
+          'Username, email, or phone number is already in use',
+        );
+      }
+      if (prismaCode === 'P2003') {
+        throw new BadRequestException(
+          'Selected parent or class does not exist',
+        );
+      }
+
+      throw new InternalServerErrorException('Failed to create student');
+    }
+  }
+
   async adminUpdateStudent(studentId: string, input: UpdateStudentAdminInput) {
     try {
       const existingStudent = await this.prisma.student.findUnique({
@@ -395,7 +628,9 @@ export class StudentService {
         data: {
           ...(input.name !== undefined ? { name: input.name } : {}),
           ...(input.surname !== undefined ? { surname: input.surname } : {}),
-          ...(input.studentId !== undefined ? { studentId: input.studentId } : {}),
+          ...(input.studentId !== undefined
+            ? { studentId: input.studentId }
+            : {}),
           ...(input.phone !== undefined ? { phone: input.phone } : {}),
           ...(input.address !== undefined ? { address: input.address } : {}),
           ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
@@ -421,7 +656,9 @@ export class StudentService {
         );
       }
       if (prismaCode === 'P2003') {
-        throw new BadRequestException('Selected parent or class does not exist');
+        throw new BadRequestException(
+          'Selected parent or class does not exist',
+        );
       }
 
       throw new InternalServerErrorException('Failed to update student');
