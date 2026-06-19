@@ -393,6 +393,18 @@ input CreateResultInput {
   type: ResultType!
 }
 
+input CreateStudentAdminInput {
+  address: String
+  classId: String!
+  email: String
+  name: String!
+  parentId: String!
+  password: String!
+  phone: String
+  surname: String!
+  username: String!
+}
+
 input CreateSubjectInput {
   classId: String!
   name: String!
@@ -712,6 +724,7 @@ type MonthlyRevenue {
 
 type Mutation {
   acceptInvitation(input: AcceptInvitationInput!): AuthResponse!
+  adminCreateStudent(input: CreateStudentAdminInput!): Student!
   adminSignup(input: AdminSignupInput!): AuthResponse!
   adminUpdateStudent(input: UpdateStudentAdminInput!, studentId: String!): Student!
   archiveAnnouncement(announcementId: String!): Boolean!
