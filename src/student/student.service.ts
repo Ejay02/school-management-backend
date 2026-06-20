@@ -507,9 +507,7 @@ export class StudentService {
         }
 
         if (!existingClass) {
-          throw new NotFoundException(
-            `Class with ID ${input.classId} not found`,
-          );
+          throw new NotFoundException(`Class with ID ${input.classId} not found`);
         }
 
         if (existingClass.students.length >= existingClass.capacity) {
@@ -529,9 +527,7 @@ export class StudentService {
           select: { schoolDomain: true },
         });
 
-        const schoolDomain = this.normalizeSchoolDomain(
-          setupState?.schoolDomain,
-        );
+        const schoolDomain = this.normalizeSchoolDomain(setupState?.schoolDomain);
         const hashedPassword = await bcrypt.hash(input.password, 10);
         const studentId = await this.generateStudentId(tx);
         const institutionalEmail = await this.generateInstitutionalEmail(
@@ -577,9 +573,7 @@ export class StudentService {
         );
       }
       if (prismaCode === 'P2003') {
-        throw new BadRequestException(
-          'Selected parent or class does not exist',
-        );
+        throw new BadRequestException('Selected parent or class does not exist');
       }
 
       throw new InternalServerErrorException('Failed to create student');
@@ -628,9 +622,7 @@ export class StudentService {
         data: {
           ...(input.name !== undefined ? { name: input.name } : {}),
           ...(input.surname !== undefined ? { surname: input.surname } : {}),
-          ...(input.studentId !== undefined
-            ? { studentId: input.studentId }
-            : {}),
+          ...(input.studentId !== undefined ? { studentId: input.studentId } : {}),
           ...(input.phone !== undefined ? { phone: input.phone } : {}),
           ...(input.address !== undefined ? { address: input.address } : {}),
           ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
@@ -656,9 +648,7 @@ export class StudentService {
         );
       }
       if (prismaCode === 'P2003') {
-        throw new BadRequestException(
-          'Selected parent or class does not exist',
-        );
+        throw new BadRequestException('Selected parent or class does not exist');
       }
 
       throw new InternalServerErrorException('Failed to update student');
