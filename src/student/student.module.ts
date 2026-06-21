@@ -3,9 +3,10 @@ import { StudentService } from './student.service';
 import { JwtService } from '@nestjs/jwt';
 import { StudentResolver } from './student.resolver';
 import { CloudinaryModule } from 'src/shared/cloudinary/cloudinary.module';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
-  imports: [CloudinaryModule],
+  imports: [CloudinaryModule, MailModule],
   providers: [StudentService, JwtService, StudentResolver],
   exports: [StudentService],
 })

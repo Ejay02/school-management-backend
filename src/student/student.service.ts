@@ -16,6 +16,7 @@ import * as bcrypt from 'bcrypt';
 import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
 import { UpdateStudentAdminInput } from './input/update-student-admin.input';
 import { CreateStudentAdminInput } from './input/create-student-admin.input';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class StudentService {
@@ -23,6 +24,7 @@ export class StudentService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly mailService: MailService,
   ) {}
 
   private normalizePersonName(value: string) {
@@ -62,6 +64,86 @@ export class StudentService {
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '');
+  }
+
+  private formatDisplayName(
+    name?: string | null,
+    surname?: string | null,
+    fallback = 'there',
+  ) {
+    const fullName = [name, surname].filter(Boolean).join(' ').trim();
+    return fullName || fallback;
+  }
+
+  private buildParentPortalUrl() {
+    const raw = process.env.FRONTEND_URL?.trim();
+    if (!raw) return null;
+
+    const base = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+    return `${base}/parent`;
+  }
+
+  private async notifyParentAboutCreatedStudent(student: {
+    name?: string | null;
+    surname?: string | null;
+    username?: string | null;
+    studentId?: string | null;
+    institutionalEmail?: string | null;
+    class?: { name?: string | null } | null;
+    parent?: {
+      email?: string | null;
+      name?: string | null;
+      surname?: string | null;
+    } | null;
+  }) {
+    const parentEmail = student.parent?.email?.trim();
+    if (!parentEmail) return;
+
+    try {
+      const setupState = await this.prisma.setupState.upsert({
+        where: { id: 'default' },
+        update: {},
+        create: { id: 'default' },
+        select: { schoolName: true },
+      });
+
+      const schoolName =
+        typeof setupState.schoolName === 'string' &&
+        setupState.schoolName.trim().length
+          ? setupState.schoolName.trim()
+          : 'your school';
+
+      const studentName = this.formatDisplayName(
+        student.name,
+        student.surname,
+        'your child',
+      );
+
+      await this.mailService.sendMail({
+        to: parentEmail,
+        subject: `${schoolName}: ${studentName} was added to your parent account`,
+        template: 'parent.student-created.hbs',
+        context: {
+          parentName: this.formatDisplayName(
+            student.parent?.name,
+            student.parent?.surname,
+            'Parent',
+          ),
+          schoolName,
+          studentName,
+          studentUsername: student.username || 'Not assigned',
+          studentId: student.studentId || 'Pending',
+          className: student.class?.name || 'Unassigned',
+          institutionalEmail: student.institutionalEmail || '',
+          hasInstitutionalEmail: Boolean(student.institutionalEmail),
+          portalUrl: this.buildParentPortalUrl() || '',
+          hasPortalUrl: Boolean(this.buildParentPortalUrl()),
+        },
+        mailType: 'onboarding',
+      });
+    } catch {
+      // Email delivery should not block student creation.
+    }
   }
 
   private async claimNextSequence(
@@ -463,7 +545,7 @@ export class StudentService {
 
   async adminCreateStudent(input: CreateStudentAdminInput) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const createdStudent = await this.prisma.$transaction(async (tx) => {
         const normalizedName = this.normalizePersonName(input.name);
         const normalizedSurname = this.normalizePersonName(input.surname);
         const username = String(input.username || '').trim();
@@ -558,6 +640,9 @@ export class StudentService {
           },
         });
       });
+
+      await this.notifyParentAboutCreatedStudent(createdStudent);
+      return createdStudent;
     } catch (error) {
       if (
         error instanceof NotFoundException ||
