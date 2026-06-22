@@ -17,6 +17,7 @@ import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.ser
 import { UpdateStudentAdminInput } from './input/update-student-admin.input';
 import { CreateStudentAdminInput } from './input/create-student-admin.input';
 import { MailService } from 'src/mail/mail.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class StudentService {
@@ -83,19 +84,62 @@ export class StudentService {
     return `${base}/parent`;
   }
 
-  private async notifyParentAboutCreatedStudent(student: {
-    name?: string | null;
-    surname?: string | null;
-    username?: string | null;
-    studentId?: string | null;
-    institutionalEmail?: string | null;
-    class?: { name?: string | null } | null;
-    parent?: {
-      email?: string | null;
+  private buildStudentPasswordSetupUrl(token: string) {
+    const raw = process.env.FRONTEND_URL?.trim();
+    if (!raw) return null;
+
+    const base = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+    return `${base}/setup-student-password?token=${encodeURIComponent(token)}`;
+  }
+
+  private async createStudentPasswordSetupToken(studentUserId: string) {
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await this.prisma.passwordSetupToken.updateMany({
+      where: {
+        userId: studentUserId,
+        role: Roles.STUDENT as any,
+        purpose: 'STUDENT_PASSWORD_SETUP' as any,
+        usedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      data: { revokedAt: now },
+    });
+
+    const token = uuidv4();
+    const record = await this.prisma.passwordSetupToken.create({
+      data: {
+        token,
+        purpose: 'STUDENT_PASSWORD_SETUP' as any,
+        userId: studentUserId,
+        role: Roles.STUDENT as any,
+        expiresAt,
+      },
+      select: { token: true, expiresAt: true },
+    });
+
+    return record;
+  }
+
+  private async notifyParentAboutCreatedStudent(
+    student: {
       name?: string | null;
       surname?: string | null;
-    } | null;
-  }) {
+      username?: string | null;
+      studentId?: string | null;
+      institutionalEmail?: string | null;
+      class?: { name?: string | null } | null;
+      parent?: {
+        email?: string | null;
+        name?: string | null;
+        surname?: string | null;
+      } | null;
+    },
+    options?: { setupUrl?: string | null; setupExpiresAt?: Date | null },
+  ) {
     const parentEmail = student.parent?.email?.trim();
     if (!parentEmail) return;
 
@@ -138,6 +182,9 @@ export class StudentService {
           hasInstitutionalEmail: Boolean(student.institutionalEmail),
           portalUrl: this.buildParentPortalUrl() || '',
           hasPortalUrl: Boolean(this.buildParentPortalUrl()),
+          setupUrl: options?.setupUrl || '',
+          hasSetupUrl: Boolean(options?.setupUrl),
+          setupExpiresAt: options?.setupExpiresAt || null,
         },
         mailType: 'onboarding',
       });
@@ -543,8 +590,34 @@ export class StudentService {
     }
   }
 
+  async adminSendStudentPasswordSetupLink(studentId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      include: { parent: true, class: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${studentId} not found`);
+    }
+
+    const parentEmail = student.parent?.email?.trim();
+    if (!parentEmail) {
+      throw new BadRequestException('Selected parent does not have an email');
+    }
+
+    const tokenRecord = await this.createStudentPasswordSetupToken(student.id);
+    await this.notifyParentAboutCreatedStudent(student, {
+      setupUrl: this.buildStudentPasswordSetupUrl(tokenRecord.token),
+      setupExpiresAt: tokenRecord.expiresAt,
+    });
+  }
+
   async adminCreateStudent(input: CreateStudentAdminInput) {
     try {
+      const rawPassword =
+        typeof input.password === 'string' ? input.password : '';
+      const isPasswordProvided = rawPassword.trim().length > 0;
+
       const createdStudent = await this.prisma.$transaction(async (tx) => {
         const normalizedName = this.normalizePersonName(input.name);
         const normalizedSurname = this.normalizePersonName(input.surname);
@@ -589,7 +662,9 @@ export class StudentService {
         }
 
         if (!existingClass) {
-          throw new NotFoundException(`Class with ID ${input.classId} not found`);
+          throw new NotFoundException(
+            `Class with ID ${input.classId} not found`,
+          );
         }
 
         if (existingClass.students.length >= existingClass.capacity) {
@@ -609,8 +684,13 @@ export class StudentService {
           select: { schoolDomain: true },
         });
 
-        const schoolDomain = this.normalizeSchoolDomain(setupState?.schoolDomain);
-        const hashedPassword = await bcrypt.hash(input.password, 10);
+        const schoolDomain = this.normalizeSchoolDomain(
+          setupState?.schoolDomain,
+        );
+        const passwordToHash = isPasswordProvided
+          ? rawPassword
+          : `${uuidv4()}${uuidv4()}`;
+        const hashedPassword = await bcrypt.hash(passwordToHash, 10);
         const studentId = await this.generateStudentId(tx);
         const institutionalEmail = await this.generateInstitutionalEmail(
           tx,
@@ -641,7 +721,18 @@ export class StudentService {
         });
       });
 
-      await this.notifyParentAboutCreatedStudent(createdStudent);
+      if (isPasswordProvided) {
+        await this.notifyParentAboutCreatedStudent(createdStudent);
+        return createdStudent;
+      }
+
+      const tokenRecord = await this.createStudentPasswordSetupToken(
+        createdStudent.id,
+      );
+      await this.notifyParentAboutCreatedStudent(createdStudent, {
+        setupUrl: this.buildStudentPasswordSetupUrl(tokenRecord.token),
+        setupExpiresAt: tokenRecord.expiresAt,
+      });
       return createdStudent;
     } catch (error) {
       if (
@@ -658,7 +749,9 @@ export class StudentService {
         );
       }
       if (prismaCode === 'P2003') {
-        throw new BadRequestException('Selected parent or class does not exist');
+        throw new BadRequestException(
+          'Selected parent or class does not exist',
+        );
       }
 
       throw new InternalServerErrorException('Failed to create student');
@@ -707,7 +800,9 @@ export class StudentService {
         data: {
           ...(input.name !== undefined ? { name: input.name } : {}),
           ...(input.surname !== undefined ? { surname: input.surname } : {}),
-          ...(input.studentId !== undefined ? { studentId: input.studentId } : {}),
+          ...(input.studentId !== undefined
+            ? { studentId: input.studentId }
+            : {}),
           ...(input.phone !== undefined ? { phone: input.phone } : {}),
           ...(input.address !== undefined ? { address: input.address } : {}),
           ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
@@ -733,7 +828,9 @@ export class StudentService {
         );
       }
       if (prismaCode === 'P2003') {
-        throw new BadRequestException('Selected parent or class does not exist');
+        throw new BadRequestException(
+          'Selected parent or class does not exist',
+        );
       }
 
       throw new InternalServerErrorException('Failed to update student');

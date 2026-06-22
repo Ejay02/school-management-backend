@@ -1,4 +1,4 @@
-import { Resolver, Mutation, Args, Context } from '@nestjs/graphql';
+import { Resolver, Mutation, Args, Context, Query } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
 import { AuthResponse } from './response/auth.response';
 import { BaseLoginInput } from './input/login.input';
@@ -10,6 +10,8 @@ import {
 } from './input/signup.input';
 import { TokenResponse } from './response/token.response';
 import { ResetPasswordInput } from './input/reset.password.input';
+import { CompletePasswordSetupInput } from './input/complete-password-setup.input';
+import { PasswordSetupPreview } from './types/password-setup.types';
 
 @Resolver()
 export class AuthResolver {
@@ -87,5 +89,18 @@ export class AuthResolver {
       input.newPassword,
       input.role,
     );
+  }
+
+  @Query(() => PasswordSetupPreview)
+  async validatePasswordSetupToken(@Args('token') token: string) {
+    return this.authService.validatePasswordSetupToken(token);
+  }
+
+  @Mutation(() => Boolean)
+  async completePasswordSetup(
+    @Args('input') input: CompletePasswordSetupInput,
+  ): Promise<boolean> {
+    await this.authService.completePasswordSetup(input.token, input.newPassword);
+    return true;
   }
 }

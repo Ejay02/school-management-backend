@@ -1214,4 +1214,121 @@ export class AuthService {
       classId: updatedUser.classId ?? null,
     };
   }
+
+  async validatePasswordSetupToken(token: string) {
+    const normalized = String(token || '').trim();
+    if (!normalized) {
+      throw new BadRequestException('Password setup token is missing');
+    }
+
+    const record = await this.prisma.passwordSetupToken.findUnique({
+      where: { token: normalized },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Password setup token not found');
+    }
+
+    if (record.purpose !== ('STUDENT_PASSWORD_SETUP' as any)) {
+      throw new BadRequestException('Password setup token is not valid');
+    }
+
+    if (record.revokedAt || record.usedAt) {
+      throw new BadRequestException('Password setup token is no longer valid');
+    }
+
+    const now = new Date();
+    if (record.expiresAt <= now) {
+      await this.prisma.passwordSetupToken.update({
+        where: { token: normalized },
+        data: { revokedAt: now },
+      });
+      throw new BadRequestException('Password setup token has expired');
+    }
+
+    if (record.role !== (Roles.STUDENT as any)) {
+      throw new BadRequestException('Password setup token is not valid');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: record.userId },
+      select: { username: true, name: true, surname: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return {
+      role: Roles.STUDENT,
+      username: student.username,
+      name: student.name,
+      surname: student.surname,
+      expiresAt: record.expiresAt,
+    };
+  }
+
+  async completePasswordSetup(token: string, newPassword: string) {
+    const normalizedToken = String(token || '').trim();
+    if (!normalizedToken) {
+      throw new BadRequestException('Password setup token is missing');
+    }
+
+    const password = String(newPassword || '');
+    if (password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const record = await tx.passwordSetupToken.findUnique({
+        where: { token: normalizedToken },
+      });
+
+      if (!record) {
+        throw new NotFoundException('Password setup token not found');
+      }
+      if (record.purpose !== ('STUDENT_PASSWORD_SETUP' as any)) {
+        throw new BadRequestException('Password setup token is not valid');
+      }
+      if (record.revokedAt || record.usedAt) {
+        throw new BadRequestException('Password setup token is no longer valid');
+      }
+      if (record.expiresAt <= now) {
+        await tx.passwordSetupToken.update({
+          where: { token: normalizedToken },
+          data: { revokedAt: now },
+        });
+        throw new BadRequestException('Password setup token has expired');
+      }
+      if (record.role !== (Roles.STUDENT as any)) {
+        throw new BadRequestException('Password setup token is not valid');
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await tx.student.update({
+        where: { id: record.userId },
+        data: { password: hashedPassword },
+      });
+
+      await tx.passwordSetupToken.update({
+        where: { token: normalizedToken },
+        data: { usedAt: now },
+      });
+
+      await tx.passwordSetupToken.updateMany({
+        where: {
+          userId: record.userId,
+          role: Roles.STUDENT as any,
+          purpose: 'STUDENT_PASSWORD_SETUP' as any,
+          usedAt: null,
+          revokedAt: null,
+          token: { not: normalizedToken },
+          expiresAt: { gt: now },
+        },
+        data: { revokedAt: now },
+      });
+    });
+  }
 }

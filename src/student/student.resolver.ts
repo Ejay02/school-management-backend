@@ -78,6 +78,15 @@ export class StudentResolver {
     return this.studentService.adminCreateStudent(input);
   }
 
+  @Mutation(() => Boolean)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  async adminSendStudentPasswordSetupLink(
+    @Args('studentId') studentId: string,
+  ) {
+    await this.studentService.adminSendStudentPasswordSetupLink(studentId);
+    return true;
+  }
+
   @Mutation(() => Student)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async adminUpdateStudent(

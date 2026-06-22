@@ -476,6 +476,23 @@ model Invitation {
   @@index([expiresAt])
 }
 
+model PasswordSetupToken {
+  id        String               @id @default(uuid())
+  token     String               @unique
+  purpose   PasswordSetupPurpose
+  userId    String
+  role      Role
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([purpose, role])
+}
+
 model SetupState {
   id                  String   @id @default("default")
   schoolName          String?
@@ -704,6 +721,10 @@ enum InviteStatus {
   ACCEPTED
   REVOKED
   EXPIRED
+}
+
+enum PasswordSetupPurpose {
+  STUDENT_PASSWORD_SETUP
 }
 
 enum EventStatus {

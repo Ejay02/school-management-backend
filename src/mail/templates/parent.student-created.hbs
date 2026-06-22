@@ -3,8 +3,10 @@
     <h2>Student Account Linked</h2>
     <p>Hello {{parentName}},</p>
     <p>
-      A student account for <strong>{{studentName}}</strong> has been created and
-      linked to your parent profile at <strong>{{schoolName}}</strong>.
+      A student account for
+      <strong>{{studentName}}</strong>
+      has been created and linked to your parent profile at
+      <strong>{{schoolName}}</strong>.
     </p>
 
     <div>
@@ -20,6 +22,13 @@
       <p>
         Review this student from your parent portal:
         <a href='{{portalUrl}}'>{{portalUrl}}</a>
+      </p>
+    {{/if}}
+
+    {{#if hasSetupUrl}}
+      <p>
+        Set a password for this student account:
+        <a href='{{setupUrl}}'>{{setupUrl}}</a>
       </p>
     {{/if}}
 
