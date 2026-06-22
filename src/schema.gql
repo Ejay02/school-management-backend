@@ -292,6 +292,11 @@ input CompleteExamInput {
   studentId: String!
 }
 
+input CompletePasswordSetupInput {
+  newPassword: String!
+  token: String!
+}
+
 type Counts {
   admins: Int!
   parents: Int!
@@ -399,7 +404,7 @@ input CreateStudentAdminInput {
   email: String
   name: String!
   parentId: String!
-  password: String!
+  password: String
   phone: String
   surname: String!
   username: String!
@@ -725,6 +730,7 @@ type MonthlyRevenue {
 type Mutation {
   acceptInvitation(input: AcceptInvitationInput!): AuthResponse!
   adminCreateStudent(input: CreateStudentAdminInput!): Student!
+  adminSendStudentPasswordSetupLink(studentId: String!): Boolean!
   adminSignup(input: AdminSignupInput!): AuthResponse!
   adminUpdateStudent(input: UpdateStudentAdminInput!, studentId: String!): Student!
   archiveAnnouncement(announcementId: String!): Boolean!
@@ -741,6 +747,7 @@ type Mutation {
   cancelEvent(id: String!, reason: String!): Event!
   checkInAttendance(token: String!): Attendance!
   completeExam(input: CompleteExamInput!): StudentExam!
+  completePasswordSetup(input: CompletePasswordSetupInput!): Boolean!
   createAnnouncement(classId: String, content: String!, targetRoles: [String!], title: String!): Announcement!
   createAssignment(createAssignmentInput: CreateAssignmentInput!): Assignment!
   createAttendanceSession(date: DateTime!, lessonId: String!): AttendanceSessionToken!
@@ -894,6 +901,14 @@ input ParentSignupInput {
   username: String!
 }
 
+type PasswordSetupPreview {
+  expiresAt: DateTime!
+  name: String!
+  role: Roles!
+  surname: String!
+  username: String!
+}
+
 type Payment {
   amount: Float!
   createdAt: DateTime!
@@ -1000,6 +1015,7 @@ type Query {
   invoicesDueThisWeek: [Invoice!]!
   securityLogs(action: String, ipAddress: String, params: PaginationInput, username: String): SecurityLogListResponse!
   validateInvitationToken(token: String!): InvitationPreview!
+  validatePasswordSetupToken(token: String!): PasswordSetupPreview!
 }
 
 type Question {
