@@ -128,6 +128,7 @@ export class StudentService {
     student: {
       name?: string | null;
       surname?: string | null;
+      email?: string | null;
       username?: string | null;
       studentId?: string | null;
       institutionalEmail?: string | null;
@@ -138,10 +139,37 @@ export class StudentService {
         surname?: string | null;
       } | null;
     },
-    options?: { setupUrl?: string | null; setupExpiresAt?: Date | null },
+    options?: {
+      setupUrl?: string | null;
+      setupExpiresAt?: Date | null;
+      temporaryPassword?: string | null;
+    },
   ) {
-    const parentEmail = student.parent?.email?.trim();
-    if (!parentEmail) return;
+    const parentEmail = student.parent?.email?.trim() || '';
+    const studentEmail = student.email?.trim() || '';
+    const recipients = [
+      {
+        email: parentEmail,
+        name: this.formatDisplayName(
+          student.parent?.name,
+          student.parent?.surname,
+          'Parent',
+        ),
+      },
+      {
+        email: studentEmail,
+        name: this.formatDisplayName(student.name, student.surname, 'Student'),
+      },
+    ].filter(
+      (recipient, index, all) =>
+        recipient.email &&
+        all.findIndex(
+          (candidate) =>
+            candidate.email.toLowerCase() === recipient.email.toLowerCase(),
+        ) === index,
+    );
+
+    if (!recipients.length) return;
 
     try {
       const setupState = await this.prisma.setupState.upsert({
@@ -162,32 +190,35 @@ export class StudentService {
         student.surname,
         'your child',
       );
+      const portalUrl = this.buildParentPortalUrl() || '';
 
-      await this.mailService.sendMail({
-        to: parentEmail,
-        subject: `${schoolName}: ${studentName} was added to your parent account`,
-        template: 'parent.student-created.hbs',
-        context: {
-          parentName: this.formatDisplayName(
-            student.parent?.name,
-            student.parent?.surname,
-            'Parent',
-          ),
-          schoolName,
-          studentName,
-          studentUsername: student.username || 'Not assigned',
-          studentId: student.studentId || 'Pending',
-          className: student.class?.name || 'Unassigned',
-          institutionalEmail: student.institutionalEmail || '',
-          hasInstitutionalEmail: Boolean(student.institutionalEmail),
-          portalUrl: this.buildParentPortalUrl() || '',
-          hasPortalUrl: Boolean(this.buildParentPortalUrl()),
-          setupUrl: options?.setupUrl || '',
-          hasSetupUrl: Boolean(options?.setupUrl),
-          setupExpiresAt: options?.setupExpiresAt || null,
-        },
-        mailType: 'onboarding',
-      });
+      await Promise.all(
+        recipients.map((recipient) =>
+          this.mailService.sendMail({
+            to: recipient.email,
+            subject: `${schoolName}: ${studentName} account details`,
+            template: 'parent.student-created.hbs',
+            context: {
+              recipientName: recipient.name,
+              schoolName,
+              studentName,
+              studentUsername: student.username || 'Not assigned',
+              studentId: student.studentId || 'Pending',
+              className: student.class?.name || 'Unassigned',
+              institutionalEmail: student.institutionalEmail || '',
+              hasInstitutionalEmail: Boolean(student.institutionalEmail),
+              portalUrl,
+              hasPortalUrl: Boolean(portalUrl),
+              setupUrl: options?.setupUrl || '',
+              hasSetupUrl: Boolean(options?.setupUrl),
+              setupExpiresAt: options?.setupExpiresAt || null,
+              temporaryPassword: options?.temporaryPassword || '',
+              hasTemporaryPassword: Boolean(options?.temporaryPassword),
+            },
+            mailType: 'onboarding',
+          }),
+        ),
+      );
     } catch {
       // Email delivery should not block student creation.
     }
@@ -724,7 +755,11 @@ export class StudentService {
         return { student, generatedPassword };
       });
 
-      await this.notifyParentAboutCreatedStudent(createdStudent.student);
+      await this.notifyParentAboutCreatedStudent(createdStudent.student, {
+        temporaryPassword: isPasswordProvided
+          ? null
+          : createdStudent.generatedPassword,
+      });
       return {
         student: createdStudent.student,
         temporaryPassword: isPasswordProvided

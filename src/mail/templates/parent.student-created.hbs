@@ -1,11 +1,11 @@
 <html>
   <body>
     <h2>Student Account Linked</h2>
-    <p>Hello {{parentName}},</p>
+    <p>Hello {{recipientName}},</p>
     <p>
       A student account for
       <strong>{{studentName}}</strong>
-      has been created and linked to your parent profile at
+      has been created at
       <strong>{{schoolName}}</strong>.
     </p>
 
@@ -16,19 +16,22 @@
       {{#if hasInstitutionalEmail}}
         <p><strong>School email:</strong> {{institutionalEmail}}</p>
       {{/if}}
+      {{#if hasTemporaryPassword}}
+        <p><strong>Temporary password:</strong> {{temporaryPassword}}</p>
+      {{/if}}
     </div>
 
     {{#if hasPortalUrl}}
       <p>
-        Review this student from your parent portal:
+        Sign in here:
         <a href='{{portalUrl}}'>{{portalUrl}}</a>
       </p>
     {{/if}}
 
-    {{#if hasSetupUrl}}
+    {{#if hasTemporaryPassword}}
       <p>
-        Set a password for this student account:
-        <a href='{{setupUrl}}'>{{setupUrl}}</a>
+        This is a temporary password and the student will be forced to change it
+        on first login.
       </p>
     {{/if}}
 
