@@ -12,6 +12,9 @@ import { TokenResponse } from './response/token.response';
 import { ResetPasswordInput } from './input/reset.password.input';
 import { CompletePasswordSetupInput } from './input/complete-password-setup.input';
 import { PasswordSetupPreview } from './types/password-setup.types';
+import { ChangePasswordInput } from './input/change-password.input';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from './guards/jwtAuth.guard';
 
 @Resolver()
 export class AuthResolver {
@@ -100,7 +103,25 @@ export class AuthResolver {
   async completePasswordSetup(
     @Args('input') input: CompletePasswordSetupInput,
   ): Promise<boolean> {
-    await this.authService.completePasswordSetup(input.token, input.newPassword);
+    await this.authService.completePasswordSetup(
+      input.token,
+      input.newPassword,
+    );
+    return true;
+  }
+
+  @Mutation(() => Boolean)
+  @UseGuards(JwtAuthGuard)
+  async changePassword(
+    @Args('input') input: ChangePasswordInput,
+    @Context() context?: any,
+  ): Promise<boolean> {
+    await this.authService.changePassword(
+      context.req.user.userId,
+      context.req.user.role,
+      input.oldPassword,
+      input.newPassword,
+    );
     return true;
   }
 }

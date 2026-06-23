@@ -687,9 +687,10 @@ export class StudentService {
         const schoolDomain = this.normalizeSchoolDomain(
           setupState?.schoolDomain,
         );
+        const generatedPassword = `${uuidv4().replace(/-/g, '').slice(0, 12)}!`;
         const passwordToHash = isPasswordProvided
           ? rawPassword
-          : `${uuidv4()}${uuidv4()}`;
+          : generatedPassword;
         const hashedPassword = await bcrypt.hash(passwordToHash, 10);
         const studentId = await this.generateStudentId(tx);
         const institutionalEmail = await this.generateInstitutionalEmail(
@@ -699,7 +700,7 @@ export class StudentService {
           schoolDomain,
         );
 
-        return tx.student.create({
+        const student = await tx.student.create({
           data: {
             studentId,
             username,
@@ -713,27 +714,23 @@ export class StudentService {
             parentId: existingParent.id,
             classId: existingClass.id,
             institutionalEmail,
+            mustChangePassword: true,
           },
           include: {
             parent: true,
             class: true,
           },
         });
+        return { student, generatedPassword };
       });
 
-      if (isPasswordProvided) {
-        await this.notifyParentAboutCreatedStudent(createdStudent);
-        return createdStudent;
-      }
-
-      const tokenRecord = await this.createStudentPasswordSetupToken(
-        createdStudent.id,
-      );
-      await this.notifyParentAboutCreatedStudent(createdStudent, {
-        setupUrl: this.buildStudentPasswordSetupUrl(tokenRecord.token),
-        setupExpiresAt: tokenRecord.expiresAt,
-      });
-      return createdStudent;
+      await this.notifyParentAboutCreatedStudent(createdStudent.student);
+      return {
+        student: createdStudent.student,
+        temporaryPassword: isPasswordProvided
+          ? null
+          : createdStudent.generatedPassword,
+      };
     } catch (error) {
       if (
         error instanceof NotFoundException ||

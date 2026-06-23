@@ -12,6 +12,7 @@ import { StudentGenderStatistics } from './types/student.statistic.types';
 import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
 import { UpdateStudentAdminInput } from './input/update-student-admin.input';
 import { CreateStudentAdminInput } from './input/create-student-admin.input';
+import { AdminCreateStudentPayload } from './types/admin-create-student.types';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -72,7 +73,7 @@ export class StudentResolver {
     );
   }
 
-  @Mutation(() => Student)
+  @Mutation(() => AdminCreateStudentPayload)
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
   async adminCreateStudent(@Args('input') input: CreateStudentAdminInput) {
     return this.studentService.adminCreateStudent(input);

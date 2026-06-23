@@ -64,4 +64,7 @@ export class AuthResponse {
 
   @Field({ nullable: true })
   institutionalEmail?: string;
+
+  @Field({ nullable: true })
+  passwordChangeRequired?: boolean;
 }

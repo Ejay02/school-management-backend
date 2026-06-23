@@ -191,6 +191,7 @@ type AuthResponse {
   institutionalEmail: String
   name: String
   parentId: String
+  passwordChangeRequired: Boolean
   phone: String
   refreshToken: String!
   role: String
@@ -215,6 +216,11 @@ type BillingReportDashboard {
   revenueTrend: RevenueTrendData!
   topClassesByRevenue: [TopClassByRevenue!]!
   totalRevenue: TotalRevenueData!
+}
+
+input ChangePasswordInput {
+  newPassword: String!
+  oldPassword: String!
 }
 
 type ChatAttachment {
@@ -745,6 +751,7 @@ type Mutation {
   assignSubjectsToClass(input: AssignSubjectsInput!): AssignSubjectsResponse!
   calculateOverallResult(academicPeriod: String!, studentId: String!): Result!
   cancelEvent(id: String!, reason: String!): Event!
+  changePassword(input: ChangePasswordInput!): Boolean!
   checkInAttendance(token: String!): Attendance!
   completeExam(input: CompleteExamInput!): StudentExam!
   completePasswordSetup(input: CompletePasswordSetupInput!): Boolean!

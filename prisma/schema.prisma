@@ -35,6 +35,7 @@ model Student {
   email           String?       @unique
   institutionalEmail String?    @unique
   password        String
+  mustChangePassword Boolean    @default(false)
   phone           String?       @unique
   address         String?
   image           String?

@@ -1033,6 +1033,11 @@ export class AuthService {
 
     const { token, refreshToken } = await this.issueTokens(user.id, user.role);
 
+    const passwordChangeRequired =
+      user.role === Roles.STUDENT
+        ? Boolean((user as any).mustChangePassword)
+        : false;
+
     const authResponse: AuthResponse = {
       token,
       refreshToken,
@@ -1051,6 +1056,7 @@ export class AuthService {
       parentId: user.parentId ?? null,
       classId: user.classId ?? null,
       ...this.buildRoleIdentifiers(user),
+      passwordChangeRequired,
     };
 
     return authResponse;
@@ -1292,7 +1298,9 @@ export class AuthService {
         throw new BadRequestException('Password setup token is not valid');
       }
       if (record.revokedAt || record.usedAt) {
-        throw new BadRequestException('Password setup token is no longer valid');
+        throw new BadRequestException(
+          'Password setup token is no longer valid',
+        );
       }
       if (record.expiresAt <= now) {
         await tx.passwordSetupToken.update({
@@ -1309,7 +1317,7 @@ export class AuthService {
 
       await tx.student.update({
         where: { id: record.userId },
-        data: { password: hashedPassword },
+        data: { password: hashedPassword, mustChangePassword: false },
       });
 
       await tx.passwordSetupToken.update({
@@ -1329,6 +1337,72 @@ export class AuthService {
         },
         data: { revokedAt: now },
       });
+    });
+  }
+
+  async changePassword(
+    userId: string,
+    role: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
+    const currentRole = this.toRole(role);
+    const oldValue = String(oldPassword || '');
+    const newValue = String(newPassword || '');
+
+    if (newValue.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+
+    const userRecord = await (() => {
+      if (currentRole === Roles.ADMIN || currentRole === Roles.SUPER_ADMIN) {
+        return this.prisma.admin.findUnique({ where: { id: userId } });
+      }
+      if (currentRole === Roles.TEACHER) {
+        return this.prisma.teacher.findUnique({ where: { id: userId } });
+      }
+      if (currentRole === Roles.PARENT) {
+        return this.prisma.parent.findUnique({ where: { id: userId } });
+      }
+      return this.prisma.student.findUnique({ where: { id: userId } });
+    })();
+
+    if (!userRecord) {
+      throw new NotFoundException('User not found');
+    }
+
+    const matches = await bcrypt.compare(oldValue, userRecord.password);
+    if (!matches) {
+      throw new UnauthorizedException('Invalid current password');
+    }
+
+    const hashedPassword = await bcrypt.hash(newValue, 10);
+
+    if (currentRole === Roles.ADMIN || currentRole === Roles.SUPER_ADMIN) {
+      await this.prisma.admin.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+      return;
+    }
+    if (currentRole === Roles.TEACHER) {
+      await this.prisma.teacher.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+      return;
+    }
+    if (currentRole === Roles.PARENT) {
+      await this.prisma.parent.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+      return;
+    }
+
+    await this.prisma.student.update({
+      where: { id: userId },
+      data: { password: hashedPassword, mustChangePassword: false },
     });
   }
 }
