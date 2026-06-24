@@ -32,6 +32,11 @@ type Admin {
   username: String!
 }
 
+type AdminCreateStudentPayload {
+  student: Student!
+  temporaryPassword: String
+}
+
 type AdminDashboardOverview {
   dashboardSummary: DashboardSummary!
   financeOverview: FinanceOverview!
@@ -735,7 +740,7 @@ type MonthlyRevenue {
 
 type Mutation {
   acceptInvitation(input: AcceptInvitationInput!): AuthResponse!
-  adminCreateStudent(input: CreateStudentAdminInput!): Student!
+  adminCreateStudent(input: CreateStudentAdminInput!): AdminCreateStudentPayload!
   adminSendStudentPasswordSetupLink(studentId: String!): Boolean!
   adminSignup(input: AdminSignupInput!): AuthResponse!
   adminUpdateStudent(input: UpdateStudentAdminInput!, studentId: String!): Student!
