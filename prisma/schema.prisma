@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,216 +8,216 @@ datasource db {
 }
 
 model Admin {
-  id            String    @id @default(uuid())
-  adminId       String?   @unique
-  username      String    @unique
-  name          String?
-  surname       String?
-  role          Role
-  email         String?
-  password      String
-  image         String?
-  dateOfBirth   DateTime?
-  aboutMe       String?
-  isActive      Boolean   @default(true)
-  deactivatedAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String        @id @default(uuid())
+  adminId         String?       @unique
+  username        String        @unique
+  name            String?  
+  surname         String?  
+  role            Role
+  email           String?   
+  password        String
+  image           String?
+  dateOfBirth     DateTime?
+  aboutMe         String? 
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Student {
-  id                 String        @id @default(uuid())
-  studentId          String?       @unique
-  username           String        @unique
-  role               Role
-  name               String
-  surname            String
-  email              String?       @unique
-  institutionalEmail String?       @unique
-  password           String
-  mustChangePassword Boolean       @default(false)
-  phone              String?       @unique
-  address            String?
-  image              String?
-  bloodType          String?
-  sex                Sex?
-  dateOfBirth        DateTime?
-  aboutMe            String?
-  isActive           Boolean       @default(true)
-  deactivatedAt      DateTime?
-  parentId           String
-  parent             Parent        @relation(fields: [parentId], references: [id])
-  classId            String
-  class              Class         @relation(fields: [classId], references: [id])
-  attendances        Attendance[]
-  result             Result[]
-  submissions        Submission[]
-  exams              StudentExam[]
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  studentId       String?       @unique
+  username        String        @unique
+  role            Role
+  name            String  
+  surname         String  
+  email           String?       @unique
+  institutionalEmail String?    @unique
+  password        String
+  mustChangePassword Boolean    @default(false)
+  phone           String?       @unique
+  address         String?
+  image           String?
+  bloodType       String?
+  sex             Sex?
+  dateOfBirth     DateTime?
+  aboutMe         String? 
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
+  parentId        String
+  parent          Parent        @relation(fields: [parentId], references: [id] )
+  classId         String
+  class           Class         @relation(fields: [classId], references: [id] )       
+  attendances     Attendance[]
+  result          Result[]
+  submissions     Submission[]
+  exams           StudentExam[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([parentId])
   @@index([classId])
 }
 
-model Teacher {
-  id                 String       @id @default(uuid())
-  teacherId          String?      @unique
-  username           String       @unique
-  role               Role
-  name               String
-  surname            String
-  email              String?      @unique
-  institutionalEmail String?      @unique
-  password           String
-  phone              String?      @unique
-  address            String?
-  image              String?
-  bloodType          String?
-  sex                Sex?
-  aboutMe            String?
-  dateOfBirth        DateTime?
-  isActive           Boolean      @default(true)
-  deactivatedAt      DateTime?
-  exams              Exam[]
-  subjects           Subject[]
-  lessons            Lesson[]
-  classes            Class[]
-  assignments        Assignment[]
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+model Teacher{
+  id              String        @id @default(uuid())
+  teacherId       String?       @unique
+  username        String        @unique
+  role            Role
+  name            String  
+  surname         String  
+  email           String?       @unique
+  institutionalEmail String?    @unique
+  password        String
+  phone           String?       @unique
+  address         String?
+  image           String?
+  bloodType       String?
+  sex             Sex?
+  aboutMe         String?
+  dateOfBirth     DateTime? 
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
+  exams           Exam[]
+  subjects        Subject[]
+  lessons         Lesson[]
+  classes         Class[]
+  assignments     Assignment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Parent {
-  id                 String            @id @default(uuid())
-  username           String            @unique
-  role               Role
-  name               String
-  surname            String
-  email              String?           @unique
-  password           String
-  phone              String?           @unique
-  address            String?
-  image              String?
-  dateOfBirth        DateTime?
-  aboutMe            String?
-  feeReminderOptOut  Boolean           @default(false)
-  weeklyDigestOptOut Boolean           @default(false)
-  isActive           Boolean           @default(true)
-  deactivatedAt      DateTime?
-  students           Student[]
-  invoices           Invoice[]
-  payments           Payment[]
-  feeReminderLogs    FeeReminderLog[]
-  weeklyDigestLogs   WeeklyDigestLog[]
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  id              String        @id @default(uuid())
+  username        String        @unique
+  role            Role
+  name            String  
+  surname         String  
+  email           String?       @unique
+  password        String
+  phone           String ?       @unique
+  address         String?
+  image           String?
+  dateOfBirth     DateTime? 
+  aboutMe         String?
+  feeReminderOptOut Boolean     @default(false)
+  weeklyDigestOptOut Boolean    @default(false)
+  isActive        Boolean       @default(true)
+  deactivatedAt   DateTime?
+  students        Student[]
+  invoices        Invoice[]
+  payments        Payment[]
+  feeReminderLogs FeeReminderLog[]
+  weeklyDigestLogs WeeklyDigestLog[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model ParentStudentLink {
-  id        String @id @default(uuid())
+  id        String   @id @default(uuid())
   studentId String
   parentId  String
-
-  @@unique([studentId, parentId])
+  
+  @@unique([studentId, parentId]) 
 }
 
 model Class {
-  id             String         @id @default(uuid())
-  name           String         @unique
-  capacity       Int
-  lessons        Lesson[]
-  students       Student[]
-  supervisorId   String?
-  supervisor     Teacher?       @relation(fields: [supervisorId], references: [id])
-  exams          Exam[]
-  events         Event[]
-  subjects       Subject[]
-  assignments    Assignment[]
-  attendances    Attendance[]
-  announcements  Announcement[]
-  feeStructureId String?
-  feeStructure   FeeStructure?  @relation(fields: [feeStructureId], references: [id])
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-}
+  id              String        @id @default(uuid())
+  name            String        @unique
+  capacity        Int 
+  lessons         Lesson[]
+  students        Student[]
+  supervisorId    String?
+  supervisor      Teacher?      @relation(fields: [supervisorId], references: [id] )
+  exams           Exam[]
+  events          Event[]
+  subjects        Subject[]   
+  assignments     Assignment[]
+  attendances     Attendance[]
+  announcements   Announcement[]
+  feeStructureId  String?
+  feeStructure    FeeStructure?  @relation(fields: [feeStructureId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+} 
 
 model Subject {
-  id          String       @id @default(uuid())
-  name        String
-  exams       Exam[]
-  teachers    Teacher[]
-  lessons     Lesson[]
-  assignments Assignment[]
-  classId     String
-  class       Class        @relation(fields: [classId], references: [id])
-  resultId    String?
-  result      Result?      @relation(fields: [resultId], references: [id])
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String        @id @default(uuid())
+  name            String        
+  exams           Exam[]
+  teachers        Teacher[]
+  lessons         Lesson[]
+  assignments     Assignment[]
+  classId         String
+  class           Class         @relation(fields: [classId], references: [id])
+  resultId        String?
+  result         Result?        @relation(fields: [resultId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Lesson {
-  id          String       @id @default(uuid())
-  name        String
-  day         String
-  startTime   String
-  endTime     String
-  subjectId   String
-  subject     Subject      @relation(fields: [subjectId], references: [id])
-  classId     String
-  class       Class        @relation(fields: [classId], references: [id])
-  teacherId   String?
-  teacher     Teacher?     @relation(fields: [teacherId], references: [id])
-  description String? // General lesson description
-  content     Json? // Store lesson content/materials as JSON
-  assignments Assignment[]
-  attendances Attendance[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String        @id @default(uuid())
+  name            String
+  day             String
+  startTime       String
+  endTime         String
+  subjectId       String
+  subject         Subject       @relation(fields: [subjectId], references: [id] )
+  classId         String
+  class           Class         @relation(fields: [classId], references: [id])
+  teacherId       String?
+  teacher         Teacher?      @relation(fields: [teacherId], references: [id])
+  description     String?       // General lesson description
+  content         Json?         // Store lesson content/materials as JSON
+  assignments     Assignment[]
+  attendances     Attendance[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Exam {
-  id           String        @id @default(uuid())
-  title        String
-  startTime    DateTime
-  endTime      DateTime
-  date         DateTime
-  classId      String
-  class        Class         @relation(fields: [classId], references: [id])
-  subjectId    String
-  subject      Subject       @relation(fields: [subjectId], references: [id])
-  teacherId    String
-  teacher      Teacher       @relation(fields: [teacherId], references: [id])
-  result       Result[]
-  studentExams StudentExam[]
-  description  String? // General exam description
-  instructions String? // Markdown instructions for students
-  content      Json? // Store MCQs and other question types as JSON
-  questions    Question[] // Relation to structured questions
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  title           String
+  startTime       DateTime
+  endTime         DateTime
+  date            DateTime  
+  classId         String          
+  class           Class         @relation(fields: [classId], references: [id])
+  subjectId       String          
+  subject         Subject       @relation(fields: [subjectId], references: [id])
+  teacherId       String       
+  teacher         Teacher       @relation(fields: [teacherId], references: [id])
+  result         Result[]
+  studentExams    StudentExam[] 
+  description     String?       // General exam description
+  instructions    String?       // Markdown instructions for students
+  content         Json?         // Store MCQs and other question types as JSON
+  questions       Question[]    // Relation to structured questions
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model StudentExam {
-  id                String                @id @default(uuid())
-  studentId         String
-  student           Student               @relation(fields: [studentId], references: [id])
-  examId            String
-  exam              Exam                  @relation(fields: [examId], references: [id])
-  hasTaken          Boolean               @default(false) // Flag to track if student has taken the exam
-  startedAt         DateTime? // When the student started the exam
-  completedAt       DateTime? // When the student completed the exam
-  submittedAt       DateTime?
-  answers           Json?
-  answersVersion    Int                   @default(0)
-  lastSyncAt        DateTime?
-  lastClientSyncAt  DateTime?
-  answersHash       String?
+  id              String        @id @default(uuid())
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id])
+  examId          String
+  exam            Exam          @relation(fields: [examId], references: [id])
+  hasTaken        Boolean       @default(false) // Flag to track if student has taken the exam
+  startedAt       DateTime?     // When the student started the exam
+  completedAt     DateTime?     // When the student completed the exam
+  submittedAt     DateTime?
+  answers         Json?
+  answersVersion  Int           @default(0)
+  lastSyncAt      DateTime?
+  lastClientSyncAt DateTime?
+  answersHash     String?
   clientAnswersHash String?
-  answerOps         StudentExamAnswerOp[]
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  answerOps       StudentExamAnswerOp[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@unique([studentId, examId]) // Ensure a student can only be assigned to an exam once
   @@index([studentId])
@@ -224,64 +225,65 @@ model StudentExam {
 }
 
 model StudentExamAnswerOp {
-  id              String      @id @default(uuid())
-  opId            String      @unique
-  studentExamId   String
-  studentExam     StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
-  baseVersion     Int
-  kind            String
-  questionId      String?
-  payload         Json?
+  id            String   @id @default(uuid())
+  opId          String   @unique
+  studentExamId String
+  studentExam   StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+  baseVersion   Int
+  kind          String
+  questionId    String?
+  payload       Json?
   clientCreatedAt DateTime?
-  receivedAt      DateTime    @default(now())
-  applied         Boolean     @default(false)
-  rejectedReason  String?
-  appliedVersion  Int?
-  actorId         String?
-  actorUsername   String?
-  actorRole       Role?
-  ipAddress       String?
+  receivedAt    DateTime @default(now())
+  applied       Boolean  @default(false)
+  rejectedReason String?
+  appliedVersion Int?
+  actorId       String?
+  actorUsername String?
+  actorRole     Role?
+  ipAddress     String?
 
   @@index([studentExamId])
   @@index([receivedAt])
 }
 
+
 model Assignment {
-  id           String       @id @default(uuid())
-  title        String
-  startDate    DateTime
-  dueDate      DateTime
-  description  String? // General assignment description
-  instructions String? // Markdown instructions for students
-  content      Json? // Store structured content as JSON  
-  questions    Question[] // Relation to structured questions  
-  lessonId     String
-  lesson       Lesson       @relation(fields: [lessonId], references: [id])
-  teacherId    String
-  teacher      Teacher      @relation(fields: [teacherId], references: [id])
-  subjectId    String
-  subject      Subject      @relation(fields: [subjectId], references: [id])
-  classId      String
-  class        Class        @relation(fields: [classId], references: [id])
-  result       Result[]
-  submissions  Submission[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id              String        @id @default(uuid())
+  title           String    
+  startDate       DateTime    
+  dueDate         DateTime
+  description     String?       // General assignment description
+  instructions    String?       // Markdown instructions for students
+  content         Json?         // Store structured content as JSON  
+  questions       Question[]    // Relation to structured questions  
+  lessonId        String   
+  lesson          Lesson        @relation(fields: [lessonId], references: [id])
+  teacherId       String        
+  teacher         Teacher       @relation(fields: [teacherId], references: [id])
+  subjectId       String   
+  subject         Subject       @relation(fields: [subjectId], references: [id])
+  classId         String   
+  class           Class         @relation(fields: [classId], references: [id])
+  result         Result[]    
+  submissions     Submission[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Submission {
-  id             String     @id @default(uuid())
-  assignmentId   String
-  assignment     Assignment @relation(fields: [assignmentId], references: [id])
-  studentId      String
-  student        Student    @relation(fields: [studentId], references: [id])
-  resultId       String
-  result         Result?    @relation(fields: [resultId], references: [id])
-  submissionDate DateTime   @default(now())
-  status         String // Submission status (e.g., 'submitted', 'graded', 'late')
-  content        String? // Optional field to store submission content (e.g., file URL or text)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id              String        @id @default(uuid())
+  assignmentId    String
+  assignment      Assignment    @relation(fields: [assignmentId], references: [id])
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id] )
+  resultId         String
+  result           Result?        @relation(fields: [resultId], references: [id])  
+  submissionDate  DateTime      @default(now()) 
+  status          String        // Submission status (e.g., 'submitted', 'graded', 'late')
+  content         String?       // Optional field to store submission content (e.g., file URL or text)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([assignmentId])
   @@index([studentId])
@@ -289,114 +291,115 @@ model Submission {
 }
 
 model Result {
-  id               String       @id @default(uuid())
-  score            Int
-  examId           String?
-  exam             Exam?        @relation(fields: [examId], references: [id])
-  assignmentId     String?
-  assignment       Assignment?  @relation(fields: [assignmentId], references: [id])
-  studentId        String
-  student          Student      @relation(fields: [studentId], references: [id])
-  type             ResultType? // Making it optional for backward compatibility
-  subjects         Subject[] // Relation to subjects
-  academicPeriod   String? // Making it optional for backward compatibility
-  term             Term?
-  comments         String?
-  isOfficialResult Boolean      @default(false) // Flag to distinguish between auto-generated and teacher-assigned grades
-  submissions      Submission[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id              String        @id @default(uuid())
+  score           Int
+  examId          String?
+  exam            Exam?         @relation(fields: [examId], references: [id]) 
+  assignmentId    String?
+  assignment      Assignment?   @relation(fields: [assignmentId], references: [id])  
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id] ) 
+  type            ResultType?    // Making it optional for backward compatibility
+  subjects        Subject[]     // Relation to subjects
+  academicPeriod  String?       // Making it optional for backward compatibility
+  term            Term?
+  comments        String?
+  isOfficialResult Boolean       @default(false)  // Flag to distinguish between auto-generated and teacher-assigned grades
+  submissions     Submission[]    
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([examId])
   @@index([assignmentId])
   @@index([studentId])
 }
 
-model Attendance {
-  id        String   @id @default(uuid())
-  date      DateTime
-  present   Boolean
-  status    String?
-  reason    String?
-  studentId String
-  student   Student  @relation(fields: [studentId], references: [id])
-  lessonId  String
-  lesson    Lesson   @relation(fields: [lessonId], references: [id])
-  classId   String
-  class     Class    @relation(fields: [classId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Attendance{
+  id              String        @id @default(uuid())
+  date            DateTime
+  present         Boolean
+  status          String?
+  reason          String?
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id] )
+  lessonId        String
+  lesson          Lesson        @relation(fields: [lessonId], references: [id]) 
+  classId         String   
+  class           Class         @relation(fields: [classId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@unique([lessonId, studentId, date])
+
   @@index([studentId])
   @@index([lessonId])
   @@index([classId])
 }
 
 model Event {
-  id          String          @id @default(uuid())
-  title       String
-  description String
-  classId     String?
-  class       Class?          @relation(fields: [classId], references: [id])
-  creatorId   String
-  type        String // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
-  location    String?
-  targetRoles Role[]
-  reads       EventRead[]
-  visibility  EventVisibility
-  status      EventStatus     @default(SCHEDULED)
-  startTime   DateTime
-  endTime     DateTime
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id              String        @id @default(uuid())
+  title           String          
+  description     String      
+  classId         String?      
+  class           Class?        @relation(fields: [classId], references: [id])
+  creatorId       String         
+  type            String       // e.g., 'ACADEMIC', 'EXTRA_CURRICULAR'
+  location        String?
+  targetRoles     Role[]
+  reads           EventRead[]   
+  visibility      EventVisibility
+  status          EventStatus   @default(SCHEDULED)
+  startTime       DateTime      
+  endTime         DateTime      
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model EventRead {
-  id      String   @id @default(uuid())
-  eventId String
-  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  userId  String
-  readAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  eventId  String
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId   String
+  readAt   DateTime @default(now())
 
   @@unique([eventId, userId])
 }
 
 model Announcement {
-  id          String                @id @default(uuid())
-  title       String
-  content     String
-  classId     String?
-  class       Class?                @relation(fields: [classId], references: [id])
-  targetRoles Role[]
-  reads       AnnouncementRead[]
-  archives    AnnouncementArchive[]
-  creatorId   String
-  creatorRole Role
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  archivedAt  DateTime?
+  id              String        @id @default(uuid())
+  title           String
+  content         String
+  classId         String?
+  class           Class?        @relation(fields: [classId], references: [id])
+  targetRoles     Role[] 
+  reads           AnnouncementRead[]
+  archives        AnnouncementArchive[]    
+  creatorId       String
+  creatorRole     Role 
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  archivedAt      DateTime?
 }
 
 model AnnouncementRead {
-  id             String       @id @default(uuid())
-  announcementId String
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  userId         String // The ID of the user who read the announcement
-  readAt         DateTime     @default(now())
-  deletedAt      DateTime? // Null means not deleted
-  archivedAt     DateTime?
+  id              String        @id @default(uuid())
+  announcementId  String
+  announcement    Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId          String        // The ID of the user who read the announcement
+  readAt          DateTime      @default(now())
+  deletedAt       DateTime?     // Null means not deleted
+  archivedAt      DateTime?  
 
   @@unique([announcementId, userId])
   @@index([userId])
 }
 
 model AnnouncementArchive {
-  id             String       @id @default(uuid())
-  announcementId String
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  userId         String // The ID of the user who archived the announcement
-  archivedAt     DateTime     @default(now())
+  id              String        @id @default(uuid())
+  announcementId  String
+  announcement    Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId          String        // The ID of the user who archived the announcement
+  archivedAt      DateTime      @default(now())
 
   @@unique([announcementId, userId])
   @@index([userId])
@@ -444,32 +447,32 @@ model ChatMessage {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String
-  expires   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String       @id @default(uuid())
+  token           String       @unique
+  userId          String
+  expires         DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }
 
 model Invitation {
-  id                 String       @id @default(uuid())
-  name               String?
-  email              String
-  role               Role
-  token              String       @unique
-  status             InviteStatus @default(PENDING)
-  invitedBy          String?
-  sentAt             DateTime     @default(now())
-  sentCount          Int          @default(1)
-  lastSentAt         DateTime     @default(now())
-  reminderCount      Int          @default(0)
+  id         String       @id @default(uuid())
+  name       String?
+  email      String
+  role       Role
+  token      String       @unique
+  status     InviteStatus @default(PENDING)
+  invitedBy  String?
+  sentAt     DateTime     @default(now())
+  sentCount  Int          @default(1)
+  lastSentAt DateTime     @default(now())
+  reminderCount Int       @default(0)
   lastReminderSentAt DateTime?
-  expiresAt          DateTime
-  acceptedAt         DateTime?
-  revokedAt          DateTime?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@index([email])
   @@index([status])
@@ -494,83 +497,83 @@ model PasswordSetupToken {
 }
 
 model SetupState {
-  id                     String   @id @default("default")
-  schoolName             String?
-  schoolDomain           String?
-  schoolEmail            String?
-  schoolPhone            String?
-  schoolAddress          String?
-  schoolLogo             String?
-  schoolContactName      String?
-  schoolTimezone         String?
-  academicYearCurrent    String?
-  academicYearNext       String?
-  currentTerm            Term?
-  weeklyDigestEnabled    Boolean  @default(true)
-  weeklyDigestDayOfWeek  Int      @default(0)
-  weeklyDigestSendHour   Int      @default(18)
-  weeklyDigestSendMinute Int      @default(0)
-  nextStudentSequence    Int      @default(1)
-  nextTeacherSequence    Int      @default(1)
-  nextAdminSequence      Int      @default(1)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                  String   @id @default("default")
+  schoolName          String?
+  schoolDomain        String?
+  schoolEmail         String?
+  schoolPhone         String?
+  schoolAddress       String?
+  schoolLogo          String?
+  schoolContactName   String?
+  schoolTimezone      String?
+  academicYearCurrent String?
+  academicYearNext    String?
+  currentTerm         Term?
+  weeklyDigestEnabled Boolean  @default(true)
+  weeklyDigestDayOfWeek Int    @default(0)
+  weeklyDigestSendHour Int     @default(18)
+  weeklyDigestSendMinute Int   @default(0)
+  nextStudentSequence Int      @default(1)
+  nextTeacherSequence Int      @default(1)
+  nextAdminSequence   Int      @default(1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model FeeStructure {
-  id           String          @id @default(uuid())
-  academicYear String
-  term         Term?
-  type         FeeType // YEARLY or TERM
-  description  FeeDescription?
-  components   FeeComponent[]
-  totalAmount  Float
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  invoices     Invoice[]
-  classes      Class[]
+  id              String        @id @default(uuid())
+  academicYear    String
+  term            Term?
+  type            FeeType      // YEARLY or TERM
+  description     FeeDescription?
+  components      FeeComponent[]
+  totalAmount     Float
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  invoices        Invoice[]
+  classes         Class[]    
 }
 
 model FeeComponent {
-  id             String       @id @default(uuid())
-  name           String // e.g., "Tuition", "Boarding", "Meals"
-  description    String?
-  amount         Float
-  feeStructureId String
-  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id])
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id              String        @id @default(uuid())
+  name            String        // e.g., "Tuition", "Boarding", "Meals"
+  description     String?
+  amount          Float
+  feeStructureId  String
+  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Invoice {
-  id                String           @id @default(uuid())
-  invoiceNumber     String           @unique
-  parentId          String
-  parent            Parent           @relation(fields: [parentId], references: [id])
+  id              String        @id @default(uuid())
+  invoiceNumber   String        @unique
+  parentId        String
+  parent          Parent        @relation(fields: [parentId], references: [id])
   checkoutSessionId String?
-  feeStructureId    String
-  feeStructure      FeeStructure     @relation(fields: [feeStructureId], references: [id])
-  totalAmount       Float
-  paidAmount        Float            @default(0)
-  status            InvoiceStatus    @default(PENDING)
-  dueDate           DateTime
-  payments          Payment[]
-  paymentIntentId   String?
-  reminderLogs      FeeReminderLog[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  feeStructureId  String
+  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id])
+  totalAmount     Float
+  paidAmount      Float         @default(0)
+  status          InvoiceStatus @default(PENDING)
+  dueDate         DateTime
+  payments        Payment[]
+  paymentIntentId String? 
+  reminderLogs    FeeReminderLog[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model FeeReminderLog {
-  id            String          @id @default(uuid())
-  dedupeKey     String          @unique
+  id            String         @id @default(uuid())
+  dedupeKey     String         @unique
   type          FeeReminderType
   invoiceId     String
-  invoice       Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   parentId      String
-  parent        Parent          @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parent        Parent         @relation(fields: [parentId], references: [id], onDelete: Cascade)
   daysBeforeDue Int?
-  createdAt     DateTime        @default(now())
+  createdAt     DateTime       @default(now())
 
   @@index([invoiceId])
   @@index([parentId])
@@ -594,14 +597,14 @@ model Payment {
   amount          Float
   currency        String        @default("USD")
   status          PaymentStatus
-  paymentMethod   String // e.g., "card", "bank_transfer"
-  stripePaymentId String        @unique // Stripe's payment intent ID
+  paymentMethod   String        // e.g., "card", "bank_transfer"
+  stripePaymentId String        @unique  // Stripe's payment intent ID
   description     String?
-  metadata        Json? // For any additional payment-related data
+  metadata        Json?         // For any additional payment-related data
   invoiceId       String
   invoice         Invoice       @relation(fields: [invoiceId], references: [id])
   parentId        String
-  studentId       String?
+  studentId       String? 
   parent          Parent        @relation(fields: [parentId], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -609,7 +612,7 @@ model Payment {
 
 model SecurityLog {
   id        String   @id @default(uuid())
-  action    String // FAILED_LOGIN, IP_BLOCKED, etc.
+  action    String   // FAILED_LOGIN, IP_BLOCKED, etc.
   username  String?
   ipAddress String
   timestamp DateTime @default(now())
@@ -644,19 +647,20 @@ model AuditLog {
 }
 
 model Question {
-  id            String       @id @default(uuid())
-  examId        String?
-  exam          Exam?        @relation(fields: [examId], references: [id], onDelete: Cascade)
-  assignmentId  String?
-  assignment    Assignment?  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  type          QuestionType
-  content       String // Markdown content for the question
-  options       Json? // For MCQs, store options as JSON
-  correctAnswer String? // For MCQs, store the correct answer ??
-  points        Float        @default(1.0)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id              String        @id @default(uuid())
+  examId          String?
+  exam            Exam?         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  assignmentId    String?
+  assignment      Assignment?   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  type            QuestionType
+  content         String        // Markdown content for the question
+  options         Json?         // For MCQs, store options as JSON
+  correctAnswer   String?       // For MCQs, store the correct answer ??
+  points          Float         @default(1.0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
+
 
 enum QuestionType {
   MCQ
@@ -723,7 +727,7 @@ enum Role {
   ADMIN
   SUPER_ADMIN
   TEACHER
-  PARENT
+  PARENT 
   STUDENT
 }
 
@@ -749,8 +753,8 @@ enum EventStatus {
 }
 
 enum EventVisibility {
-  PUBLIC
-  PRIVATE
+  PUBLIC 
+  PRIVATE 
 }
 
 enum ResultType {
@@ -758,3 +762,6 @@ enum ResultType {
   ASSIGNMENT
   OVERALL
 }
+
+
+

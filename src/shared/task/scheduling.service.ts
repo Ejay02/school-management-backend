@@ -723,8 +723,7 @@ export class SchedulingService
 
     if (zonedNow.weekdayIndex !== sendDayOfWeek) return;
     if (zonedNow.hour !== sendHour) return;
-    if (zonedNow.minute < sendMinute || zonedNow.minute >= sendMinute + 10)
-      return;
+    if (zonedNow.minute < sendMinute || zonedNow.minute >= sendMinute + 10) return;
 
     const sendDate = {
       year: zonedNow.year,

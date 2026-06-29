@@ -827,6 +827,7 @@ type Mutation {
   updateStudentProfile(input: UpdateProfileInput!): Student!
   updateSubject(input: UpdateSubjectInput!, subjectId: String!): Subject!
   updateTeacherProfile(input: UpdateProfileInput!): Teacher!
+  updateWeeklyDigestPreference(optOut: Boolean!): Parent!
 }
 
 type OnboardingChecklist {
@@ -902,6 +903,7 @@ type Parent {
   surname: String!
   updatedAt: DateTime!
   username: String!
+  weeklyDigestOptOut: Boolean!
 }
 
 input ParentSignupInput {
@@ -1162,6 +1164,10 @@ type SetupState {
   schoolPhone: String
   schoolTimezone: String
   updatedAt: DateTime!
+  weeklyDigestDayOfWeek: Int!
+  weeklyDigestEnabled: Boolean!
+  weeklyDigestSendHour: Int!
+  weeklyDigestSendMinute: Int!
 }
 
 type SetupStep {
@@ -1484,6 +1490,10 @@ input UpdateSetupStateInput {
   schoolName: String
   schoolPhone: String
   schoolTimezone: String
+  weeklyDigestDayOfWeek: Float
+  weeklyDigestEnabled: Boolean
+  weeklyDigestSendHour: Float
+  weeklyDigestSendMinute: Float
 }
 
 input UpdateStudentAdminInput {
