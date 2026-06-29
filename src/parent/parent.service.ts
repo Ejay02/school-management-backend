@@ -258,4 +258,30 @@ export class ParentService {
       );
     }
   }
+
+  async updateWeeklyDigestPreference(id: string, optOut: boolean) {
+    try {
+      const parent = await this.prisma.parent.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+
+      if (!parent) {
+        throw new NotFoundException(`Parent with ID: ${id} not found`);
+      }
+
+      return await this.prisma.parent.update({
+        where: { id },
+        data: { weeklyDigestOptOut: optOut },
+        include: {
+          students: true,
+        },
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        `Failed to update weekly digest preference: ${error.message}`,
+      );
+    }
+  }
 }

@@ -1,0 +1,86 @@
+<html>
+  <body style='margin:0;padding:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif;'>
+    <div style='max-width:600px;margin:0 auto;padding:16px;'>
+      <div style='background:#ffffff;border-radius:10px;padding:16px;border:1px solid #e9edf2;'>
+        <h2 style='margin:0 0 6px 0;font-size:20px;line-height:1.3;color:#111827;'>
+          {{schoolName}} Weekly Digest
+        </h2>
+        <p style='margin:0 0 16px 0;font-size:14px;line-height:1.5;color:#4b5563;'>
+          Hi {{parentName}}, here’s your week at a glance ({{weekRangeLabel}}).
+        </p>
+
+        {{#each children}}
+          <div style='border-top:1px solid #eef2f7;padding-top:14px;margin-top:14px;'>
+            <div style='font-size:16px;line-height:1.3;font-weight:700;color:#111827;margin:0 0 4px 0;'>
+              {{name}}{{#if className}} · {{className}}{{/if}}
+            </div>
+            <div style='font-size:13px;line-height:1.5;color:#374151;margin:0 0 12px 0;'>
+              Attendance: {{attendance.present}} present{{#if attendance.total}} / {{attendance.total}} lessons{{/if}}{{#if attendance.absent}} · {{attendance.absent}} missed{{/if}}
+            </div>
+
+            {{#if assignmentsDue}}
+              <div style='font-size:14px;font-weight:700;color:#111827;margin:0 0 6px 0;'>
+                Assignments due (next 7 days)
+              </div>
+              <ul style='margin:0 0 12px 0;padding-left:18px;color:#111827;'>
+                {{#each assignmentsDue}}
+                  <li style='margin:0 0 6px 0;font-size:13px;line-height:1.45;'>
+                    <span style='font-weight:700;'>{{title}}</span>
+                    <span style='color:#4b5563;'> — due {{dueDate}}{{#if subject}} · {{subject}}{{/if}}</span>
+                  </li>
+                {{/each}}
+              </ul>
+            {{else}}
+              <div style='font-size:13px;line-height:1.45;color:#6b7280;margin:0 0 12px 0;'>
+                No assignments due in the next 7 days.
+              </div>
+            {{/if}}
+
+            {{#if upcomingEvents}}
+              <div style='font-size:14px;font-weight:700;color:#111827;margin:0 0 6px 0;'>
+                Upcoming events (next 7 days)
+              </div>
+              <ul style='margin:0 0 0 0;padding-left:18px;color:#111827;'>
+                {{#each upcomingEvents}}
+                  <li style='margin:0 0 6px 0;font-size:13px;line-height:1.45;'>
+                    <span style='font-weight:700;'>{{title}}</span>
+                    <span style='color:#4b5563;'> — {{startTime}}{{#if location}} · {{location}}{{/if}}</span>
+                  </li>
+                {{/each}}
+              </ul>
+            {{else}}
+              <div style='font-size:13px;line-height:1.45;color:#6b7280;margin:0 0 0 0;'>
+                No upcoming events in the next 7 days.
+              </div>
+            {{/if}}
+          </div>
+        {{/each}}
+
+        {{#if feesDue}}
+          <div style='border-top:1px solid #eef2f7;padding-top:14px;margin-top:14px;'>
+            <div style='font-size:14px;font-weight:700;color:#111827;margin:0 0 8px 0;'>
+              Fees due
+            </div>
+            <div style='background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;'>
+              <ul style='margin:0;padding-left:18px;color:#111827;'>
+                {{#each feesDue}}
+                  <li style='margin:0 0 10px 0;font-size:13px;line-height:1.45;'>
+                    <span style='font-weight:700;'>Invoice {{invoiceNumber}}</span>
+                    <span style='color:#4b5563;'> — {{amountDue}} due {{dueDate}}</span>
+                    <div style='margin-top:4px;'>
+                      <a href='{{payLink}}' style='color:#2563eb;text-decoration:none;font-weight:700;'>Pay now</a>
+                    </div>
+                  </li>
+                {{/each}}
+              </ul>
+            </div>
+          </div>
+        {{/if}}
+      </div>
+
+      <div style='text-align:center;font-size:12px;line-height:1.4;color:#9ca3af;margin-top:12px;'>
+        This email was sent automatically by {{schoolName}}.
+      </div>
+    </div>
+  </body>
+</html>

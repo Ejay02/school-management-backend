@@ -1,5 +1,14 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { Term } from 'src/payment/enum/term';
 
 @InputType()
@@ -58,4 +67,30 @@ export class UpdateSetupStateInput {
   @IsOptional()
   @IsEnum(Term)
   currentTerm?: Term;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  weeklyDigestEnabled?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  weeklyDigestDayOfWeek?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  weeklyDigestSendHour?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(59)
+  weeklyDigestSendMinute?: number;
 }

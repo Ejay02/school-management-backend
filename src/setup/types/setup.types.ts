@@ -39,6 +39,18 @@ export class SetupState {
   @Field(() => Term, { nullable: true })
   currentTerm?: Term;
 
+  @Field(() => Boolean)
+  weeklyDigestEnabled: boolean;
+
+  @Field(() => Int)
+  weeklyDigestDayOfWeek: number;
+
+  @Field(() => Int)
+  weeklyDigestSendHour: number;
+
+  @Field(() => Int)
+  weeklyDigestSendMinute: number;
+
   @Field(() => Date)
   createdAt: Date;
 

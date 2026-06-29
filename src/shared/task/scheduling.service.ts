@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthService } from '../auth/auth.service';
 import { MailService } from 'src/mail/mail.service';
 import { InvoiceStatus } from '@prisma/client';
+import { Roles } from '../enum/role';
 
 @Injectable()
 @WebSocketGateway({
@@ -164,6 +165,15 @@ export class SchedulingService
     }
   }
 
+  @Cron('*/10 * * * *')
+  async runWeeklyDigestTasks() {
+    try {
+      await this.sendWeeklyParentDigestIfDue();
+    } catch (error) {
+      this.logger.error('Error running weekly digest task:', error.stack);
+    }
+  }
+
   private async markCompletedEvents() {
     this.logger.log('Running task to mark completed events');
 
@@ -272,8 +282,113 @@ export class SchedulingService
     }).format(value);
   }
 
+  private getZonedParts(value: Date, timeZone: string) {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(value);
+    const map: Record<string, string> = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') {
+        map[part.type] = part.value;
+      }
+    }
+
+    const year = Number.parseInt(map.year ?? '', 10);
+    const month = Number.parseInt(map.month ?? '', 10);
+    const day = Number.parseInt(map.day ?? '', 10);
+    const hour = Number.parseInt(map.hour ?? '', 10);
+    const minute = Number.parseInt(map.minute ?? '', 10);
+    const second = Number.parseInt(map.second ?? '', 10);
+    const weekday = String(map.weekday ?? '').toLowerCase();
+    const weekdayIndex = weekday.startsWith('sun')
+      ? 0
+      : weekday.startsWith('mon')
+        ? 1
+        : weekday.startsWith('tue')
+          ? 2
+          : weekday.startsWith('wed')
+            ? 3
+            : weekday.startsWith('thu')
+              ? 4
+              : weekday.startsWith('fri')
+                ? 5
+                : weekday.startsWith('sat')
+                  ? 6
+                  : null;
+
+    if (
+      !Number.isFinite(year) ||
+      !Number.isFinite(month) ||
+      !Number.isFinite(day) ||
+      !Number.isFinite(hour) ||
+      !Number.isFinite(minute) ||
+      !Number.isFinite(second) ||
+      weekdayIndex === null
+    ) {
+      throw new Error(
+        `Failed to parse zoned date parts for timezone ${timeZone}`,
+      );
+    }
+
+    const dateKey = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    return { year, month, day, hour, minute, second, weekdayIndex, dateKey };
+  }
+
+  private getTimeZoneOffsetMs(timeZone: string, date: Date) {
+    const zoned = this.getZonedParts(date, timeZone);
+    const asUtc = Date.UTC(
+      zoned.year,
+      zoned.month - 1,
+      zoned.day,
+      zoned.hour,
+      zoned.minute,
+      zoned.second,
+    );
+    return asUtc - date.getTime();
+  }
+
+  private zonedTimeToUtc(params: {
+    timeZone: string;
+    year: number;
+    month: number;
+    day: number;
+    hour?: number;
+    minute?: number;
+    second?: number;
+  }) {
+    const hour = params.hour ?? 0;
+    const minute = params.minute ?? 0;
+    const second = params.second ?? 0;
+
+    let guess = new Date(
+      Date.UTC(params.year, params.month - 1, params.day, hour, minute, second),
+    );
+    const firstOffset = this.getTimeZoneOffsetMs(params.timeZone, guess);
+    guess = new Date(guess.getTime() - firstOffset);
+
+    const secondOffset = this.getTimeZoneOffsetMs(params.timeZone, guess);
+    if (secondOffset !== firstOffset) {
+      guess = new Date(guess.getTime() - (secondOffset - firstOffset));
+    }
+
+    return guess;
+  }
+
   private buildInvoicePayLink(invoiceId: string) {
-    const frontendUrl = (process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
+    const frontendUrl = (process.env.FRONTEND_URL || '')
+      .trim()
+      .replace(/\/$/, '');
     if (!frontendUrl) {
       return `/settings/billing?invoiceId=${invoiceId}`;
     }
@@ -376,7 +491,11 @@ export class SchedulingService
       const invoices = await this.prisma.invoice.findMany({
         where: {
           status: {
-            in: [InvoiceStatus.PENDING, InvoiceStatus.PARTIAL, InvoiceStatus.OVERDUE],
+            in: [
+              InvoiceStatus.PENDING,
+              InvoiceStatus.PARTIAL,
+              InvoiceStatus.OVERDUE,
+            ],
           },
           dueDate: {
             lte: preDueWindowEnd,
@@ -406,7 +525,10 @@ export class SchedulingService
             .join(' ')
             .trim() || 'Parent';
 
-        if (!invoice.parent.feeReminderOptOut && preDueDays.includes(daysUntilDue)) {
+        if (
+          !invoice.parent.feeReminderOptOut &&
+          preDueDays.includes(daysUntilDue)
+        ) {
           const dedupeKey = `pre-due:${invoice.id}:${daysUntilDue}`;
           const reserved = await this.reserveReminderLog({
             dedupeKey,
@@ -477,6 +599,362 @@ export class SchedulingService
     } catch (error) {
       this.logger.error('Error sending fee reminders', error);
     }
+  }
+
+  private async reserveWeeklyDigestLog(params: {
+    dedupeKey: string;
+    parentId: string;
+    weekStart: Date;
+  }) {
+    try {
+      await this.prisma.weeklyDigestLog.create({
+        data: {
+          dedupeKey: params.dedupeKey,
+          parentId: params.parentId,
+          weekStart: params.weekStart,
+        },
+      });
+      return true;
+    } catch (error) {
+      if (error?.code === 'P2002') {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  private async rollbackWeeklyDigestLog(dedupeKey: string) {
+    try {
+      await this.prisma.weeklyDigestLog.delete({
+        where: { dedupeKey },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to roll back weekly digest log ${dedupeKey}: ${error.message}`,
+      );
+    }
+  }
+
+  private normalizeWeekday(value: unknown) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 6 ? parsed : 0;
+  }
+
+  private normalizeHour(value: unknown) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 23 ? parsed : 18;
+  }
+
+  private normalizeMinute(value: unknown) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 59 ? parsed : 0;
+  }
+
+  private addCalendarDays(
+    params: { year: number; month: number; day: number },
+    days: number,
+  ) {
+    const base = new Date(Date.UTC(params.year, params.month - 1, params.day));
+    base.setUTCDate(base.getUTCDate() + days);
+    return {
+      year: base.getUTCFullYear(),
+      month: base.getUTCMonth() + 1,
+      day: base.getUTCDate(),
+      dateKey: `${String(base.getUTCFullYear()).padStart(4, '0')}-${String(base.getUTCMonth() + 1).padStart(2, '0')}-${String(base.getUTCDate()).padStart(2, '0')}`,
+    };
+  }
+
+  private formatZonedDate(value: Date, timeZone: string) {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      month: 'short',
+      day: 'numeric',
+    }).format(value);
+  }
+
+  private formatZonedDateTime(value: Date, timeZone: string) {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(value);
+  }
+
+  private async getSetupStateForWeeklyDigest() {
+    return this.prisma.setupState.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+      select: {
+        schoolName: true,
+        schoolTimezone: true,
+        weeklyDigestEnabled: true,
+        weeklyDigestDayOfWeek: true,
+        weeklyDigestSendHour: true,
+        weeklyDigestSendMinute: true,
+      },
+    });
+  }
+
+  private async sendWeeklyParentDigestIfDue() {
+    const state = (await this.getSetupStateForWeeklyDigest()) as any;
+    if (!state?.weeklyDigestEnabled) return;
+
+    const timeZone =
+      typeof state.schoolTimezone === 'string' &&
+      state.schoolTimezone.trim().length
+        ? state.schoolTimezone.trim()
+        : 'UTC';
+
+    const nowUtc = new Date();
+    let zonedNow: ReturnType<typeof this.getZonedParts>;
+    try {
+      zonedNow = this.getZonedParts(nowUtc, timeZone);
+    } catch {
+      zonedNow = this.getZonedParts(nowUtc, 'UTC');
+    }
+
+    const sendDayOfWeek = this.normalizeWeekday(state.weeklyDigestDayOfWeek);
+    const sendHour = this.normalizeHour(state.weeklyDigestSendHour);
+    const sendMinute = this.normalizeMinute(state.weeklyDigestSendMinute);
+
+    if (zonedNow.weekdayIndex !== sendDayOfWeek) return;
+    if (zonedNow.hour !== sendHour) return;
+    if (zonedNow.minute < sendMinute || zonedNow.minute >= sendMinute + 10)
+      return;
+
+    const sendDate = {
+      year: zonedNow.year,
+      month: zonedNow.month,
+      day: zonedNow.day,
+    };
+    const weekStartLocal = this.addCalendarDays(sendDate, -6);
+    const weekEndExclusiveLocal = this.addCalendarDays(sendDate, 1);
+
+    const weekStartUtc = this.zonedTimeToUtc({
+      timeZone,
+      year: weekStartLocal.year,
+      month: weekStartLocal.month,
+      day: weekStartLocal.day,
+      hour: 0,
+      minute: 0,
+      second: 0,
+    });
+    const weekEndUtcExclusive = this.zonedTimeToUtc({
+      timeZone,
+      year: weekEndExclusiveLocal.year,
+      month: weekEndExclusiveLocal.month,
+      day: weekEndExclusiveLocal.day,
+      hour: 0,
+      minute: 0,
+      second: 0,
+    });
+
+    const schoolName =
+      typeof state.schoolName === 'string' && state.schoolName.trim().length
+        ? state.schoolName.trim()
+        : 'School';
+
+    const parents = await this.prisma.parent.findMany({
+      where: {
+        weeklyDigestOptOut: false,
+        isActive: true,
+        email: { not: null },
+      },
+      include: {
+        students: {
+          include: {
+            class: true,
+          },
+        },
+      },
+    });
+
+    let sentCount = 0;
+    for (const parent of parents) {
+      const email = String(parent.email || '').trim();
+      if (!email) continue;
+
+      const activeStudents = (parent.students || []).filter((student: any) => {
+        if (!student?.isActive) return false;
+        if (!student?.classId) return false;
+        return true;
+      });
+      if (!activeStudents.length) continue;
+
+      const dedupeKey = `weekly-digest:${weekStartLocal.dateKey}:${parent.id}`;
+      const reserved = await this.reserveWeeklyDigestLog({
+        dedupeKey,
+        parentId: parent.id,
+        weekStart: weekStartUtc,
+      });
+      if (!reserved) continue;
+
+      try {
+        const studentIds = activeStudents.map((student: any) => student.id);
+        const classIds = [
+          ...new Set(
+            activeStudents.map((student: any) => String(student.classId)),
+          ),
+        ];
+
+        const attendanceGroups = await this.prisma.attendance.groupBy({
+          by: ['studentId', 'present'],
+          _count: { _all: true },
+          where: {
+            studentId: { in: studentIds },
+            date: { gte: weekStartUtc, lt: weekEndUtcExclusive },
+          },
+        });
+
+        const assignmentsDue = await this.prisma.assignment.findMany({
+          where: {
+            classId: { in: classIds },
+            dueDate: {
+              gte: nowUtc,
+              lt: new Date(nowUtc.getTime() + 7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          include: {
+            subject: { select: { name: true } },
+            teacher: { select: { name: true, surname: true } },
+          },
+          orderBy: { dueDate: 'asc' },
+        });
+
+        const upcomingEvents = await this.prisma.event.findMany({
+          where: {
+            status: 'SCHEDULED',
+            visibility: 'PUBLIC',
+            startTime: {
+              gte: nowUtc,
+              lt: new Date(nowUtc.getTime() + 7 * 24 * 60 * 60 * 1000),
+            },
+            OR: [
+              { classId: { in: classIds } },
+              { targetRoles: { has: Roles.PARENT } },
+              { targetRoles: { isEmpty: true } },
+            ],
+          },
+          include: {
+            class: { select: { name: true } },
+          },
+          orderBy: { startTime: 'asc' },
+        });
+
+        const invoices = await this.prisma.invoice.findMany({
+          where: {
+            parentId: parent.id,
+            status: {
+              in: [
+                InvoiceStatus.PENDING,
+                InvoiceStatus.PARTIAL,
+                InvoiceStatus.OVERDUE,
+              ],
+            },
+            dueDate: {
+              lte: new Date(nowUtc.getTime() + 14 * 24 * 60 * 60 * 1000),
+            },
+          },
+          orderBy: { dueDate: 'asc' },
+        });
+
+        const feesDue = invoices
+          .map((invoice) => {
+            const remainingBalance = this.getRemainingBalance(invoice);
+            if (!remainingBalance) return null;
+
+            return {
+              invoiceNumber: invoice.invoiceNumber,
+              dueDate: this.formatZonedDate(invoice.dueDate, timeZone),
+              amountDue: this.formatCurrency(remainingBalance),
+              payLink: this.buildInvoicePayLink(invoice.id),
+            };
+          })
+          .filter(Boolean)
+          .slice(0, 5);
+
+        const children = activeStudents.map((student: any) => {
+          const counts = attendanceGroups.filter(
+            (row) => row.studentId === student.id,
+          );
+          const present =
+            counts.find((row) => row.present === true)?._count?._all ?? 0;
+          const absent =
+            counts.find((row) => row.present === false)?._count?._all ?? 0;
+          const total = present + absent;
+
+          const childAssignments = assignmentsDue
+            .filter((assignment: any) => assignment.classId === student.classId)
+            .slice(0, 3)
+            .map((assignment: any) => ({
+              title: assignment.title,
+              dueDate: this.formatZonedDate(assignment.dueDate, timeZone),
+              subject: assignment.subject?.name ?? null,
+              teacher:
+                [assignment.teacher?.name, assignment.teacher?.surname]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim() || null,
+            }));
+
+          const childEvents = upcomingEvents
+            .filter(
+              (event: any) =>
+                event.classId === null || event.classId === student.classId,
+            )
+            .slice(0, 3)
+            .map((event: any) => ({
+              title: event.title,
+              startTime: this.formatZonedDateTime(event.startTime, timeZone),
+              location: event.location ?? null,
+              className: event.class?.name ?? null,
+            }));
+
+          return {
+            name: [student.name, student.surname]
+              .filter(Boolean)
+              .join(' ')
+              .trim(),
+            className: student.class?.name ?? null,
+            attendance: { total, present, absent },
+            assignmentsDue: childAssignments,
+            upcomingEvents: childEvents,
+          };
+        });
+
+        const parentName =
+          [parent.name, parent.surname].filter(Boolean).join(' ').trim() ||
+          'Parent';
+        const weekRangeLabel = `${this.formatZonedDate(weekStartUtc, timeZone)} – ${this.formatZonedDate(nowUtc, timeZone)}`;
+
+        await this.mailService.sendMail({
+          to: email,
+          subject: `${schoolName} weekly digest (${weekRangeLabel})`,
+          template: 'weekly.digest.hbs',
+          context: {
+            parentName,
+            schoolName,
+            weekRangeLabel,
+            children,
+            feesDue,
+          },
+        });
+
+        sentCount += 1;
+      } catch (error) {
+        await this.rollbackWeeklyDigestLog(dedupeKey);
+        this.logger.error(
+          `Failed to send weekly digest to parent ${parent.id}: ${error.message}`,
+          error.stack,
+        );
+      }
+    }
+
+    this.logger.log(`Sent ${sentCount} weekly digest email(s)`);
   }
 
   /**

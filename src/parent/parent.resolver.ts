@@ -71,4 +71,17 @@ export class ParentResolver {
       optOut,
     );
   }
+
+  @Mutation(() => Parent)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @HasRoles(Roles.PARENT)
+  async updateWeeklyDigestPreference(
+    @Args('optOut') optOut: boolean,
+    @Context() context: any,
+  ) {
+    return this.parentService.updateWeeklyDigestPreference(
+      context.req.user.userId,
+      optOut,
+    );
+  }
 }

@@ -40,6 +40,9 @@ export class Parent {
   @Field()
   feeReminderOptOut: boolean;
 
+  @Field()
+  weeklyDigestOptOut: boolean;
+
   @Field({ nullable: true })
   dateOfBirth?: Date;
 

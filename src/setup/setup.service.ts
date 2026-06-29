@@ -50,6 +50,10 @@ export class SetupService {
         academicYearCurrent: input.academicYearCurrent,
         academicYearNext: input.academicYearNext,
         currentTerm: input.currentTerm,
+        weeklyDigestEnabled: input.weeklyDigestEnabled,
+        weeklyDigestDayOfWeek: input.weeklyDigestDayOfWeek,
+        weeklyDigestSendHour: input.weeklyDigestSendHour,
+        weeklyDigestSendMinute: input.weeklyDigestSendMinute,
       } as any,
     });
   }
