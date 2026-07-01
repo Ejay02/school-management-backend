@@ -12,6 +12,7 @@ import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import { AttendanceStatus as PrismaAttendanceStatus } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 
 import { Attendance } from './types/attendance.types';
@@ -23,6 +24,62 @@ export class AttendanceService {
   private readonly server: Server;
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private getDefaultAttendanceReasonCodes() {
+    return ['SICK', 'FAMILY', 'UNCONTACTED'];
+  }
+
+  private normalizeAttendanceReasonCodes(value: unknown) {
+    const rawList = Array.isArray(value) ? value : [];
+    const normalized = rawList
+      .map((entry) =>
+        String(entry ?? '')
+          .trim()
+          .toUpperCase(),
+      )
+      .filter((entry) => entry.length)
+      .filter((entry) => entry.length <= 40);
+
+    return [...new Set(normalized)];
+  }
+
+  private async getAllowedAttendanceReasonCodes() {
+    const state = await this.prisma.setupState.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+      select: { attendanceReasonCodes: true },
+    });
+
+    const codes = this.normalizeAttendanceReasonCodes(
+      (state as any).attendanceReasonCodes,
+    );
+    if (codes.length) return codes;
+    return this.getDefaultAttendanceReasonCodes();
+  }
+
+  private normalizeReasonCode(value: unknown, allowedCodes: string[]) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+
+    const normalized = raw.toUpperCase();
+    if (!allowedCodes.includes(normalized)) {
+      throw new ForbiddenException('Invalid attendance reason code');
+    }
+    return normalized;
+  }
+
+  private normalizeNote(note: unknown, legacyReason: unknown) {
+    const candidate =
+      typeof note === 'string' && note.trim().length
+        ? note.trim()
+        : typeof legacyReason === 'string' && legacyReason.trim().length
+          ? legacyReason.trim()
+          : '';
+
+    if (!candidate) return null;
+    return candidate.length <= 500 ? candidate : candidate.slice(0, 500);
+  }
 
   private isAttendanceSessionPayload(
     value: unknown,
@@ -61,7 +118,9 @@ export class AttendanceService {
   ): Promise<string> {
     const weekday = this.getWeekdayLabel(date);
     if (weekday === 'Sunday' || weekday === 'Saturday') {
-      throw new BadRequestException('Attendance can only be marked Monday to Friday.');
+      throw new BadRequestException(
+        'Attendance can only be marked Monday to Friday.',
+      );
     }
 
     const lessons = await this.prisma.lesson.findMany({
@@ -154,7 +213,11 @@ export class AttendanceService {
         id: classId,
         OR: [
           { supervisorId: userId },
-          { subjects: { some: { id: subjectId, teachers: { some: { id: userId } } } } },
+          {
+            subjects: {
+              some: { id: subjectId, teachers: { some: { id: userId } } },
+            },
+          },
         ],
       },
       select: { id: true },
@@ -242,7 +305,9 @@ export class AttendanceService {
       },
       update: {
         present: true,
-        status: 'PRESENT',
+        status: PrismaAttendanceStatus.PRESENT,
+        reasonCode: null,
+        note: null,
         reason: null,
       },
       create: {
@@ -250,7 +315,9 @@ export class AttendanceService {
         studentId: userId,
         date: new Date(dateKey),
         present: true,
-        status: 'PRESENT',
+        status: PrismaAttendanceStatus.PRESENT,
+        reasonCode: null,
+        note: null,
         reason: null,
         classId: lesson.classId,
       },
@@ -504,22 +571,30 @@ export class AttendanceService {
       );
     }
 
+    const allowedReasonCodes = await this.getAllowedAttendanceReasonCodes();
+
     const allowedStatuses = new Set([
       'PRESENT',
       'ABSENT',
       'LATE',
       'EARLY_LEAVE',
+      'EXCUSED_ABSENT',
     ]);
 
-    const normalizeStatus = (status: unknown, present: boolean) => {
+    const normalizeStatus = (
+      status: unknown,
+      present: boolean,
+    ): PrismaAttendanceStatus => {
       if (typeof status === 'string' && status.trim()) {
         const normalized = status.trim().toUpperCase();
         if (!allowedStatuses.has(normalized)) {
           throw new ForbiddenException('Invalid attendance status');
         }
-        return normalized;
+        return normalized as PrismaAttendanceStatus;
       }
-      return present ? 'PRESENT' : 'ABSENT';
+      return present
+        ? PrismaAttendanceStatus.PRESENT
+        : PrismaAttendanceStatus.ABSENT;
     };
 
     // Create attendance records
@@ -527,11 +602,16 @@ export class AttendanceService {
       attendanceData.map(async (data) => {
         const status = normalizeStatus(data.status, data.present);
         const present =
-          status === 'ABSENT' ? false : true;
-        const reason =
-          typeof data.reason === 'string' && data.reason.trim()
-            ? data.reason.trim()
-            : null;
+          status === PrismaAttendanceStatus.ABSENT ||
+          status === PrismaAttendanceStatus.EXCUSED_ABSENT
+            ? false
+            : true;
+        const reasonCode = this.normalizeReasonCode(
+          data.reasonCode,
+          allowedReasonCodes,
+        );
+        const note = this.normalizeNote(data.note, data.reason);
+        const reason = note;
 
         return this.prisma.attendance.upsert({
           where: {
@@ -544,6 +624,8 @@ export class AttendanceService {
           update: {
             present,
             status,
+            reasonCode,
+            note,
             reason,
           },
           create: {
@@ -552,6 +634,8 @@ export class AttendanceService {
             date: data.date,
             present,
             status,
+            reasonCode,
+            note,
             reason,
             classId: lesson.classId,
           },
@@ -590,7 +674,11 @@ export class AttendanceService {
         id: classId,
         OR: [
           { supervisorId: userId },
-          { subjects: { some: { id: subjectId, teachers: { some: { id: userId } } } } },
+          {
+            subjects: {
+              some: { id: subjectId, teachers: { some: { id: userId } } },
+            },
+          },
         ],
       },
       select: { id: true },

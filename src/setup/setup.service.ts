@@ -36,6 +36,18 @@ export class SetupService {
       return trimmed.length ? trimmed : null;
     })();
 
+    const normalizedAttendanceReasonCodes =
+      input.attendanceReasonCodes === undefined
+        ? undefined
+        : [
+            ...new Set(
+              (input.attendanceReasonCodes || [])
+                .map((entry) => String(entry ?? '').trim().toUpperCase())
+                .filter((entry) => entry.length)
+                .filter((entry) => entry.length <= 40),
+            ),
+          ];
+
     return this.prisma.setupState.update({
       where: { id: 'default' },
       data: {
@@ -54,6 +66,7 @@ export class SetupService {
         weeklyDigestDayOfWeek: input.weeklyDigestDayOfWeek,
         weeklyDigestSendHour: input.weeklyDigestSendHour,
         weeklyDigestSendMinute: input.weeklyDigestSendMinute,
+        attendanceReasonCodes: normalizedAttendanceReasonCodes,
       } as any,
     });
   }

@@ -51,6 +51,9 @@ export class SetupState {
   @Field(() => Int)
   weeklyDigestSendMinute: number;
 
+  @Field(() => [String])
+  attendanceReasonCodes: string[];
+
   @Field(() => Date)
   createdAt: Date;
 

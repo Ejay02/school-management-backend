@@ -134,9 +134,11 @@ type Attendance {
   id: String!
   lesson: Lesson!
   lessonId: String!
+  note: String
   present: Boolean!
   reason: String
-  status: String
+  reasonCode: String
+  status: AttendanceStatus!
   student: Student!
   studentId: String!
   updatedAt: DateTime!
@@ -146,6 +148,14 @@ type AttendanceSessionToken {
   expiresAt: DateTime!
   qrPayload: String!
   token: String!
+}
+
+enum AttendanceStatus {
+  ABSENT
+  EARLY_LEAVE
+  EXCUSED_ABSENT
+  LATE
+  PRESENT
 }
 
 type AuditLogChange {
@@ -728,9 +738,11 @@ type Lesson {
 
 input MarkAttendanceInput {
   date: DateTime!
+  note: String
   present: Boolean!
   reason: String
-  status: String
+  reasonCode: String
+  status: AttendanceStatus
   studentId: String!
 }
 

@@ -1,5 +1,7 @@
 import { Field, InputType } from '@nestjs/graphql';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsEnum,
@@ -93,4 +95,11 @@ export class UpdateSetupStateInput {
   @Min(0)
   @Max(59)
   weeklyDigestSendMinute?: number;
+
+  @Field(() => [String], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  attendanceReasonCodes?: string[];
 }

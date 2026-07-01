@@ -1,4 +1,5 @@
 import { Field, InputType } from '@nestjs/graphql';
+import { AttendanceStatus } from '../types/attendance.types';
 
 @InputType()
 export class MarkAttendanceInput {
@@ -8,11 +9,17 @@ export class MarkAttendanceInput {
   @Field(() => Boolean)
   present: boolean;
 
-  @Field(() => String, { nullable: true })
-  status?: string;
+  @Field(() => AttendanceStatus, { nullable: true })
+  status?: AttendanceStatus;
 
   @Field(() => String, { nullable: true })
   reason?: string;
+
+  @Field(() => String, { nullable: true })
+  reasonCode?: string;
+
+  @Field(() => String, { nullable: true })
+  note?: string;
 
   @Field(() => Date)
   date: Date;
