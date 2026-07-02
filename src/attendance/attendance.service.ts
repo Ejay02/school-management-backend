@@ -512,6 +512,69 @@ export class AttendanceService {
     });
   }
 
+  async getAttendancesByClass(
+    classId: string,
+    startDate: Date,
+    endDate: Date,
+    userId: string,
+    userRole: Roles,
+  ): Promise<Attendance[]> {
+    if (userRole !== Roles.ADMIN && userRole !== Roles.SUPER_ADMIN && userRole !== Roles.TEACHER) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date range');
+    }
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    if (start.getTime() > end.getTime()) {
+      throw new BadRequestException('Invalid date range');
+    }
+
+    const maxDays = 140;
+    const days = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    if (days > maxDays) {
+      throw new BadRequestException(`Date range too large (max ${maxDays} days)`);
+    }
+
+    if (userRole === Roles.TEACHER) {
+      const hasAccess = await this.prisma.class.findFirst({
+        where: {
+          id: classId,
+          OR: [
+            { supervisorId: userId },
+            { subjects: { some: { teachers: { some: { id: userId } } } } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!hasAccess) throw new ForbiddenException('Unauthorized');
+    }
+
+    const records = await this.prisma.attendance.findMany({
+      where: {
+        classId,
+        date: {
+          gte: start,
+          lte: end,
+        },
+      },
+      include: {
+        student: true,
+        lesson: true,
+        class: true,
+      },
+      orderBy: [{ date: 'asc' }],
+    });
+
+    return records as unknown as Attendance[];
+  }
+
   // Mark attendance for students
   async markAttendance(
     lessonId: string,

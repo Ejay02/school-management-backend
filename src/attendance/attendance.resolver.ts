@@ -34,6 +34,23 @@ export class AttendanceResolver {
     );
   }
 
+  @Query(() => [Attendance])
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
+  async getAttendancesByClass(
+    @Args('classId') classId: string,
+    @Args('startDate') startDate: Date,
+    @Args('endDate') endDate: Date,
+    @Context() context,
+  ) {
+    return this.attendanceService.getAttendancesByClass(
+      classId,
+      startDate,
+      endDate,
+      context.req.user.userId,
+      context.req.user.role,
+    );
+  }
+
   @Query(() => Attendance)
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.SUPER_ADMIN)
   async attendanceByLesson(
