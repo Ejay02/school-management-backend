@@ -988,6 +988,7 @@ type Query {
   getAnnouncementById(announcementId: String!): Announcement!
   getAssignmentById(assignmentId: String!): Assignment!
   getAttendances(studentId: String): [Attendance!]!
+  getAttendancesByClass(classId: String!, endDate: DateTime!, startDate: DateTime!): [Attendance!]!
   getBillingReportDashboard: BillingReportDashboard!
   getChatContacts(search: String): [ChatParticipant!]!
   getChatConversations: [ChatConversation!]!
@@ -1164,6 +1165,7 @@ type SetupProgress {
 type SetupState {
   academicYearCurrent: String
   academicYearNext: String
+  attendanceReasonCodes: [String!]!
   createdAt: DateTime!
   currentTerm: Term
   id: String!
@@ -1493,6 +1495,7 @@ input UpdateResultInput {
 input UpdateSetupStateInput {
   academicYearCurrent: String
   academicYearNext: String
+  attendanceReasonCodes: [String!]
   currentTerm: Term
   schoolAddress: String
   schoolContactName: String
