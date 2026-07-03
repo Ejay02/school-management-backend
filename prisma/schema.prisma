@@ -50,6 +50,7 @@ model Student {
   class              Class         @relation(fields: [classId], references: [id])
   attendances        Attendance[]
   result             Result[]
+  termReportRemarks  TermReportRemark[]
   submissions        Submission[]
   exams              StudentExam[]
   createdAt          DateTime      @default(now())
@@ -134,6 +135,7 @@ model Class {
   subjects       Subject[]
   assignments    Assignment[]
   attendances    Attendance[]
+  termReportRemarks TermReportRemark[]
   announcements  Announcement[]
   feeStructureId String?
   feeStructure   FeeStructure?  @relation(fields: [feeStructureId], references: [id])
@@ -333,6 +335,25 @@ model Attendance {
   @@index([studentId])
   @@index([lessonId])
   @@index([classId])
+}
+
+model TermReportRemark {
+  id             String   @id @default(uuid())
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id])
+  classId        String
+  class          Class    @relation(fields: [classId], references: [id])
+  academicPeriod String
+  term           Term
+  remark         String
+  authorId       String?
+  authorRole     Role?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([studentId, academicPeriod, term])
+  @@index([classId, academicPeriod, term])
+  @@index([studentId])
 }
 
 model Event {
