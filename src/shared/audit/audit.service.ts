@@ -10,7 +10,9 @@ export class AuditService {
     params: PaginationInput,
     filters: {
       entityType?: string;
+      entityId?: string;
       actor?: string;
+      actorId?: string;
       startDate?: Date;
       endDate?: Date;
     } = {},
@@ -21,7 +23,9 @@ export class AuditService {
 
     const search = String(params?.search ?? '').trim();
     const entityType = String(filters.entityType ?? '').trim();
+    const entityId = String(filters.entityId ?? '').trim();
     const actor = String(filters.actor ?? '').trim();
+    const actorId = String(filters.actorId ?? '').trim();
     const startDate = filters.startDate;
     const endDate = filters.endDate;
 
@@ -31,10 +35,18 @@ export class AuditService {
       where.entityType = entityType;
     }
 
+    if (entityId) {
+      where.entityId = entityId;
+    }
+
     if (startDate || endDate) {
       where.timestamp = {};
       if (startDate) where.timestamp.gte = startDate;
       if (endDate) where.timestamp.lte = endDate;
+    }
+
+    if (actorId) {
+      where.actorId = actorId;
     }
 
     if (actor) {

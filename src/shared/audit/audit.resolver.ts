@@ -18,16 +18,19 @@ export class AuditResolver {
   async auditLogs(
     @Args('params', { nullable: true }) params?: PaginationInput,
     @Args('entityType', { nullable: true }) entityType?: string,
+    @Args('entityId', { nullable: true }) entityId?: string,
     @Args('actor', { nullable: true }) actor?: string,
+    @Args('actorId', { nullable: true }) actorId?: string,
     @Args('startDate', { nullable: true, type: () => Date }) startDate?: Date,
     @Args('endDate', { nullable: true, type: () => Date }) endDate?: Date,
   ) {
     return this.auditService.getAuditLogs(params || {}, {
       entityType,
+      entityId,
       actor,
+      actorId,
       startDate,
       endDate,
     });
   }
 }
-

@@ -1,4 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
+import GraphQLJSON from 'graphql-type-json';
 import { Roles } from '../../enum/role';
 
 @ObjectType()
@@ -56,6 +57,12 @@ export class AuditLogEntry {
 
   @Field(() => [AuditLogChange], { nullable: true })
   changes?: AuditLogChange[] | null;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  before?: any | null;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  after?: any | null;
 }
 
 @ObjectType()
@@ -84,4 +91,3 @@ export class AuditLogListResponse {
   @Field(() => AuditLogPageInfo)
   pageInfo: AuditLogPageInfo;
 }
-

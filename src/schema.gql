@@ -172,6 +172,8 @@ type AuditLogEntry {
   actorRole: Roles
   actorSurname: String
   actorUsername: String
+  after: JSON
+  before: JSON
   changes: [AuditLogChange!]
   entityId: String
   entityLabel: String
@@ -966,7 +968,7 @@ type PaymentStatusDistributionData {
 type Query {
   attendanceByLesson(lessonId: String!): Attendance!
   attendanceStats(endDate: DateTime!, startDate: DateTime!, studentId: String!): Attendance!
-  auditLogs(actor: String, endDate: DateTime, entityType: String, params: PaginationInput, startDate: DateTime): AuditLogListResponse!
+  auditLogs(actor: String, actorId: String, endDate: DateTime, entityId: String, entityType: String, params: PaginationInput, startDate: DateTime): AuditLogListResponse!
 
   """Calculate final Result for a student in a class"""
   calculateFinalResult(classId: String!, studentId: String!, term: Term!): Float!

@@ -99,6 +99,7 @@ export class PrismaService
       'Class',
       'Subject',
       'Lesson',
+      'Attendance',
       'Exam',
       'Assignment',
       'Result',
@@ -120,18 +121,37 @@ export class PrismaService
           $allOperations: async ({ model, operation, args, query }) => {
             if (!model) return query(args);
             const modelName: string = model as unknown as string;
-            if (modelName === 'AuditLog' || modelName === 'SecurityLog') {
+            const op = String(operation || '').toLowerCase();
+
+            if (modelName === 'AuditLog') {
+              const forbidden = new Set([
+                'update',
+                'delete',
+                'upsert',
+                'updatemany',
+                'deletemany',
+              ]);
+              if (forbidden.has(op)) {
+                throw new Error('AuditLog is immutable and append-only');
+              }
+              return query(args);
+            }
+
+            if (modelName === 'SecurityLog') {
               return query(args);
             }
             if (!auditableModels.has(modelName)) return query(args);
 
-            const op = String(operation || '').toLowerCase();
             const isWrite =
-              op === 'create' || op === 'update' || op === 'delete';
+              op === 'create' ||
+              op === 'update' ||
+              op === 'delete' ||
+              op === 'upsert';
             if (!isWrite) return query(args);
 
             const argsAny = args as any;
-            const whereId = argsAny?.where?.id;
+            const where = argsAny?.where;
+            const whereId = where?.id;
             const entityId = typeof whereId === 'string' ? whereId : undefined;
 
             const delegateName = `${modelName.charAt(0).toLowerCase()}${modelName.slice(1)}`;
@@ -141,38 +161,62 @@ export class PrismaService
             let after: any = null;
 
             if (
-              (op === 'update' || op === 'delete') &&
-              entityId &&
+              (op === 'update' || op === 'delete' || op === 'upsert') &&
+              where &&
               delegate?.findUnique
             ) {
-              before = await delegate.findUnique({ where: { id: entityId } });
+              before = await delegate.findUnique({ where }).catch(() => null);
             }
 
             const result = await query(args);
 
-            if ((op === 'create' || op === 'update') && delegate?.findUnique) {
+            if (
+              (op === 'create' || op === 'update' || op === 'upsert') &&
+              delegate?.findUnique
+            ) {
               const idToFetch =
                 op === 'create'
                   ? (result as any)?.id || entityId
                   : entityId || (result as any)?.id;
               if (typeof idToFetch === 'string') {
                 after = await delegate.findUnique({ where: { id: idToFetch } });
+              } else if (where) {
+                after = await delegate
+                  .findUnique({ where })
+                  .catch(() => result);
               } else {
                 after = result;
               }
             }
 
             const changes = computeChanges(before, after);
+            if (!changes.length) {
+              return result;
+            }
+
+            if (modelName === 'Attendance') {
+              const isEdit = (op === 'update' || op === 'upsert') && !!before;
+              if (!isEdit) {
+                return result;
+              }
+            }
+
             const ctx = getAuditRequestContext();
             const actor = ctx?.actor;
             const ipAddress = ctx?.ipAddress;
 
             const auditDelegate = (extended as any).auditLog;
             if (auditDelegate?.create) {
+              const action =
+                op === 'upsert'
+                  ? before
+                    ? 'UPDATE'
+                    : 'CREATE'
+                  : op.toUpperCase();
               await auditDelegate
                 .create({
                   data: {
-                    action: op.toUpperCase(),
+                    action,
                     entityType: modelName,
                     entityId: entityId || (after as any)?.id || null,
                     entityLabel:
