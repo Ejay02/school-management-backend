@@ -25,36 +25,36 @@ model Admin {
 }
 
 model Student {
-  id                 String             @id @default(uuid())
-  studentId          String?            @unique
-  username           String             @unique
+  id                 String        @id @default(uuid())
+  studentId          String?       @unique
+  username           String        @unique
   role               Role
   name               String
   surname            String
-  email              String?            @unique
-  institutionalEmail String?            @unique
+  email              String?       @unique
+  institutionalEmail String?       @unique
   password           String
-  mustChangePassword Boolean            @default(false)
-  phone              String?            @unique
+  mustChangePassword Boolean       @default(false)
+  phone              String?       @unique
   address            String?
   image              String?
   bloodType          String?
   sex                Sex?
   dateOfBirth        DateTime?
   aboutMe            String?
-  isActive           Boolean            @default(true)
+  isActive           Boolean       @default(true)
   deactivatedAt      DateTime?
   parentId           String
-  parent             Parent             @relation(fields: [parentId], references: [id])
+  parent             Parent        @relation(fields: [parentId], references: [id])
   classId            String
-  class              Class              @relation(fields: [classId], references: [id])
+  class              Class         @relation(fields: [classId], references: [id])
   attendances        Attendance[]
   result             Result[]
   termReportRemarks  TermReportRemark[]
   submissions        Submission[]
   exams              StudentExam[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@index([parentId])
   @@index([classId])
@@ -123,24 +123,24 @@ model ParentStudentLink {
 }
 
 model Class {
-  id                String             @id @default(uuid())
-  name              String             @unique
-  capacity          Int
-  lessons           Lesson[]
-  students          Student[]
-  supervisorId      String?
-  supervisor        Teacher?           @relation(fields: [supervisorId], references: [id])
-  exams             Exam[]
-  events            Event[]
-  subjects          Subject[]
-  assignments       Assignment[]
-  attendances       Attendance[]
+  id             String         @id @default(uuid())
+  name           String         @unique
+  capacity       Int
+  lessons        Lesson[]
+  students       Student[]
+  supervisorId   String?
+  supervisor     Teacher?       @relation(fields: [supervisorId], references: [id])
+  exams          Exam[]
+  events         Event[]
+  subjects       Subject[]
+  assignments    Assignment[]
+  attendances    Attendance[]
   termReportRemarks TermReportRemark[]
-  announcements     Announcement[]
-  feeStructureId    String?
-  feeStructure      FeeStructure?      @relation(fields: [feeStructureId], references: [id])
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  announcements  Announcement[]
+  feeStructureId String?
+  feeStructure   FeeStructure?  @relation(fields: [feeStructureId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model Subject {

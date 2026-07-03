@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Term } from 'src/payment/enum/term';
 import { Roles } from 'src/shared/enum/role';
@@ -213,9 +209,7 @@ export class TermReportService {
     return {
       subjectGrades,
       overallAverage:
-        overallAverage === null
-          ? null
-          : this.roundToTwoDecimals(overallAverage),
+        overallAverage === null ? null : this.roundToTwoDecimals(overallAverage),
     };
   }
 
@@ -283,9 +277,7 @@ export class TermReportService {
     return { metricsByStudent, rankingMap };
   }
 
-  private buildAttendanceSummary(
-    records: Array<{ present: boolean }>,
-  ): TermReportAttendanceSummary {
+  private buildAttendanceSummary(records: Array<{ present: boolean }>): TermReportAttendanceSummary {
     const totalClasses = records.length;
     const presentClasses = records.filter((record) => record.present).length;
     const absentClasses = totalClasses - presentClasses;
@@ -449,7 +441,8 @@ export class TermReportService {
         totalStudents: classStudentIds.length,
       },
       attendance:
-        attendanceByStudentId.get(studentId) || this.buildAttendanceSummary([]),
+        attendanceByStudentId.get(studentId) ||
+        this.buildAttendanceSummary([]),
       subjectGrades: metric.subjectGrades,
       remark: (remark as TermReportRemark | null) || null,
     };
