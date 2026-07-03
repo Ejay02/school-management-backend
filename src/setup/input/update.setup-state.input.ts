@@ -102,4 +102,25 @@ export class UpdateSetupStateInput {
   @ArrayMaxSize(50)
   @IsString({ each: true })
   attendanceReasonCodes?: string[];
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  reportExamWeight?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  reportAssessmentWeight?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  reportAttendanceWeight?: number;
 }

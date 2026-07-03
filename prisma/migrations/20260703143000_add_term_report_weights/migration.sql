@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "SetupState"
+ADD COLUMN "reportExamWeight" INTEGER NOT NULL DEFAULT 60,
+ADD COLUMN "reportAssessmentWeight" INTEGER NOT NULL DEFAULT 30,
+ADD COLUMN "reportAttendanceWeight" INTEGER NOT NULL DEFAULT 10;

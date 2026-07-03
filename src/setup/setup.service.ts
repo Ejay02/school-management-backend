@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateSetupStateInput } from './input/update.setup-state.input';
 import {
@@ -48,6 +48,45 @@ export class SetupService {
             ),
           ];
 
+    const nextReportExamWeight =
+      input.reportExamWeight === undefined ? undefined : input.reportExamWeight;
+    const nextReportAssessmentWeight =
+      input.reportAssessmentWeight === undefined
+        ? undefined
+        : input.reportAssessmentWeight;
+    const nextReportAttendanceWeight =
+      input.reportAttendanceWeight === undefined
+        ? undefined
+        : input.reportAttendanceWeight;
+
+    const includesAnyReportWeight =
+      nextReportExamWeight !== undefined ||
+      nextReportAssessmentWeight !== undefined ||
+      nextReportAttendanceWeight !== undefined;
+
+    if (includesAnyReportWeight) {
+      if (
+        nextReportExamWeight === undefined ||
+        nextReportAssessmentWeight === undefined ||
+        nextReportAttendanceWeight === undefined
+      ) {
+        throw new BadRequestException(
+          'Report exam, assessment, and attendance weights must be provided together.',
+        );
+      }
+
+      const weightTotal =
+        nextReportExamWeight +
+        nextReportAssessmentWeight +
+        nextReportAttendanceWeight;
+
+      if (weightTotal !== 100) {
+        throw new BadRequestException(
+          'Report weights must add up to exactly 100.',
+        );
+      }
+    }
+
     return this.prisma.setupState.update({
       where: { id: 'default' },
       data: {
@@ -67,6 +106,9 @@ export class SetupService {
         weeklyDigestSendHour: input.weeklyDigestSendHour,
         weeklyDigestSendMinute: input.weeklyDigestSendMinute,
         attendanceReasonCodes: normalizedAttendanceReasonCodes,
+        reportExamWeight: input.reportExamWeight,
+        reportAssessmentWeight: input.reportAssessmentWeight,
+        reportAttendanceWeight: input.reportAttendanceWeight,
       } as any,
     });
   }

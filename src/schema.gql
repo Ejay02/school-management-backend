@@ -1173,6 +1173,9 @@ type SetupState {
   createdAt: DateTime!
   currentTerm: Term
   id: String!
+  reportAssessmentWeight: Int!
+  reportAttendanceWeight: Int!
+  reportExamWeight: Int!
   schoolAddress: String
   schoolContactName: String
   schoolDomain: String
@@ -1551,6 +1554,9 @@ input UpdateSetupStateInput {
   academicYearNext: String
   attendanceReasonCodes: [String!]
   currentTerm: Term
+  reportAssessmentWeight: Float
+  reportAttendanceWeight: Float
+  reportExamWeight: Float
   schoolAddress: String
   schoolContactName: String
   schoolDomain: String

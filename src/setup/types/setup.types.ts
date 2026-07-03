@@ -54,6 +54,15 @@ export class SetupState {
   @Field(() => [String])
   attendanceReasonCodes: string[];
 
+  @Field(() => Int)
+  reportExamWeight: number;
+
+  @Field(() => Int)
+  reportAssessmentWeight: number;
+
+  @Field(() => Int)
+  reportAttendanceWeight: number;
+
   @Field(() => Date)
   createdAt: Date;
 

@@ -1,6 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ResultType } from 'src/result/enum/resultType';
 import { Term } from 'src/payment/enum/term';
 import { Roles } from 'src/shared/enum/role';
 import {
@@ -15,6 +18,12 @@ import { UpsertTermReportRemarkInput } from './input/upsert.term-report-remark.i
 type ReportMetric = {
   subjectGrades: TermReportSubjectGrade[];
   overallAverage: number | null;
+};
+
+type ReportWeights = {
+  examWeight: number;
+  assessmentWeight: number;
+  attendanceWeight: number;
 };
 
 @Injectable()
@@ -71,7 +80,71 @@ export class TermReportService {
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
-  private buildMetricFromResults(results: Array<any>): ReportMetric {
+  private normalizeWeights(weights: ReportWeights) {
+    const total =
+      weights.examWeight + weights.assessmentWeight + weights.attendanceWeight;
+
+    if (total <= 0) {
+      return {
+        examWeight: 0,
+        assessmentWeight: 0,
+        attendanceWeight: 0,
+      };
+    }
+
+    return {
+      examWeight: weights.examWeight / total,
+      assessmentWeight: weights.assessmentWeight / total,
+      attendanceWeight: weights.attendanceWeight / total,
+    };
+  }
+
+  private buildWeightedScore(
+    examAverage: number | null,
+    assignmentAverage: number | null,
+    attendanceRate: number | null,
+    weights: ReportWeights,
+  ) {
+    const normalizedWeights = this.normalizeWeights(weights);
+    const components = [
+      {
+        value: examAverage,
+        weight: normalizedWeights.examWeight,
+      },
+      {
+        value: assignmentAverage,
+        weight: normalizedWeights.assessmentWeight,
+      },
+      {
+        value: attendanceRate,
+        weight: normalizedWeights.attendanceWeight,
+      },
+    ].filter(
+      (component): component is { value: number; weight: number } =>
+        typeof component.value === 'number' && component.weight > 0,
+    );
+
+    if (!components.length) return null;
+
+    const totalWeight = components.reduce(
+      (sum, component) => sum + component.weight,
+      0,
+    );
+    if (!totalWeight) return null;
+
+    const weightedValue = components.reduce(
+      (sum, component) => sum + component.value * component.weight,
+      0,
+    );
+
+    return weightedValue / totalWeight;
+  }
+
+  private buildMetricFromResults(
+    results: Array<any>,
+    attendanceRate: number | null,
+    weights: ReportWeights,
+  ): ReportMetric {
     const subjectMap = new Map<
       string,
       { name: string; examScores: number[]; assignmentScores: number[] }
@@ -110,15 +183,12 @@ export class TermReportService {
       .map((entry) => {
         const examAverage = this.average(entry.examScores);
         const assignmentAverage = this.average(entry.assignmentScores);
-
-        let finalScore: number | null = null;
-        if (examAverage !== null && assignmentAverage !== null) {
-          finalScore = examAverage * 0.6 + assignmentAverage * 0.4;
-        } else if (examAverage !== null) {
-          finalScore = examAverage;
-        } else if (assignmentAverage !== null) {
-          finalScore = assignmentAverage;
-        }
+        const finalScore = this.buildWeightedScore(
+          examAverage,
+          assignmentAverage,
+          attendanceRate,
+          weights,
+        );
 
         return {
           name: entry.name,
@@ -143,13 +213,17 @@ export class TermReportService {
     return {
       subjectGrades,
       overallAverage:
-        overallAverage === null ? null : this.roundToTwoDecimals(overallAverage),
+        overallAverage === null
+          ? null
+          : this.roundToTwoDecimals(overallAverage),
     };
   }
 
   private buildRanking(
     classStudentIds: string[],
     classResults: Array<any>,
+    attendanceByStudentId: Map<string, TermReportAttendanceSummary>,
+    weights: ReportWeights,
     totalStudents: number,
   ) {
     const metricsByStudent = new Map<string, ReportMetric>();
@@ -158,7 +232,14 @@ export class TermReportService {
       const studentResults = classResults.filter(
         (result) => result.studentId === studentId,
       );
-      metricsByStudent.set(studentId, this.buildMetricFromResults(studentResults));
+      metricsByStudent.set(
+        studentId,
+        this.buildMetricFromResults(
+          studentResults,
+          attendanceByStudentId.get(studentId)?.attendanceRate ?? null,
+          weights,
+        ),
+      );
     });
 
     const rankedStudents = Array.from(metricsByStudent.entries())
@@ -202,7 +283,9 @@ export class TermReportService {
     return { metricsByStudent, rankingMap };
   }
 
-  private buildAttendanceSummary(records: Array<{ present: boolean }>): TermReportAttendanceSummary {
+  private buildAttendanceSummary(
+    records: Array<{ present: boolean }>,
+  ): TermReportAttendanceSummary {
     const totalClasses = records.length;
     const presentClasses = records.filter((record) => record.present).length;
     const absentClasses = totalClasses - presentClasses;
@@ -216,6 +299,32 @@ export class TermReportService {
       totalClasses,
       attendanceRate,
     };
+  }
+
+  private buildAttendanceMap(
+    classStudentIds: string[],
+    records: Array<{ studentId: string; present: boolean }>,
+  ) {
+    const groupedRecords = new Map<string, Array<{ present: boolean }>>();
+
+    classStudentIds.forEach((studentId) => {
+      groupedRecords.set(studentId, []);
+    });
+
+    records.forEach((record) => {
+      if (!groupedRecords.has(record.studentId)) {
+        groupedRecords.set(record.studentId, []);
+      }
+
+      groupedRecords.get(record.studentId)?.push({ present: record.present });
+    });
+
+    const summaryMap = new Map<string, TermReportAttendanceSummary>();
+    groupedRecords.forEach((studentRecords, studentId) => {
+      summaryMap.set(studentId, this.buildAttendanceSummary(studentRecords));
+    });
+
+    return summaryMap;
   }
 
   async getStudentTermReport(
@@ -247,7 +356,7 @@ export class TermReportService {
       term,
     );
 
-    const [setupState, classResults, attendanceRecords, remark] =
+    const [setupState, classResults, classAttendanceRecords, remark] =
       await Promise.all([
         this.prisma.setupState.upsert({
           where: { id: 'default' },
@@ -257,6 +366,9 @@ export class TermReportService {
             schoolName: true,
             schoolLogo: true,
             schoolAddress: true,
+            reportExamWeight: true,
+            reportAssessmentWeight: true,
+            reportAttendanceWeight: true,
           },
         }),
         this.prisma.result.findMany({
@@ -279,13 +391,13 @@ export class TermReportService {
         }),
         this.prisma.attendance.findMany({
           where: {
-            studentId,
+            student: { classId: student.classId },
             date: {
               gte: startDate,
               lte: endDate,
             },
           },
-          select: { present: true },
+          select: { studentId: true, present: true },
         }),
         this.prisma.termReportRemark.findUnique({
           where: {
@@ -298,9 +410,21 @@ export class TermReportService {
         }),
       ]);
 
+    const attendanceByStudentId = this.buildAttendanceMap(
+      classStudentIds,
+      classAttendanceRecords,
+    );
+    const reportWeights: ReportWeights = {
+      examWeight: setupState.reportExamWeight ?? 60,
+      assessmentWeight: setupState.reportAssessmentWeight ?? 30,
+      attendanceWeight: setupState.reportAttendanceWeight ?? 10,
+    };
+
     const { metricsByStudent, rankingMap } = this.buildRanking(
       classStudentIds,
       classResults,
+      attendanceByStudentId,
+      reportWeights,
       classStudentIds.length,
     );
     const metric = metricsByStudent.get(studentId) || {
@@ -324,7 +448,8 @@ export class TermReportService {
         position: null,
         totalStudents: classStudentIds.length,
       },
-      attendance: this.buildAttendanceSummary(attendanceRecords),
+      attendance:
+        attendanceByStudentId.get(studentId) || this.buildAttendanceSummary([]),
       subjectGrades: metric.subjectGrades,
       remark: (remark as TermReportRemark | null) || null,
     };
