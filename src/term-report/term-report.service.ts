@@ -1,15 +1,20 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Term } from 'src/payment/enum/term';
 import { Roles } from 'src/shared/enum/role';
+import { ManageTermReportInput } from './input/manage.term-report.input';
+import { UpsertTermReportRemarkInput } from './input/upsert.term-report-remark.input';
+import { TermReportStatus } from './enum/term-report-status';
 import {
   StudentTermReport,
+  StudentTermReportSummary,
   TermReportAttendanceSummary,
   TermReportPosition,
+  TermReportReadiness,
   TermReportRemark,
   TermReportSubjectGrade,
 } from './types/term-report.types';
-import { UpsertTermReportRemarkInput } from './input/upsert.term-report-remark.input';
 
 type ReportMetric = {
   subjectGrades: TermReportSubjectGrade[];
@@ -20,6 +25,47 @@ type ReportWeights = {
   examWeight: number;
   assessmentWeight: number;
   attendanceWeight: number;
+};
+
+type StudentRecord = {
+  id: string;
+  name: string;
+  surname: string;
+  studentId?: string | null;
+};
+
+type StoredTermReportRecord = {
+  id: string;
+  studentId: string;
+  classId: string;
+  academicPeriod: string;
+  term: Term;
+  remark: string;
+  authorId?: string | null;
+  authorRole?: Roles | null;
+  status: TermReportStatus;
+  publishedAt?: Date | null;
+  publishedById?: string | null;
+  publishedByRole?: Roles | null;
+  publishedSnapshot?: any;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type ClassReportContext = {
+  classId: string;
+  className: string;
+  academicPeriod: string;
+  term: Term;
+  students: StudentRecord[];
+  schoolName?: string | null;
+  schoolLogo?: string | null;
+  schoolAddress?: string | null;
+  weights: ReportWeights;
+  attendanceByStudentId: Map<string, TermReportAttendanceSummary>;
+  metricsByStudent: Map<string, ReportMetric>;
+  rankingMap: Map<string, TermReportPosition>;
+  recordsByStudentId: Map<string, StoredTermReportRecord>;
 };
 
 @Injectable()
@@ -103,18 +149,12 @@ export class TermReportService {
   ) {
     const normalizedWeights = this.normalizeWeights(weights);
     const components = [
-      {
-        value: examAverage,
-        weight: normalizedWeights.examWeight,
-      },
+      { value: examAverage, weight: normalizedWeights.examWeight },
       {
         value: assignmentAverage,
         weight: normalizedWeights.assessmentWeight,
       },
-      {
-        value: attendanceRate,
-        weight: normalizedWeights.attendanceWeight,
-      },
+      { value: attendanceRate, weight: normalizedWeights.attendanceWeight },
     ].filter(
       (component): component is { value: number; weight: number } =>
         typeof component.value === 'number' && component.weight > 0,
@@ -151,7 +191,6 @@ export class TermReportService {
         result?.exam?.subject?.name ||
         result?.assignment?.subject?.name ||
         null;
-
       if (!subjectName) return;
 
       if (!subjectMap.has(subjectName)) {
@@ -168,11 +207,8 @@ export class TermReportService {
       const score = Number(result?.score);
       if (!Number.isFinite(score)) return;
 
-      if (result?.examId) {
-        entry.examScores.push(score);
-      } else if (result?.assignmentId) {
-        entry.assignmentScores.push(score);
-      }
+      if (result?.examId) entry.examScores.push(score);
+      if (result?.assignmentId) entry.assignmentScores.push(score);
     });
 
     const subjectGrades = Array.from(subjectMap.values())
@@ -277,7 +313,9 @@ export class TermReportService {
     return { metricsByStudent, rankingMap };
   }
 
-  private buildAttendanceSummary(records: Array<{ present: boolean }>): TermReportAttendanceSummary {
+  private buildAttendanceSummary(
+    records: Array<{ present: boolean }>,
+  ): TermReportAttendanceSummary {
     const totalClasses = records.length;
     const presentClasses = records.filter((record) => record.present).length;
     const absentClasses = totalClasses - presentClasses;
@@ -299,15 +337,12 @@ export class TermReportService {
   ) {
     const groupedRecords = new Map<string, Array<{ present: boolean }>>();
 
-    classStudentIds.forEach((studentId) => {
-      groupedRecords.set(studentId, []);
-    });
+    classStudentIds.forEach((studentId) => groupedRecords.set(studentId, []));
 
     records.forEach((record) => {
       if (!groupedRecords.has(record.studentId)) {
         groupedRecords.set(record.studentId, []);
       }
-
       groupedRecords.get(record.studentId)?.push({ present: record.present });
     });
 
@@ -319,36 +354,198 @@ export class TermReportService {
     return summaryMap;
   }
 
-  async getStudentTermReport(
-    studentId: string,
-    academicPeriod: string,
-    term: Term,
-  ): Promise<StudentTermReport> {
-    const parsedPeriod = this.parseAcademicPeriod(academicPeriod);
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
-      include: {
-        class: {
-          select: {
-            id: true,
-            name: true,
-            students: { select: { id: true } },
-          },
-        },
-      },
-    });
+  private buildReadiness(
+    metric: ReportMetric,
+    attendance: TermReportAttendanceSummary,
+    remark: string,
+    weights: ReportWeights,
+  ): TermReportReadiness {
+    const issues: string[] = [];
+    const hasExamScores = metric.subjectGrades.some(
+      (subject) => typeof subject.examAverage === 'number',
+    );
+    const hasAssessmentScores = metric.subjectGrades.some(
+      (subject) => typeof subject.assignmentAverage === 'number',
+    );
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
+    if (!metric.subjectGrades.length) {
+      issues.push('No subject grades available.');
+    }
+    if (weights.examWeight > 0 && !hasExamScores) {
+      issues.push('Missing exam scores.');
+    }
+    if (weights.assessmentWeight > 0 && !hasAssessmentScores) {
+      issues.push('Missing assessment scores.');
+    }
+    if (weights.attendanceWeight > 0 && attendance.totalClasses === 0) {
+      issues.push('Missing attendance records.');
+    }
+    if (metric.overallAverage === null) {
+      issues.push('Overall average cannot be computed yet.');
+    }
+    if (!String(remark || '').trim()) {
+      issues.push('Missing official term remark.');
     }
 
-    const classStudentIds = student.class.students.map((entry) => entry.id);
+    return {
+      ready: issues.length === 0,
+      issues,
+    };
+  }
+
+  private toStoredRemark(record: any): StoredTermReportRecord {
+    return record as StoredTermReportRecord;
+  }
+
+  private toGraphqlRemark(
+    record: StoredTermReportRecord | null | undefined,
+  ): TermReportRemark | null {
+    if (!record) return null;
+    return {
+      id: record.id,
+      studentId: record.studentId,
+      classId: record.classId,
+      academicPeriod: record.academicPeriod,
+      term: record.term,
+      remark: record.remark,
+      authorId: record.authorId ?? null,
+      authorRole: record.authorRole ?? null,
+      status: record.status,
+      publishedAt: record.publishedAt ?? null,
+      publishedById: record.publishedById ?? null,
+      publishedByRole: record.publishedByRole ?? null,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+  }
+
+  private buildStudentName(student: StudentRecord) {
+    return [student.name, student.surname].filter(Boolean).join(' ');
+  }
+
+  private createDraftReport(
+    student: StudentRecord,
+    context: ClassReportContext,
+  ): StudentTermReport {
+    const record = context.recordsByStudentId.get(student.id) || null;
+    const metric = context.metricsByStudent.get(student.id) || {
+      subjectGrades: [],
+      overallAverage: null,
+    };
+    const attendance =
+      context.attendanceByStudentId.get(student.id) || this.buildAttendanceSummary([]);
+    const readiness = this.buildReadiness(
+      metric,
+      attendance,
+      record?.remark || '',
+      context.weights,
+    );
+
+    return {
+      studentId: student.id,
+      studentName: this.buildStudentName(student),
+      studentCode: student.studentId ?? null,
+      classId: context.classId,
+      className: context.className,
+      academicPeriod: context.academicPeriod,
+      term: context.term,
+      schoolName: context.schoolName ?? null,
+      schoolLogo: context.schoolLogo ?? null,
+      schoolAddress: context.schoolAddress ?? null,
+      overallAverage: metric.overallAverage,
+      status: record?.status || TermReportStatus.DRAFT,
+      publishedAt: record?.publishedAt ?? null,
+      publishedById: record?.publishedById ?? null,
+      publishedByRole: record?.publishedByRole ?? null,
+      ranking: context.rankingMap.get(student.id) || {
+        position: null,
+        totalStudents: context.students.length,
+      },
+      attendance,
+      readiness,
+      subjectGrades: metric.subjectGrades,
+      remark: this.toGraphqlRemark(record),
+    };
+  }
+
+  private createPublishedReport(
+    student: StudentRecord,
+    context: ClassReportContext,
+    record: StoredTermReportRecord,
+  ): StudentTermReport {
+    const snapshot = (record.publishedSnapshot || {}) as any;
+    return {
+      studentId: snapshot.studentId || student.id,
+      studentName: snapshot.studentName || this.buildStudentName(student),
+      studentCode:
+        snapshot.studentCode !== undefined
+          ? snapshot.studentCode
+          : (student.studentId ?? null),
+      classId: snapshot.classId || context.classId,
+      className: snapshot.className || context.className,
+      academicPeriod: snapshot.academicPeriod || context.academicPeriod,
+      term: snapshot.term || context.term,
+      schoolName: snapshot.schoolName ?? context.schoolName ?? null,
+      schoolLogo: snapshot.schoolLogo ?? context.schoolLogo ?? null,
+      schoolAddress: snapshot.schoolAddress ?? context.schoolAddress ?? null,
+      overallAverage:
+        typeof snapshot.overallAverage === 'number'
+          ? snapshot.overallAverage
+          : null,
+      status: TermReportStatus.PUBLISHED,
+      publishedAt: record.publishedAt ?? null,
+      publishedById: record.publishedById ?? null,
+      publishedByRole: record.publishedByRole ?? null,
+      ranking: snapshot.ranking || {
+        position: null,
+        totalStudents: context.students.length,
+      },
+      attendance:
+        snapshot.attendance ||
+        context.attendanceByStudentId.get(student.id) ||
+        this.buildAttendanceSummary([]),
+      readiness: { ready: true, issues: [] },
+      subjectGrades: Array.isArray(snapshot.subjectGrades)
+        ? snapshot.subjectGrades
+        : [],
+      remark: this.toGraphqlRemark(record),
+    };
+  }
+
+  private createSnapshot(report: StudentTermReport) {
+    return JSON.parse(
+      JSON.stringify({
+        studentId: report.studentId,
+        studentName: report.studentName,
+        studentCode: report.studentCode ?? null,
+        classId: report.classId,
+        className: report.className,
+        academicPeriod: report.academicPeriod,
+        term: report.term,
+        schoolName: report.schoolName ?? null,
+        schoolLogo: report.schoolLogo ?? null,
+        schoolAddress: report.schoolAddress ?? null,
+        overallAverage: report.overallAverage ?? null,
+        ranking: report.ranking,
+        attendance: report.attendance,
+        subjectGrades: report.subjectGrades,
+        readiness: report.readiness,
+      }),
+    ) as Prisma.InputJsonValue;
+  }
+
+  private async buildClassReportContext(
+    classId: string,
+    academicPeriod: string,
+    term: Term,
+  ): Promise<ClassReportContext> {
+    const parsedPeriod = this.parseAcademicPeriod(academicPeriod);
     const { startDate, endDate } = this.resolveTermDateRange(
       parsedPeriod.normalized,
       term,
     );
 
-    const [setupState, classResults, classAttendanceRecords, remark] =
+    const [setupState, classRecord, classResults, classAttendanceRecords, records] =
       await Promise.all([
         this.prisma.setupState.upsert({
           where: { id: 'default' },
@@ -363,9 +560,24 @@ export class TermReportService {
             reportAttendanceWeight: true,
           },
         }),
+        this.prisma.class.findUnique({
+          where: { id: classId },
+          select: {
+            id: true,
+            name: true,
+            students: {
+              select: {
+                id: true,
+                name: true,
+                surname: true,
+                studentId: true,
+              },
+            },
+          },
+        }),
         this.prisma.result.findMany({
           where: {
-            student: { classId: student.classId },
+            student: { classId },
             academicPeriod: parsedPeriod.normalized,
             term,
             OR: [{ examId: { not: null } }, { assignmentId: { not: null } }],
@@ -383,7 +595,7 @@ export class TermReportService {
         }),
         this.prisma.attendance.findMany({
           where: {
-            student: { classId: student.classId },
+            classId,
             date: {
               gte: startDate,
               lte: endDate,
@@ -391,61 +603,168 @@ export class TermReportService {
           },
           select: { studentId: true, present: true },
         }),
-        this.prisma.termReportRemark.findUnique({
+        this.prisma.termReportRemark.findMany({
           where: {
-            studentId_academicPeriod_term: {
-              studentId,
-              academicPeriod: parsedPeriod.normalized,
-              term,
-            },
+            classId,
+            academicPeriod: parsedPeriod.normalized,
+            term,
           },
         }),
       ]);
 
+    if (!classRecord) {
+      throw new NotFoundException('Class not found');
+    }
+
+    const students = classRecord.students as StudentRecord[];
+    const classStudentIds = students.map((entry) => entry.id);
     const attendanceByStudentId = this.buildAttendanceMap(
       classStudentIds,
       classAttendanceRecords,
     );
-    const reportWeights: ReportWeights = {
+    const weights: ReportWeights = {
       examWeight: setupState.reportExamWeight ?? 60,
       assessmentWeight: setupState.reportAssessmentWeight ?? 30,
       attendanceWeight: setupState.reportAttendanceWeight ?? 10,
     };
-
     const { metricsByStudent, rankingMap } = this.buildRanking(
       classStudentIds,
       classResults,
       attendanceByStudentId,
-      reportWeights,
+      weights,
       classStudentIds.length,
     );
-    const metric = metricsByStudent.get(studentId) || {
-      subjectGrades: [],
-      overallAverage: null,
-    };
+    const recordsByStudentId = new Map<string, StoredTermReportRecord>();
+    records.forEach((record) => {
+      recordsByStudentId.set(record.studentId, this.toStoredRemark(record));
+    });
 
     return {
-      studentId: student.id,
-      studentName: [student.name, student.surname].filter(Boolean).join(' '),
-      studentCode: student.studentId,
-      classId: student.class.id,
-      className: student.class.name,
+      classId: classRecord.id,
+      className: classRecord.name,
       academicPeriod: parsedPeriod.normalized,
       term,
+      students,
       schoolName: setupState.schoolName,
       schoolLogo: setupState.schoolLogo,
       schoolAddress: setupState.schoolAddress,
-      overallAverage: metric.overallAverage,
-      ranking: rankingMap.get(studentId) || {
-        position: null,
-        totalStudents: classStudentIds.length,
-      },
-      attendance:
-        attendanceByStudentId.get(studentId) ||
-        this.buildAttendanceSummary([]),
-      subjectGrades: metric.subjectGrades,
-      remark: (remark as TermReportRemark | null) || null,
+      weights,
+      attendanceByStudentId,
+      metricsByStudent,
+      rankingMap,
+      recordsByStudentId,
     };
+  }
+
+  private getStudentFromContext(context: ClassReportContext, studentId: string) {
+    const student = context.students.find((entry) => entry.id === studentId);
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+    return student;
+  }
+
+  async getStudentTermReport(
+    studentId: string,
+    academicPeriod: string,
+    term: Term,
+  ): Promise<StudentTermReport> {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        classId: true,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const context = await this.buildClassReportContext(
+      student.classId,
+      academicPeriod,
+      term,
+    );
+    const contextStudent = this.getStudentFromContext(context, studentId);
+    const record = context.recordsByStudentId.get(studentId) || null;
+
+    if (
+      record?.status === TermReportStatus.PUBLISHED &&
+      record.publishedSnapshot
+    ) {
+      return this.createPublishedReport(contextStudent, context, record);
+    }
+
+    return this.createDraftReport(contextStudent, context);
+  }
+
+  async getClassTermReportSummaries(
+    classId: string,
+    academicPeriod: string,
+    term: Term,
+  ): Promise<StudentTermReportSummary[]> {
+    const context = await this.buildClassReportContext(classId, academicPeriod, term);
+
+    return context.students.map((student) => {
+      const record = context.recordsByStudentId.get(student.id) || null;
+
+      if (
+        record?.status === TermReportStatus.PUBLISHED &&
+        record.publishedSnapshot
+      ) {
+        const snapshot = record.publishedSnapshot as any;
+        return {
+          studentId: student.id,
+          studentName: this.buildStudentName(student),
+          overallAverage:
+            typeof snapshot?.overallAverage === 'number'
+              ? snapshot.overallAverage
+              : null,
+          attendanceRate:
+            typeof snapshot?.attendance?.attendanceRate === 'number'
+              ? snapshot.attendance.attendanceRate
+              : 0,
+          position:
+            typeof snapshot?.ranking?.position === 'number'
+              ? snapshot.ranking.position
+              : null,
+          totalStudents:
+            Number(snapshot?.ranking?.totalStudents) || context.students.length,
+          status: TermReportStatus.PUBLISHED,
+          readiness: { ready: true, issues: [] },
+        };
+      }
+
+      const metric = context.metricsByStudent.get(student.id) || {
+        subjectGrades: [],
+        overallAverage: null,
+      };
+      const attendance =
+        context.attendanceByStudentId.get(student.id) ||
+        this.buildAttendanceSummary([]);
+      const readiness = this.buildReadiness(
+        metric,
+        attendance,
+        record?.remark || '',
+        context.weights,
+      );
+      const ranking = context.rankingMap.get(student.id) || {
+        position: null,
+        totalStudents: context.students.length,
+      };
+
+      return {
+        studentId: student.id,
+        studentName: this.buildStudentName(student),
+        overallAverage: metric.overallAverage,
+        attendanceRate: attendance.attendanceRate,
+        position: ranking.position,
+        totalStudents: ranking.totalStudents,
+        status: record?.status || TermReportStatus.DRAFT,
+        readiness,
+      };
+    });
   }
 
   async upsertTermReportRemark(
@@ -469,7 +788,23 @@ export class TermReportService {
       throw new NotFoundException('Student not found');
     }
 
-    return (await this.prisma.termReportRemark.upsert({
+    const existing = await this.prisma.termReportRemark.findUnique({
+      where: {
+        studentId_academicPeriod_term: {
+          studentId: student.id,
+          academicPeriod: parsedPeriod.normalized,
+          term: input.term,
+        },
+      },
+    });
+
+    if (existing?.status === TermReportStatus.PUBLISHED) {
+      throw new BadRequestException(
+        'Published reports are locked. Revert to draft before editing the remark.',
+      );
+    }
+
+    const saved = await this.prisma.termReportRemark.upsert({
       where: {
         studentId_academicPeriod_term: {
           studentId: student.id,
@@ -492,6 +827,127 @@ export class TermReportService {
         authorId: actorId,
         authorRole: actorRole as any,
       },
-    })) as unknown as TermReportRemark;
+    });
+
+    return this.toGraphqlRemark(this.toStoredRemark(saved)) as TermReportRemark;
+  }
+
+  async publishStudentTermReport(
+    input: ManageTermReportInput,
+    actorId: string,
+    actorRole: Roles,
+  ): Promise<StudentTermReport> {
+    const student = await this.prisma.student.findUnique({
+      where: { id: input.studentId },
+      select: { id: true, classId: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const context = await this.buildClassReportContext(
+      student.classId,
+      input.academicPeriod,
+      input.term,
+    );
+    const contextStudent = this.getStudentFromContext(context, input.studentId);
+    const draftReport = this.createDraftReport(contextStudent, context);
+
+    if (!draftReport.readiness.ready) {
+      throw new BadRequestException(
+        `Report is not ready to publish: ${draftReport.readiness.issues.join(' ')}`,
+      );
+    }
+
+    await this.prisma.termReportRemark.upsert({
+      where: {
+        studentId_academicPeriod_term: {
+          studentId: input.studentId,
+          academicPeriod: context.academicPeriod,
+          term: input.term,
+        },
+      },
+      update: {
+        classId: context.classId,
+        status: TermReportStatus.PUBLISHED as any,
+        publishedAt: new Date(),
+        publishedById: actorId,
+        publishedByRole: actorRole as any,
+        publishedSnapshot: this.createSnapshot({
+          ...draftReport,
+          status: TermReportStatus.PUBLISHED,
+          publishedAt: new Date(),
+          publishedById: actorId,
+          publishedByRole: actorRole,
+        }),
+      },
+      create: {
+        studentId: input.studentId,
+        classId: context.classId,
+        academicPeriod: context.academicPeriod,
+        term: input.term,
+        remark: draftReport.remark?.remark || '',
+        authorId: actorId,
+        authorRole: actorRole as any,
+        status: TermReportStatus.PUBLISHED as any,
+        publishedAt: new Date(),
+        publishedById: actorId,
+        publishedByRole: actorRole as any,
+        publishedSnapshot: this.createSnapshot({
+          ...draftReport,
+          status: TermReportStatus.PUBLISHED,
+          publishedAt: new Date(),
+          publishedById: actorId,
+          publishedByRole: actorRole,
+        }),
+      },
+    });
+
+    return this.getStudentTermReport(
+      input.studentId,
+      context.academicPeriod,
+      input.term,
+    );
+  }
+
+  async revertStudentTermReportToDraft(
+    input: ManageTermReportInput,
+    actorId: string,
+    actorRole: Roles,
+  ): Promise<StudentTermReport> {
+    const parsedPeriod = this.parseAcademicPeriod(input.academicPeriod);
+    const existing = await this.prisma.termReportRemark.findUnique({
+      where: {
+        studentId_academicPeriod_term: {
+          studentId: input.studentId,
+          academicPeriod: parsedPeriod.normalized,
+          term: input.term,
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('No saved report exists for this student.');
+    }
+
+    await this.prisma.termReportRemark.update({
+      where: { id: existing.id },
+      data: {
+        status: TermReportStatus.DRAFT as any,
+        publishedAt: null,
+        publishedById: null,
+        publishedByRole: null,
+        publishedSnapshot: null,
+        authorId: actorId,
+        authorRole: actorRole as any,
+      },
+    });
+
+    return this.getStudentTermReport(
+      input.studentId,
+      parsedPeriod.normalized,
+      input.term,
+    );
   }
 }
