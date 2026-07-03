@@ -842,6 +842,7 @@ type Mutation {
   updateSubject(input: UpdateSubjectInput!, subjectId: String!): Subject!
   updateTeacherProfile(input: UpdateProfileInput!): Teacher!
   updateWeeklyDigestPreference(optOut: Boolean!): Parent!
+  upsertTermReportRemark(input: UpsertTermReportRemarkInput!): TermReportRemark!
 }
 
 type OnboardingChecklist {
@@ -1030,6 +1031,7 @@ type Query {
   getStudentById(studentId: String!): Student!
   getStudentExams(studentId: String): [StudentExam!]!
   getStudentResults(studentId: String!): [Result!]!
+  getStudentTermReport(academicPeriod: String!, studentId: String!, term: Term!): StudentTermReport!
   getStudentsByGender(classId: String, params: PaginationInput): StudentGenderStatistics!
   getSubjectById(id: String!): Subject!
   getSubmissionsByAssignment(assignmentId: String!, params: PaginationInput): [Submission!]!
@@ -1329,6 +1331,24 @@ input StudentSignupInput {
   username: String!
 }
 
+type StudentTermReport {
+  academicPeriod: String!
+  attendance: TermReportAttendanceSummary!
+  classId: String!
+  className: String!
+  overallAverage: Float
+  ranking: TermReportPosition!
+  remark: TermReportRemark
+  schoolAddress: String
+  schoolLogo: String
+  schoolName: String
+  studentCode: String
+  studentId: String!
+  studentName: String!
+  subjectGrades: [TermReportSubjectGrade!]!
+  term: Term!
+}
+
 type Subject {
   class: Class
   classId: String
@@ -1418,6 +1438,38 @@ enum Term {
   FIRST
   SECOND
   THIRD
+}
+
+type TermReportAttendanceSummary {
+  absentClasses: Int!
+  attendanceRate: Float!
+  presentClasses: Int!
+  totalClasses: Int!
+}
+
+type TermReportPosition {
+  position: Int
+  totalStudents: Int!
+}
+
+type TermReportRemark {
+  academicPeriod: String!
+  authorId: String
+  authorRole: Roles
+  classId: String!
+  createdAt: DateTime!
+  id: String!
+  remark: String!
+  studentId: String!
+  term: Term!
+  updatedAt: DateTime!
+}
+
+type TermReportSubjectGrade {
+  assignmentAverage: Float
+  examAverage: Float
+  finalScore: Float
+  name: String!
 }
 
 type TokenResponse {
@@ -1531,6 +1583,13 @@ input UpdateSubjectInput {
 
 input UpdateSubmissionInput {
   content: String
+}
+
+input UpsertTermReportRemarkInput {
+  academicPeriod: String!
+  remark: String!
+  studentId: String!
+  term: Term!
 }
 
 union UserUnion = Admin | Parent | Student | Teacher
