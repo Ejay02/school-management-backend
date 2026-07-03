@@ -165,7 +165,9 @@ export class PrismaService
               where &&
               delegate?.findUnique
             ) {
-              before = await delegate.findUnique({ where }).catch(() => null);
+              before = await delegate
+                .findUnique({ where })
+                .catch(() => null);
             }
 
             const result = await query(args);
