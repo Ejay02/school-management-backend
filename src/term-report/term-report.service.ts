@@ -781,11 +781,20 @@ export class TermReportService {
 
     const student = await this.prisma.student.findUnique({
       where: { id: input.studentId },
-      select: { id: true, classId: true },
+      select: { id: true, classId: true, class: { select: { supervisorId: true } } },
     });
 
     if (!student) {
       throw new NotFoundException('Student not found');
+    }
+
+    if (
+      actorRole === Roles.TEACHER &&
+      student.class?.supervisorId !== actorId
+    ) {
+      throw new BadRequestException(
+        'Only the class supervisor can save this report remark.',
+      );
     }
 
     const existing = await this.prisma.termReportRemark.findUnique({

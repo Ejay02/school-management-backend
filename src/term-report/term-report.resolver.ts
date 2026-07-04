@@ -48,7 +48,7 @@ export class TermReportResolver {
   }
 
   @Mutation(() => TermReportRemark)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER)
   async upsertTermReportRemark(
     @Args('input') input: UpsertTermReportRemarkInput,
     @Context() context,

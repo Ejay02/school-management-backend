@@ -13,6 +13,7 @@ import { UpdateProfileInput } from '../shared/inputs/profile-update.input';
 import { PaginationParams } from '../shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from '../shared/pagination/utils/prisma.pagination';
 import { CloudinaryService } from '../shared/cloudinary/services/cloudinary.service';
+import { Term } from '../payment/enum/term';
 
 @Injectable()
 export class TeacherService {
@@ -116,13 +117,6 @@ export class TeacherService {
     };
 
     const today = dayMap[dayIndex];
-    if (!today) {
-      return {
-        nextClasses: [],
-        attendanceDueCount: 0,
-        assignmentsToGradeCount: 0,
-      };
-    }
 
     const parseMinutes = (value: string) => {
       const [h, m] = String(value || '').split(':');
@@ -135,7 +129,7 @@ export class TeacherService {
     const lessonsToday = await this.prisma.lesson.findMany({
       where: {
         teacherId,
-        day: today,
+        ...(today ? { day: today } : { id: '__no_lessons__' }),
       },
       include: {
         class: { select: { name: true } },
@@ -191,10 +185,121 @@ export class TeacherService {
       },
     });
 
+    const setupState = await this.prisma.setupState.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+      select: {
+        academicYearCurrent: true,
+        academicYearNext: true,
+        currentTerm: true,
+      },
+    });
+
+    const supervisorAcademicPeriod =
+      setupState.academicYearCurrent && setupState.academicYearNext
+        ? `${setupState.academicYearCurrent}/${setupState.academicYearNext}`
+        : null;
+    const supervisorCurrentTerm = setupState.currentTerm
+      ? (setupState.currentTerm as unknown as Term)
+      : null;
+
+    let supervisorRemarkTasks: Array<{
+      studentId: string;
+      studentName: string;
+      studentCode?: string | null;
+      classId: string;
+      className: string;
+      academicPeriod: string;
+      term: Term;
+      completed: boolean;
+      locked: boolean;
+      remark?: string | null;
+      updatedAt?: Date | null;
+    }> = [];
+
+    if (supervisorAcademicPeriod && supervisorCurrentTerm) {
+      const supervisedClasses = await this.prisma.class.findMany({
+        where: {
+          supervisorId: teacherId,
+        },
+        select: {
+          id: true,
+          name: true,
+          students: {
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              studentId: true,
+            },
+            orderBy: [{ name: 'asc' }, { surname: 'asc' }],
+          },
+        },
+        orderBy: { name: 'asc' },
+      });
+
+      const classIds = supervisedClasses.map((entry) => entry.id);
+      const existingRemarks = classIds.length
+        ? await this.prisma.termReportRemark.findMany({
+            where: {
+              classId: { in: classIds },
+              academicPeriod: supervisorAcademicPeriod,
+              term: supervisorCurrentTerm,
+            },
+            select: {
+              studentId: true,
+              remark: true,
+              status: true,
+              updatedAt: true,
+            },
+          })
+        : [];
+
+      const remarksByStudentId = new Map(
+        existingRemarks.map((entry) => [entry.studentId, entry]),
+      );
+
+      supervisorRemarkTasks = supervisedClasses.flatMap((classItem) =>
+        classItem.students.map((student) => {
+          const existingRemark = remarksByStudentId.get(student.id);
+          const remarkText = String(existingRemark?.remark || '').trim();
+
+          return {
+            studentId: student.id,
+            studentName: [student.name, student.surname]
+              .filter(Boolean)
+              .join(' '),
+            studentCode: student.studentId ?? null,
+            classId: classItem.id,
+            className: classItem.name,
+            academicPeriod: supervisorAcademicPeriod,
+            term: supervisorCurrentTerm,
+            completed: remarkText.length >= 2,
+            locked: existingRemark?.status === 'PUBLISHED',
+            remark: remarkText || null,
+            updatedAt: existingRemark?.updatedAt ?? null,
+          };
+        }),
+      );
+    }
+
+    const supervisorRemarkPendingCount = supervisorRemarkTasks.filter(
+      (task) => !task.completed,
+    ).length;
+    const supervisorRemarkCompletedCount = supervisorRemarkTasks.filter(
+      (task) => task.completed,
+    ).length;
+
     return {
       nextClasses: upcoming,
       attendanceDueCount,
       assignmentsToGradeCount,
+      supervisorAcademicPeriod,
+      supervisorCurrentTerm,
+      supervisorRemarkPendingCount,
+      supervisorRemarkCompletedCount,
+      supervisorRemarkTasks,
     };
   }
 

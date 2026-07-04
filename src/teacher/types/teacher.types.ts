@@ -3,6 +3,7 @@ import { Subject } from '../../subject/types/subject.types';
 import { Lesson } from '../../lesson/types/lesson.types';
 import { Class } from '../../class/types/class.types';
 import { Roles } from '../../shared/enum/role';
+import { Term } from '../../payment/enum/term';
 
 @ObjectType()
 export class Teacher {
@@ -107,4 +108,55 @@ export class TeacherTodayOverview {
 
   @Field(() => Int)
   assignmentsToGradeCount: number;
+
+  @Field(() => String, { nullable: true })
+  supervisorAcademicPeriod?: string | null;
+
+  @Field(() => Term, { nullable: true })
+  supervisorCurrentTerm?: Term | null;
+
+  @Field(() => Int)
+  supervisorRemarkPendingCount: number;
+
+  @Field(() => Int)
+  supervisorRemarkCompletedCount: number;
+
+  @Field(() => [TeacherSupervisorRemarkTask])
+  supervisorRemarkTasks: TeacherSupervisorRemarkTask[];
+}
+
+@ObjectType()
+export class TeacherSupervisorRemarkTask {
+  @Field(() => String)
+  studentId: string;
+
+  @Field(() => String)
+  studentName: string;
+
+  @Field(() => String, { nullable: true })
+  studentCode?: string | null;
+
+  @Field(() => String)
+  classId: string;
+
+  @Field(() => String)
+  className: string;
+
+  @Field(() => String)
+  academicPeriod: string;
+
+  @Field(() => Term)
+  term: Term;
+
+  @Field(() => Boolean)
+  completed: boolean;
+
+  @Field(() => Boolean)
+  locked: boolean;
+
+  @Field(() => String, { nullable: true })
+  remark?: string | null;
+
+  @Field(() => Date, { nullable: true })
+  updatedAt?: Date | null;
 }
