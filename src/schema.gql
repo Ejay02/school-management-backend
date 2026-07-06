@@ -738,6 +738,12 @@ type Lesson {
   updatedAt: DateTime!
 }
 
+input ManageTermReportInput {
+  academicPeriod: String!
+  studentId: String!
+  term: Term!
+}
+
 input MarkAttendanceInput {
   date: DateTime!
   note: String
@@ -818,9 +824,11 @@ type Mutation {
   parentSignup(input: ParentSignupInput!): AuthResponse!
   personalAnnouncementDelete(announcementId: String!): Boolean!
   publishResults(classId: String!, message: String, term: String!): [Result!]!
+  publishStudentTermReport(input: ManageTermReportInput!): StudentTermReport!
   refreshTokens(refreshToken: String!): TokenResponse!
   resendInvitation(id: String!): Invitation!
   resetPassword(input: ResetPasswordInput!): AuthResponse!
+  revertStudentTermReportToDraft(input: ManageTermReportInput!): StudentTermReport!
   revokeInvitation(id: String!): Invitation!
   sendChatMessage(attachments: [ChatAttachmentInput!], content: String, conversationId: String!): ChatMessage!
   setUserActiveStatus(isActive: Boolean!, reason: String, targetId: String!): UserUnion!
@@ -1000,6 +1008,7 @@ type Query {
   getClassById(id: String!): Class!
   getClassExams(classId: String!, params: PaginationInput): [Exam!]!
   getClassResults(academicPeriod: String, classId: String!, params: PaginationInput): Result!
+  getClassTermReportSummaries(academicPeriod: String!, classId: String!, term: Term!): [StudentTermReportSummary!]!
   getDashboardUserCardSummary: DashboardSummary!
   getEventById(id: String!): Event!
   getEvents(filter: EventFilter!, params: PaginationInput): [Event!]!
@@ -1032,6 +1041,7 @@ type Query {
   getStudentExams(studentId: String): [StudentExam!]!
   getStudentResults(studentId: String!): [Result!]!
   getStudentTermReport(academicPeriod: String!, studentId: String!, term: Term!): StudentTermReport!
+  getStudentTodayOverview: StudentTodayOverview!
   getStudentsByGender(classId: String, params: PaginationInput): StudentGenderStatistics!
   getSubjectById(id: String!): Subject!
   getSubmissionsByAssignment(assignmentId: String!, params: PaginationInput): [Submission!]!
@@ -1244,6 +1254,16 @@ type Student {
   username: String!
 }
 
+type StudentDueAssignmentTask {
+  assignmentId: String!
+  dueDate: DateTime!
+  overdue: Boolean!
+  statusLabel: String!
+  subjectName: String
+  submitted: Boolean!
+  title: String!
+}
+
 type StudentExam {
   answers: JSON
   answersHash: String
@@ -1340,16 +1360,53 @@ type StudentTermReport {
   classId: String!
   className: String!
   overallAverage: Float
+  publishedAt: DateTime
+  publishedById: String
+  publishedByRole: Roles
   ranking: TermReportPosition!
+  readiness: TermReportReadiness!
   remark: TermReportRemark
   schoolAddress: String
   schoolLogo: String
   schoolName: String
+  status: TermReportStatus!
   studentCode: String
   studentId: String!
   studentName: String!
   subjectGrades: [TermReportSubjectGrade!]!
   term: Term!
+}
+
+type StudentTermReportSummary {
+  attendanceRate: Float!
+  overallAverage: Float
+  position: Int
+  readiness: TermReportReadiness!
+  status: TermReportStatus!
+  studentId: String!
+  studentName: String!
+  totalStudents: Int!
+}
+
+type StudentTodayOverview {
+  dueAssignmentCount: Int!
+  dueAssignments: [StudentDueAssignmentTask!]!
+  overdueAssignmentCount: Int!
+  upcomingExamCount: Int!
+  upcomingExams: [StudentUpcomingExamTask!]!
+}
+
+type StudentUpcomingExamTask {
+  date: DateTime!
+  endTime: DateTime!
+  examId: String!
+  hasTaken: Boolean!
+  missed: Boolean!
+  startTime: DateTime!
+  statusLabel: String!
+  studentExamId: String!
+  subjectName: String
+  title: String!
 }
 
 type Subject {
@@ -1422,6 +1479,20 @@ input TeacherSignupInput {
   username: String!
 }
 
+type TeacherSupervisorRemarkTask {
+  academicPeriod: String!
+  classId: String!
+  className: String!
+  completed: Boolean!
+  locked: Boolean!
+  remark: String
+  studentCode: String
+  studentId: String!
+  studentName: String!
+  term: Term!
+  updatedAt: DateTime
+}
+
 type TeacherTodayClass {
   className: String
   endTime: String!
@@ -1435,6 +1506,11 @@ type TeacherTodayOverview {
   assignmentsToGradeCount: Int!
   attendanceDueCount: Int!
   nextClasses: [TeacherTodayClass!]!
+  supervisorAcademicPeriod: String
+  supervisorCurrentTerm: Term
+  supervisorRemarkCompletedCount: Int!
+  supervisorRemarkPendingCount: Int!
+  supervisorRemarkTasks: [TeacherSupervisorRemarkTask!]!
 }
 
 enum Term {
@@ -1455,6 +1531,11 @@ type TermReportPosition {
   totalStudents: Int!
 }
 
+type TermReportReadiness {
+  issues: [String!]!
+  ready: Boolean!
+}
+
 type TermReportRemark {
   academicPeriod: String!
   authorId: String
@@ -1462,10 +1543,19 @@ type TermReportRemark {
   classId: String!
   createdAt: DateTime!
   id: String!
+  publishedAt: DateTime
+  publishedById: String
+  publishedByRole: Roles
   remark: String!
+  status: TermReportStatus!
   studentId: String!
   term: Term!
   updatedAt: DateTime!
+}
+
+enum TermReportStatus {
+  DRAFT
+  PUBLISHED
 }
 
 type TermReportSubjectGrade {

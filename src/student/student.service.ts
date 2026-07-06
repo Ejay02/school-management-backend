@@ -421,6 +421,137 @@ export class StudentService {
     }
   }
 
+  async getStudentTodayOverview(studentId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        classId: true,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID: ${studentId} not found`);
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const [assignments, studentExams] = await Promise.all([
+      this.prisma.assignment.findMany({
+        where: {
+          classId: student.classId,
+        },
+        select: {
+          id: true,
+          title: true,
+          dueDate: true,
+          subject: {
+            select: {
+              name: true,
+            },
+          },
+          submissions: {
+            where: {
+              studentId,
+            },
+            select: {
+              id: true,
+            },
+          },
+        },
+        orderBy: {
+          dueDate: 'asc',
+        },
+      }),
+      this.prisma.studentExam.findMany({
+        where: {
+          studentId,
+        },
+        select: {
+          id: true,
+          hasTaken: true,
+          exam: {
+            select: {
+              id: true,
+              title: true,
+              date: true,
+              startTime: true,
+              endTime: true,
+              subject: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          exam: {
+            date: 'asc',
+          },
+        },
+      }),
+    ]);
+
+    const dueAssignments = assignments
+      .filter((assignment) => assignment.submissions.length === 0)
+      .map((assignment) => {
+        const dueDate = new Date(assignment.dueDate);
+        const overdue = dueDate.getTime() < startOfToday.getTime();
+        const dueToday =
+          dueDate.getTime() >= startOfToday.getTime() &&
+          dueDate.getTime() < startOfToday.getTime() + 24 * 60 * 60 * 1000;
+
+        return {
+          assignmentId: assignment.id,
+          title: assignment.title,
+          subjectName: assignment.subject?.name ?? null,
+          dueDate,
+          submitted: false,
+          overdue,
+          statusLabel: overdue
+            ? 'Overdue'
+            : dueToday
+              ? 'Due today'
+              : 'Upcoming',
+        };
+      });
+
+    const upcomingExams = studentExams
+      .filter((studentExam) => !studentExam.hasTaken && studentExam.exam)
+      .map((studentExam) => {
+        const examDate = new Date(studentExam.exam.date);
+        const missed = examDate.getTime() < startOfToday.getTime();
+        const today =
+          examDate.getTime() >= startOfToday.getTime() &&
+          examDate.getTime() < startOfToday.getTime() + 24 * 60 * 60 * 1000;
+
+        return {
+          studentExamId: studentExam.id,
+          examId: studentExam.exam.id,
+          title: studentExam.exam.title,
+          subjectName: studentExam.exam.subject?.name ?? null,
+          date: examDate,
+          startTime: new Date(studentExam.exam.startTime),
+          endTime: new Date(studentExam.exam.endTime),
+          hasTaken: false,
+          missed,
+          statusLabel: missed ? 'Missed' : today ? 'Today' : 'Upcoming',
+        };
+      });
+
+    return {
+      dueAssignmentCount: dueAssignments.length,
+      overdueAssignmentCount: dueAssignments.filter((item) => item.overdue)
+        .length,
+      upcomingExamCount: upcomingExams.length,
+      dueAssignments: dueAssignments.slice(0, 8),
+      upcomingExams: upcomingExams.slice(0, 8),
+    };
+  }
+
   async assignStudentToClass(input: AssignStudentToClassInput) {
     const { studentId, classId } = input;
 

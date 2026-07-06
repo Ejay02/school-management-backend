@@ -1,6 +1,6 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { StudentService } from './student.service';
-import { Student } from './types/student.types';
+import { Student, StudentTodayOverview } from './types/student.types';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { AssignStudentToClassInput } from './input/assign.student.class.input';
@@ -37,6 +37,14 @@ export class StudentResolver {
   @HasRoles(Roles.ADMIN, Roles.TEACHER, Roles.PARENT, Roles.STUDENT)
   async getStudentById(@Args('studentId') studentId: string) {
     return await this.studentService.getStudentById(studentId);
+  }
+
+  @Query(() => StudentTodayOverview)
+  @HasRoles(Roles.STUDENT)
+  async getStudentTodayOverview(@Context() context) {
+    return this.studentService.getStudentTodayOverview(
+      context.req.user.userId,
+    );
   }
 
   @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
