@@ -929,6 +929,44 @@ type Parent {
   weeklyDigestOptOut: Boolean!
 }
 
+type ParentChildAssignmentTask {
+  assignmentId: String!
+  className: String
+  dueDate: DateTime!
+  overdue: Boolean!
+  statusLabel: String!
+  studentId: String!
+  studentName: String!
+  subjectName: String
+  title: String!
+}
+
+type ParentChildExamTask {
+  className: String
+  date: DateTime!
+  endTime: DateTime!
+  examId: String!
+  missed: Boolean!
+  startTime: DateTime!
+  statusLabel: String!
+  studentExamId: String!
+  studentId: String!
+  studentName: String!
+  subjectName: String
+  title: String!
+}
+
+type ParentSchoolNotice {
+  category: String!
+  className: String
+  endTime: DateTime!
+  eventId: String!
+  location: String
+  startTime: DateTime!
+  statusLabel: String!
+  title: String!
+}
+
 input ParentSignupInput {
   email: String
   name: String!
@@ -936,6 +974,16 @@ input ParentSignupInput {
   role: Roles! = PARENT
   surname: String!
   username: String!
+}
+
+type ParentTodayOverview {
+  assignmentTasks: [ParentChildAssignmentTask!]!
+  examTasks: [ParentChildExamTask!]!
+  linkedStudentCount: Int!
+  overdueAssignmentCount: Int!
+  pendingAssignmentCount: Int!
+  schoolNotices: [ParentSchoolNotice!]!
+  upcomingExamCount: Int!
 }
 
 type PasswordSetupPreview {
@@ -1027,6 +1075,7 @@ type Query {
   """
   getOnboardingChecklist: OnboardingChecklist!
   getParentById(parentId: String!): Parent!
+  getParentTodayOverview: ParentTodayOverview!
   getPaymentById(paymentId: String!): StudentPayment!
   getResultHistory(academicYear: String, studentId: String!): [Result!]!
   getResultStatistics(className: String!): ResultStatistics!

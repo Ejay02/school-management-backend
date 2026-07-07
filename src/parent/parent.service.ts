@@ -13,6 +13,7 @@ import { PaginationParams } from 'src/shared/pagination/types/pagination.types';
 import { PrismaQueryBuilder } from 'src/shared/pagination/utils/prisma.pagination';
 import * as bcrypt from 'bcrypt';
 import { CloudinaryService } from 'src/shared/cloudinary/services/cloudinary.service';
+import { EventVisibility } from 'src/event/enum/eventVisibility';
 
 @Injectable()
 export class ParentService {
@@ -35,6 +36,28 @@ export class ParentService {
     });
 
     return classes.map((c) => c.id);
+  }
+
+  private classifyEventCategory(event: {
+    type?: string | null;
+    title?: string | null;
+    description?: string | null;
+  }) {
+    const haystack = [event?.type, event?.title, event?.description]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    if (haystack.includes('pta')) {
+      return { category: 'PTA', statusLabel: 'PTA' };
+    }
+    if (haystack.includes('holiday') || haystack.includes('break')) {
+      return { category: 'Holiday', statusLabel: 'Holiday' };
+    }
+    if (haystack.includes('meeting')) {
+      return { category: 'Meeting', statusLabel: 'Meeting' };
+    }
+    return { category: 'Event', statusLabel: 'Upcoming' };
   }
 
   async getAllParents(
@@ -145,6 +168,242 @@ export class ParentService {
     } catch (error) {
       throw new Error(`Failed to get parent: ${error.message}`);
     }
+  }
+
+  async getParentTodayOverview(parentId: string) {
+    const parent = await this.prisma.parent.findUnique({
+      where: { id: parentId },
+      select: {
+        id: true,
+        students: {
+          select: {
+            id: true,
+            name: true,
+            surname: true,
+            classId: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!parent) {
+      throw new NotFoundException(`Parent with ID: ${parentId} not found`);
+    }
+
+    const linkedStudents = Array.isArray(parent.students)
+      ? parent.students
+      : [];
+    const studentIds = linkedStudents.map((student) => student.id);
+    const classIds = [
+      ...new Set(
+        linkedStudents.map((student) => student.classId).filter(Boolean),
+      ),
+    ];
+
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfRange = new Date(startOfToday);
+    endOfRange.setDate(endOfRange.getDate() + 30);
+
+    const [assignments, studentExams, events] = await Promise.all([
+      linkedStudents.length
+        ? this.prisma.assignment.findMany({
+            where: {
+              classId: { in: classIds },
+            },
+            select: {
+              id: true,
+              title: true,
+              dueDate: true,
+              classId: true,
+              subject: { select: { name: true } },
+              submissions: {
+                where: {
+                  studentId: { in: studentIds },
+                },
+                select: {
+                  studentId: true,
+                },
+              },
+            },
+            orderBy: { dueDate: 'asc' },
+          })
+        : Promise.resolve([]),
+      linkedStudents.length
+        ? this.prisma.studentExam.findMany({
+            where: {
+              studentId: { in: studentIds },
+            },
+            select: {
+              id: true,
+              studentId: true,
+              hasTaken: true,
+              exam: {
+                select: {
+                  id: true,
+                  title: true,
+                  date: true,
+                  startTime: true,
+                  endTime: true,
+                  classId: true,
+                  subject: { select: { name: true } },
+                },
+              },
+            },
+            orderBy: {
+              exam: {
+                date: 'asc',
+              },
+            },
+          })
+        : Promise.resolve([]),
+      this.prisma.event.findMany({
+        where: {
+          startTime: { gte: startOfToday, lte: endOfRange },
+          OR: [
+            { visibility: EventVisibility.PUBLIC as any },
+            { targetRoles: { has: Roles.PARENT as any } },
+            ...(classIds.length
+              ? [
+                  { classId: { in: classIds } },
+                  { class: { students: { some: { parentId } } } },
+                ]
+              : []),
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          type: true,
+          location: true,
+          startTime: true,
+          endTime: true,
+          class: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: { startTime: 'asc' },
+        take: 8,
+      }),
+    ]);
+
+    const studentsById = new Map(
+      linkedStudents.map((student) => [
+        student.id,
+        {
+          studentId: student.id,
+          studentName: [student.name, student.surname]
+            .filter(Boolean)
+            .join(' '),
+          className: student.class?.name ?? null,
+          classId: student.classId,
+        },
+      ]),
+    );
+
+    const assignmentTasks = assignments
+      .flatMap((assignment) => {
+        const classStudents = linkedStudents.filter(
+          (student) => student.classId === assignment.classId,
+        );
+        return classStudents
+          .filter(
+            (student) =>
+              !assignment.submissions.some(
+                (submission) => submission.studentId === student.id,
+              ),
+          )
+          .map((student) => {
+            const dueDate = new Date(assignment.dueDate);
+            const overdue = dueDate.getTime() < startOfToday.getTime();
+            const dueToday =
+              dueDate.getTime() >= startOfToday.getTime() &&
+              dueDate.getTime() < startOfToday.getTime() + 24 * 60 * 60 * 1000;
+
+            return {
+              studentId: student.id,
+              studentName: [student.name, student.surname]
+                .filter(Boolean)
+                .join(' '),
+              className: student.class?.name ?? null,
+              assignmentId: assignment.id,
+              title: assignment.title,
+              subjectName: assignment.subject?.name ?? null,
+              dueDate,
+              overdue,
+              statusLabel: overdue
+                ? 'Overdue'
+                : dueToday
+                  ? 'Due today'
+                  : 'Upcoming',
+            };
+          });
+      })
+      .sort((left, right) => left.dueDate.getTime() - right.dueDate.getTime())
+      .slice(0, 10);
+
+    const examTasks = studentExams
+      .filter((studentExam) => !studentExam.hasTaken && studentExam.exam)
+      .map((studentExam) => {
+        const student = studentsById.get(studentExam.studentId);
+        const examDate = new Date(studentExam.exam.date);
+        const missed = examDate.getTime() < startOfToday.getTime();
+        const today =
+          examDate.getTime() >= startOfToday.getTime() &&
+          examDate.getTime() < startOfToday.getTime() + 24 * 60 * 60 * 1000;
+
+        return {
+          studentId: student?.studentId || studentExam.studentId,
+          studentName: student?.studentName || 'Student',
+          className: student?.className ?? null,
+          examId: studentExam.exam.id,
+          studentExamId: studentExam.id,
+          title: studentExam.exam.title,
+          subjectName: studentExam.exam.subject?.name ?? null,
+          date: examDate,
+          startTime: new Date(studentExam.exam.startTime),
+          endTime: new Date(studentExam.exam.endTime),
+          missed,
+          statusLabel: missed ? 'Missed' : today ? 'Today' : 'Upcoming',
+        };
+      })
+      .sort((left, right) => left.date.getTime() - right.date.getTime())
+      .slice(0, 10);
+
+    const schoolNotices = events.map((event) => {
+      const classified = this.classifyEventCategory(event);
+      return {
+        eventId: event.id,
+        title: event.title,
+        category: classified.category,
+        statusLabel: classified.statusLabel,
+        startTime: new Date(event.startTime),
+        endTime: new Date(event.endTime),
+        location: event.location ?? null,
+        className: event.class?.name ?? null,
+      };
+    });
+
+    return {
+      linkedStudentCount: linkedStudents.length,
+      pendingAssignmentCount: assignmentTasks.length,
+      overdueAssignmentCount: assignmentTasks.filter((item) => item.overdue)
+        .length,
+      upcomingExamCount: examTasks.length,
+      assignmentTasks,
+      examTasks,
+      schoolNotices,
+    };
   }
 
   async updateParentProfile(

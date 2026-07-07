@@ -4,7 +4,7 @@ import { RolesGuard } from 'src/shared/auth/guards/roles.guard';
 import { JwtAuthGuard } from 'src/shared/auth/guards/jwtAuth.guard';
 import { UseGuards } from '@nestjs/common';
 import { HasRoles } from 'src/shared/auth/decorators/roles.decorator';
-import { Parent } from './types/parent.types';
+import { Parent, ParentTodayOverview } from './types/parent.types';
 import { Roles } from 'src/shared/enum/role';
 import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { UpdateProfileInput } from 'src/shared/inputs/profile-update.input';
@@ -44,6 +44,12 @@ export class ParentResolver {
   )
   async getParentById(@Args('parentId') parentId: string) {
     return await this.parentService.getParentById(parentId);
+  }
+
+  @Query(() => ParentTodayOverview)
+  @HasRoles(Roles.PARENT)
+  async getParentTodayOverview(@Context() context) {
+    return this.parentService.getParentTodayOverview(context.req.user.userId);
   }
 
   @Mutation(() => Parent)
