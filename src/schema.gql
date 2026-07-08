@@ -609,6 +609,24 @@ type FinanceOverview {
   totalOutstanding: Float!
 }
 
+type FinanceReconciliationRecord {
+  amount: Float!
+  balance: Float!
+  classId: String
+  className: String
+  createdAt: DateTime!
+  dueDate: DateTime!
+  feeType: String!
+  invoiceId: ID!
+  invoiceNumber: String!
+  paid: Float!
+  status: String!
+  studentId: String
+  studentName: String
+  studentSurname: String
+  term: String
+}
+
 input GradeSubmissionInput {
   academicPeriod: String
   comments: String
@@ -1063,6 +1081,7 @@ type Query {
   getExamById(examId: String!): Exam!
   getFeeStructureById(feeStructureId: String!): FeeStructure!
   getFinanceOverview: FinanceOverview!
+  getFinanceReconciliation: [FinanceReconciliationRecord!]!
   getHello: String!
   getIncomeGraphData: MonthlyRevenue!
   getLessonById(id: String!): Lesson!

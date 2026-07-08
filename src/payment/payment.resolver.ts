@@ -16,6 +16,7 @@ import {
   BillingReportDashboard,
   FinanceOverview,
 } from './types/billing.report.dashboard.type';
+import { FinanceReconciliationRecord } from './types/finance.reconciliation.type';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -134,5 +135,11 @@ export class PaymentResolver {
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async invoicesDueThisWeek() {
     return await this.paymentService.getInvoicesDueThisWeek();
+  }
+
+  @Query(() => [FinanceReconciliationRecord])
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  async getFinanceReconciliation() {
+    return await this.paymentService.getFinanceReconciliation();
   }
 }

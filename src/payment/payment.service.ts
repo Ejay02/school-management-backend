@@ -17,6 +17,7 @@ import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 import { Term } from './enum/term';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 import { ClassRevenueItem } from './types/class.revenue.item.type';
+import { FinanceReconciliationRecord } from './types/finance.reconciliation.type';
 
 @Injectable()
 export class PaymentService {
@@ -1319,6 +1320,72 @@ export class PaymentService {
       orderBy: {
         dueDate: 'asc',
       },
+    });
+  }
+
+  async getFinanceReconciliation(): Promise<FinanceReconciliationRecord[]> {
+    const invoices = await this.prisma.invoice.findMany({
+      include: {
+        feeStructure: {
+          include: {
+            classes: true,
+          },
+        },
+        parent: {
+          include: {
+            students: {
+              include: {
+                class: true,
+              },
+            },
+          },
+        },
+        payments: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return invoices.map((invoice) => {
+      // Find a matched student of the parent
+      const students = invoice.parent?.students || [];
+      let matchedStudent = students.find(
+        (student) => student.class?.feeStructureId === invoice.feeStructureId,
+      );
+
+      // If not found, fallback to first student of the parent
+      if (!matchedStudent && students.length > 0) {
+        matchedStudent = students[0];
+      }
+
+      const totalAmount = invoice.totalAmount;
+      const paidAmount = invoice.paidAmount;
+      const balance = Math.max(totalAmount - paidAmount, 0);
+
+      // Compute status including OVERDUE
+      let status = invoice.status.toString();
+      if (status === 'PENDING' || status === 'PARTIAL') {
+        if (new Date(invoice.dueDate) < new Date()) {
+          status = 'OVERDUE';
+        }
+      }
+
+      return {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        studentId: matchedStudent?.id,
+        studentName: matchedStudent?.name,
+        studentSurname: matchedStudent?.surname,
+        classId: matchedStudent?.class?.id,
+        className: matchedStudent?.class?.name,
+        feeType: invoice.feeStructure?.type || 'UNKNOWN',
+        term: invoice.feeStructure?.term || null,
+        amount: totalAmount,
+        paid: paidAmount,
+        balance: balance,
+        status: status,
+        dueDate: invoice.dueDate,
+        createdAt: invoice.createdAt,
+      };
     });
   }
 }
