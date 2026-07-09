@@ -652,7 +652,7 @@ export class PaymentService {
     }
   }
 
-  async getPaymentById(paymentId: string) {
+  async getPaymentById(paymentId: string, parentId?: string) {
     try {
       const payment = await this.prisma.payment.findUnique({
         where: { id: paymentId },
@@ -669,11 +669,15 @@ export class PaymentService {
         throw new NotFoundException(`Payment with ID ${paymentId} not found`);
       }
 
+      if (parentId && payment.parentId !== parentId) {
+        throw new ForbiddenException('Access denied to this payment record');
+      }
+
       // Return the payment directly without transforming
       // The frontend already has the student data from the list view
       return payment;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) throw error;
       throw new InternalServerErrorException(
         `Failed to fetch payment: ${error.message}`,
       );

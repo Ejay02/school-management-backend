@@ -92,17 +92,25 @@ export class PaymentResolver {
     @Context() context,
     @Args('params', { nullable: true }) params?: PaginationInput,
   ) {
+    const isParent = context.req.user.role === Roles.PARENT;
     const result = await this.paymentService.getAllPayments(
       params || {},
-      context.req.user.userId,
+      isParent ? context.req.user.userId : undefined,
     );
     return result.data;
   }
 
   @Query(() => StudentPayment)
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN, Roles.PARENT)
-  async getPaymentById(@Args('paymentId') paymentId: string) {
-    return this.paymentService.getPaymentById(paymentId);
+  async getPaymentById(
+    @Context() context,
+    @Args('paymentId') paymentId: string,
+  ) {
+    const isParent = context.req.user.role === Roles.PARENT;
+    return this.paymentService.getPaymentById(
+      paymentId,
+      isParent ? context.req.user.userId : undefined,
+    );
   }
 
   @Mutation(() => String)
