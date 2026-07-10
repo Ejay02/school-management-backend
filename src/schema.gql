@@ -235,6 +235,11 @@ type BillingReportDashboard {
   totalRevenue: TotalRevenueData!
 }
 
+type BulkInvoiceResult {
+  count: Float!
+  message: String!
+}
+
 input ChangePasswordInput {
   newPassword: String!
   oldPassword: String!
@@ -792,6 +797,7 @@ type Mutation {
   assignResult(input: CreateResultInput!): Result!
   assignStudentToClass(input: AssignStudentToClassInput!): Student!
   assignSubjectsToClass(input: AssignSubjectsInput!): AssignSubjectsResponse!
+  bulkGenerateClassInvoices(classId: String!): BulkInvoiceResult!
   calculateOverallResult(academicPeriod: String!, studentId: String!): Result!
   cancelEvent(id: String!, reason: String!): Event!
   changePassword(input: ChangePasswordInput!): Boolean!

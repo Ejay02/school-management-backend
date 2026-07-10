@@ -47,3 +47,12 @@ export class FinanceReconciliationRecord {
   @Field()
   createdAt: Date;
 }
+
+@ObjectType()
+export class BulkInvoiceResult {
+  @Field(() => Float)
+  count: number;
+
+  @Field()
+  message: string;
+}

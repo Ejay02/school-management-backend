@@ -17,7 +17,7 @@ import { UpdateFeeStructureInput } from './input/update.fee.structure.input';
 import { Term } from './enum/term';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 import { ClassRevenueItem } from './types/class.revenue.item.type';
-import { FinanceReconciliationRecord } from './types/finance.reconciliation.type';
+import { FinanceReconciliationRecord, BulkInvoiceResult } from './types/finance.reconciliation.type';
 
 @Injectable()
 export class PaymentService {
@@ -1391,5 +1391,86 @@ export class PaymentService {
         createdAt: invoice.createdAt,
       };
     });
+  }
+
+  async bulkGenerateClassInvoices(classId: string): Promise<BulkInvoiceResult> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Fetch class with active students and its assigned FeeStructure
+        const classObj = await tx.class.findUnique({
+          where: { id: classId },
+          include: {
+            students: {
+              where: { isActive: true },
+              select: { parentId: true },
+            },
+            feeStructure: true,
+          },
+        });
+
+        if (!classObj) {
+          throw new NotFoundException('Class not found');
+        }
+
+        if (!classObj.feeStructureId || !classObj.feeStructure) {
+          throw new BadRequestException('No fee structure is set for this class');
+        }
+
+        const feeStructure = classObj.feeStructure;
+
+        // Get unique parent IDs of active students
+        const parentIds = [...new Set(classObj.students.map((s) => s.parentId))];
+        if (parentIds.length === 0) {
+          return { count: 0, message: 'No active students found in this class' };
+        }
+
+        // Find existing invoices for this fee structure for these parents
+        const existingInvoices = await tx.invoice.findMany({
+          where: {
+            parentId: { in: parentIds },
+            feeStructureId: classObj.feeStructureId,
+          },
+          select: { parentId: true },
+        });
+
+        const existingParentIds = new Set(existingInvoices.map((inv) => inv.parentId));
+
+        // Filter out parents who already have an invoice for this fee structure
+        const parentsToInvoice = parentIds.filter((pId) => !existingParentIds.has(pId));
+
+        if (parentsToInvoice.length === 0) {
+          return { count: 0, message: 'Invoices have already been issued to all parents for this class' };
+        }
+
+        // Generate invoice records
+        const invoiceData = parentsToInvoice.map((pId) => {
+          const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          return {
+            invoiceNumber,
+            parentId: pId,
+            feeStructureId: classObj.feeStructureId!,
+            totalAmount: feeStructure.totalAmount,
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+            status: InvoiceStatus.PENDING,
+          };
+        });
+
+        await tx.invoice.createMany({
+          data: invoiceData,
+        });
+
+        return {
+          count: parentsToInvoice.length,
+          message: `Successfully generated ${parentsToInvoice.length} invoice(s) for the class`,
+        };
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to bulk generate class invoices: ${error.message}`,
+      );
+    }
   }
 }

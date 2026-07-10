@@ -16,7 +16,7 @@ import {
   BillingReportDashboard,
   FinanceOverview,
 } from './types/billing.report.dashboard.type';
-import { FinanceReconciliationRecord } from './types/finance.reconciliation.type';
+import { FinanceReconciliationRecord, BulkInvoiceResult } from './types/finance.reconciliation.type';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -149,5 +149,11 @@ export class PaymentResolver {
   @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
   async getFinanceReconciliation() {
     return await this.paymentService.getFinanceReconciliation();
+  }
+
+  @Mutation(() => BulkInvoiceResult)
+  @HasRoles(Roles.SUPER_ADMIN, Roles.ADMIN)
+  async bulkGenerateClassInvoices(@Args('classId') classId: string) {
+    return await this.paymentService.bulkGenerateClassInvoices(classId);
   }
 }
