@@ -19,6 +19,7 @@ import { CreateResultInput } from 'src/result/input/create.result.input';
 import { DeleteResponse } from 'src/shared/auth/response/delete.response';
 import { ResultType } from './enum/resultType';
 import { Term } from 'src/payment/enum/term';
+import { GradebookPayload, GradebookColumn, GradebookCell } from './types/gradebook.type';
 
 @Injectable()
 export class ResultService {
@@ -730,5 +731,58 @@ export class ResultService {
         },
       });
     });
+  }
+
+  async getGradebook(classId: string, subjectId: string): Promise<GradebookPayload> {
+    const students = await this.prisma.student.findMany({
+      where: { classId, isActive: true },
+      select: { id: true, name: true, surname: true },
+      orderBy: { surname: 'asc' },
+    });
+
+    const assignments = await this.prisma.assignment.findMany({
+      where: { classId, subjectId },
+      select: { id: true, title: true },
+      orderBy: { dueDate: 'asc' },
+    });
+
+    const exams = await this.prisma.exam.findMany({
+      where: { classId, subjectId },
+      select: { id: true, title: true },
+      orderBy: { date: 'asc' },
+    });
+
+    const studentIds = students.map((s) => s.id);
+    const assignmentIds = assignments.map((a) => a.id);
+    const examIds = exams.map((e) => e.id);
+
+    const results = await this.prisma.result.findMany({
+      where: {
+        studentId: { in: studentIds },
+        OR: [
+          { assignmentId: { in: assignmentIds } },
+          { examId: { in: examIds } },
+        ],
+      },
+      select: { id: true, studentId: true, score: true, assignmentId: true, examId: true },
+    });
+
+    const columns: GradebookColumn[] = [
+      ...assignments.map((a) => ({ id: a.id, title: a.title, type: 'ASSIGNMENT' })),
+      ...exams.map((e) => ({ id: e.id, title: e.title, type: 'EXAM' })),
+    ];
+
+    const cells: GradebookCell[] = results.map((r) => ({
+      studentId: r.studentId,
+      columnId: r.assignmentId || r.examId || '',
+      resultId: r.id,
+      score: r.score,
+    }));
+
+    return {
+      students,
+      columns,
+      cells,
+    };
   }
 }

@@ -640,6 +640,31 @@ input GradeSubmissionInput {
   term: Term
 }
 
+type GradebookCell {
+  columnId: String!
+  resultId: String
+  score: Float
+  studentId: String!
+}
+
+type GradebookColumn {
+  id: ID!
+  title: String!
+  type: String!
+}
+
+type GradebookPayload {
+  cells: [GradebookCell!]!
+  columns: [GradebookColumn!]!
+  students: [GradebookStudent!]!
+}
+
+type GradebookStudent {
+  id: ID!
+  name: String!
+  surname: String!
+}
+
 type Invitation {
   acceptedAt: DateTime
   createdAt: DateTime!
@@ -1088,6 +1113,7 @@ type Query {
   getFeeStructureById(feeStructureId: String!): FeeStructure!
   getFinanceOverview: FinanceOverview!
   getFinanceReconciliation: [FinanceReconciliationRecord!]!
+  getGradebook(classId: String!, subjectId: String!): GradebookPayload!
   getHello: String!
   getIncomeGraphData: MonthlyRevenue!
   getLessonById(id: String!): Lesson!

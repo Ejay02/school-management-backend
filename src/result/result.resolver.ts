@@ -12,6 +12,7 @@ import { PaginationInput } from 'src/shared/pagination/input/pagination.input';
 import { CreateResultInput } from './input/create.result.input';
 import { UpdateResultInput } from './input/update.result.input';
 import { Term } from 'src/payment/enum/term';
+import { GradebookPayload } from './types/gradebook.type';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -228,5 +229,14 @@ export class ResultResolver {
       term,
       message,
     });
+  }
+
+  @Query(() => GradebookPayload)
+  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  async getGradebook(
+    @Args('classId') classId: string,
+    @Args('subjectId') subjectId: string,
+  ) {
+    return await this.resultService.getGradebook(classId, subjectId);
   }
 }
