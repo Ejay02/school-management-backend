@@ -785,4 +785,39 @@ export class ResultService {
       cells,
     };
   }
+
+  async upsertGrade(data: {
+    studentId: string;
+    score: number;
+    examId?: string;
+    assignmentId?: string;
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.result.findFirst({
+        where: {
+          studentId: data.studentId,
+          ...(data.examId && { examId: data.examId }),
+          ...(data.assignmentId && { assignmentId: data.assignmentId }),
+        },
+      });
+
+      if (existing) {
+        return tx.result.update({
+          where: { id: existing.id },
+          data: { score: data.score },
+          include: { student: true, exam: true, assignment: true },
+        });
+      }
+
+      return tx.result.create({
+        data: {
+          studentId: data.studentId,
+          score: data.score,
+          examId: data.examId,
+          assignmentId: data.assignmentId,
+        },
+        include: { student: true, exam: true, assignment: true },
+      });
+    });
+  }
 }

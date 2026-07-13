@@ -239,4 +239,20 @@ export class ResultResolver {
   ) {
     return await this.resultService.getGradebook(classId, subjectId);
   }
+
+  @Mutation(() => Result)
+  @HasRoles(Roles.TEACHER, Roles.ADMIN, Roles.SUPER_ADMIN)
+  async upsertGrade(
+    @Args('studentId') studentId: string,
+    @Args('score', { type: () => Int }) score: number,
+    @Args('examId', { nullable: true }) examId?: string,
+    @Args('assignmentId', { nullable: true }) assignmentId?: string,
+  ) {
+    return await this.resultService.upsertGrade({
+      studentId,
+      score,
+      examId,
+      assignmentId,
+    });
+  }
 }

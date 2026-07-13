@@ -899,6 +899,7 @@ type Mutation {
   updateSubject(input: UpdateSubjectInput!, subjectId: String!): Subject!
   updateTeacherProfile(input: UpdateProfileInput!): Teacher!
   updateWeeklyDigestPreference(optOut: Boolean!): Parent!
+  upsertGrade(assignmentId: String, examId: String, score: Int!, studentId: String!): Result!
   upsertTermReportRemark(input: UpsertTermReportRemarkInput!): TermReportRemark!
 }
 
