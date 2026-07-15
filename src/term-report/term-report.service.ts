@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Term } from 'src/payment/enum/term';
@@ -668,7 +668,20 @@ export class TermReportService {
     studentId: string,
     academicPeriod: string,
     term: Term,
+    actorId?: string,
+    actorRole?: string,
   ): Promise<StudentTermReport> {
+    if (actorRole === 'parent' && actorId) {
+      const parent = await this.prisma.parent.findUnique({
+        where: { id: actorId },
+        select: { students: { select: { id: true } } },
+      });
+      const isLinked = parent?.students?.some((s) => s.id === studentId);
+      if (!isLinked) {
+        throw new ForbiddenException("Unauthorized to view this student's report");
+      }
+    }
+
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       select: {
@@ -689,10 +702,13 @@ export class TermReportService {
     const contextStudent = this.getStudentFromContext(context, studentId);
     const record = context.recordsByStudentId.get(studentId) || null;
 
-    if (
-      record?.status === TermReportStatus.PUBLISHED &&
-      record.publishedSnapshot
-    ) {
+    const isPublished = record?.status === TermReportStatus.PUBLISHED && record.publishedSnapshot;
+
+    if (actorRole === 'parent' && !isPublished) {
+      throw new ForbiddenException('Term report is not yet published');
+    }
+
+    if (isPublished) {
       return this.createPublishedReport(contextStudent, context, record);
     }
 

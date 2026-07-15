@@ -20,16 +20,19 @@ export class TermReportResolver {
   constructor(private readonly termReportService: TermReportService) {}
 
   @Query(() => StudentTermReport)
-  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN)
+  @HasRoles(Roles.ADMIN, Roles.SUPER_ADMIN, Roles.TEACHER, Roles.PARENT)
   async getStudentTermReport(
     @Args('studentId') studentId: string,
     @Args('academicPeriod') academicPeriod: string,
     @Args('term', { type: () => Term }) term: Term,
+    @Context() context,
   ) {
     return this.termReportService.getStudentTermReport(
       studentId,
       academicPeriod,
       term,
+      context.req.user.userId,
+      context.req.user.role,
     );
   }
 
